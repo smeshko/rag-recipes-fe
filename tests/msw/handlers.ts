@@ -16,7 +16,7 @@ export const unauthorizedEnvelope = {
 export const documentNotFoundEnvelope = (documentId: string) => ({
   error: {
     code: "document_not_found",
-    message: `Document '${documentId}' was not found.`,
+    message: `Document '${documentId}' not found.`,
     details: { document_id: documentId },
   },
 });
