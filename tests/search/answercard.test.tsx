@@ -170,6 +170,20 @@ describe("answer text parser", () => {
     ]);
   });
 
+  it("substitutes a bare cite_N with no delimiters", () => {
+    const blocks = parseAnswerText("Use the frittata cite_3 for a crowd.");
+    const flat = blocks.flatMap((b) => b.segments);
+    expect(flat.filter((s) => s.kind === "cite")).toEqual([
+      { kind: "cite", id: "cite_3" },
+    ]);
+    const text = flat
+      .filter((s) => s.kind === "text")
+      .map((s) => (s as { value: string }).value)
+      .join("");
+    expect(text).not.toContain("cite_3");
+    expect(text).toBe("Use the frittata for a crowd.");
+  });
+
   it("dedupes repeated inline ids", () => {
     expect(inlineCiteIds("a [cite_1] b [cite_1] c [cite_2]")).toEqual([
       "cite_1",

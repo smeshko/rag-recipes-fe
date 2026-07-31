@@ -15,7 +15,13 @@ export interface AnswerBlock {
   segments: InlineSegment[];
 }
 
-const INLINE = /\*\*(.+?)\*\*|\s*[[(](cite_\d+)[\])]/g;
+/* Delimiters are OPTIONAL (D2's correction spells the shape out): the marker
+   format is uncontracted, so a bare `cite_3` must substitute too — otherwise
+   it stays visible in the prose while the same source also appears in the
+   trailing row, which is broken and duplicated provenance. When a delimiter
+   is present it is consumed along with the leading space, so no orphan
+   bracket is left beside the chip. */
+const INLINE = /\*\*(.+?)\*\*|\s*[[(]?(cite_\d+)[\])]?/g;
 
 /* Any ** reaching a text segment is unmatched by construction — the balanced
    form was consumed by INLINE above. Drop it rather than print it: a model
