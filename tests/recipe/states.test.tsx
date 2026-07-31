@@ -91,6 +91,21 @@ describe("provenance", () => {
     ).toBeInTheDocument();
   });
 
+  it("withdraws the no-invention claim when the payload reports inferred fields", async () => {
+    renderAt("/recipes/item_warned");
+    expect(
+      await screen.findByText(/some details were inferred during extraction/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/nothing here was invented/)).toBeNull();
+  });
+
+  it("keeps the no-invention claim when there are no warnings", async () => {
+    renderAt("/recipes/item_full");
+    expect(
+      await screen.findByText(/nothing here was invented/),
+    ).toBeInTheDocument();
+  });
+
   it("omits confidence for the sparse fixture", async () => {
     renderAt("/recipes/item_sparse");
     await screen.findByRole("heading", {
