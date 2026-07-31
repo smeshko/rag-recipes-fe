@@ -1,0 +1,138 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import {
+  inlineCiteIds,
+  parseAnswerText,
+} from "../../src/features/search/answerText";
+import { routes } from "../../src/routes";
+import {
+  answersHandler,
+  groundedAnswerFixture,
+  groundedParenFixture,
+} from "../msw/answers";
+import { server } from "../msw/server";
+
+function renderAsked(fixture = groundedAnswerFixture) {
+  server.use(answersHandler(fixture));
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const router = createMemoryRouter(routes, {
+    initialEntries: ["/?q=breakfast&mode=vector"],
+  });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return router;
+}
+
+async function ask() {
+  const user = userEvent.setup();
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled(),
+  );
+  await user.click(screen.getByRole("button", { name: "Ask" }));
+}
+
+describe("answer card", () => {
+  it("renders eyebrow count, paragraphs, chips and picks from the fixture", async () => {
+    renderAsked();
+    await ask();
+    expect(
+      await screen.findByText(/Grounded in your books · 3 citations/),
+    ).toBeInTheDocument();
+
+    /* Markdown renders — no literal ** or "1. " in the DOM text. */
+    const card = screen
+      .getByText(/Grounded in your books/)
+      .closest("section") as HTMLElement;
+    expect(card.textContent).not.toContain("**");
+    expect(card.textContent).not.toContain("[cite_");
+    const bolded = within(card).getByText("Fruit-Stuffed French Toast", {
+      selector: "strong",
+    });
+    expect(bolded).toBeInTheDocument();
+    expect(card.querySelectorAll("ol > li").length).toBe(3);
+
+    /* Inline chips consumed their brackets and link with {q, mode} state. */
+    const chip = within(card).getByRole("link", { name: "pp. 33–35" });
+    expect(chip.getAttribute("href")).toBe("/recipes/item_frenchtoast");
+
+    /* Picks sidebar. */
+    const picks = within(card).getByText("Tonight's picks")
+      .parentElement as HTMLElement;
+    const pickLinks = within(picks).getAllByRole("link");
+    expect(pickLinks).toHaveLength(3);
+    expect(pickLinks[0]).toHaveTextContent("Fruit-Stuffed French Toast");
+    expect(pickLinks[0]?.getAttribute("href")).toBe(
+      "/recipes/item_frenchtoast",
+    );
+    expect(pickLinks[1]).toHaveTextContent(
+      "Makes 12 — the memorable centerpiece.",
+    );
+  });
+
+  it("carries {q, mode} state on pick navigation", async () => {
+    const router = renderAsked();
+    await ask();
+    const card = (await screen.findByText(/Grounded in your books/)).closest(
+      "section",
+    ) as HTMLElement;
+    const pick = within(card).getAllByRole("link")[0] as HTMLElement;
+    pick.click();
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/recipes/item_frenchtoast"),
+    );
+    expect(router.state.location.state).toEqual({
+      q: "breakfast",
+      mode: "vector",
+    });
+  });
+
+  it("renders parenthesised inline cites and the rest in the trailing row", async () => {
+    renderAsked(groundedParenFixture);
+    await ask();
+    const card = (await screen.findByText(/Grounded in your books/)).closest(
+      "section",
+    ) as HTMLElement;
+    /* (cite_1) consumed; cite_4/cite_8 appear only under Cited pages. */
+    expect(card.textContent).not.toContain("(cite_");
+    const trailing = within(card).getByText(/Cited pages/);
+    expect(within(trailing).getByText("p. 28")).toBeInTheDocument();
+    expect(within(trailing).getByText("pp. 32–33")).toBeInTheDocument();
+    expect(within(trailing).queryByText("pp. 33–35")).toBeNull();
+    /* Eyebrow still counts the full union. */
+    expect(within(card).getByText(/3 citations/)).toBeInTheDocument();
+  });
+});
+
+describe("answer text parser", () => {
+  it("consumes enclosing brackets and parens around cite tokens", () => {
+    const blocks = parseAnswerText("Try this. [cite_1]\n\nOr that (cite_2).");
+    const flat = blocks.flatMap((b) => b.segments);
+    expect(flat.filter((s) => s.kind === "cite")).toHaveLength(2);
+    const texts = flat
+      .filter((s) => s.kind === "text")
+      .map((s) => (s as { value: string }).value)
+      .join("");
+    expect(texts).not.toMatch(/[[\]()]/);
+  });
+
+  it("marks numbered paragraphs as list items and bolds", () => {
+    const blocks = parseAnswerText("Intro:\n\n1. **A** first\n\n2. B second");
+    expect(blocks.map((b) => b.kind)).toEqual(["p", "li", "li"]);
+    expect(blocks[1]?.segments[0]).toEqual({ kind: "bold", value: "A" });
+  });
+
+  it("dedupes repeated inline ids", () => {
+    expect(inlineCiteIds("a [cite_1] b [cite_1] c [cite_2]")).toEqual([
+      "cite_1",
+      "cite_2",
+    ]);
+  });
+});

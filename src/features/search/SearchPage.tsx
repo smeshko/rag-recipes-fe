@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { type ApiError, useAnswer, useShelfStats } from "../../api";
+import { type ApiError, isFallback, useAnswer, useShelfStats } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
+import { AnswerCard } from "./AnswerCard";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
@@ -124,9 +125,13 @@ export function SearchPage() {
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
 
-      {/* Answer slot: explicit-action only; TASK-003/004 replace the
-          placeholder success/fallback/error renderings. */}
-      {answer.isPending ? <AnswerSkeleton /> : null}
+      {/* Answer slot: explicit-action only. Fallback/error arms fill in
+          TASK-004; a warning must never render as a grounded card. */}
+      {answer.isPending ? (
+        <AnswerSkeleton />
+      ) : answer.isSuccess && !isFallback(answer.data) ? (
+        <AnswerCard answer={answer.data} q={q} mode={mode} />
+      ) : null}
 
       {/* Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
