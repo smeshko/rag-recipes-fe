@@ -6,14 +6,6 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
   const label = item.source_citations[0]?.label;
   const overall = item.knowledge_item.confidence?.overall;
   const schema = item.knowledge_item.structured_data.schema;
-  /* "nothing here was invented" is a categorical claim the payload itself can
-     falsify: soft-validation appends `warnings` at persist time for exactly
-     the fields it inferred (e.g. "yield inferred from step text"), and the
-     facts row then shows an inferred value under a no-invention guarantee.
-     Withdraw the guarantee when warnings exist rather than overclaim. The
-     warning list itself stays undisplayed — PLAN.md Out of Scope. */
-  const inferred =
-    (item.knowledge_item.structured_data.warnings ?? []).length > 0;
 
   return (
     <div
@@ -29,9 +21,17 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
           </>
         ) : null}
         {label ? <>, {label}</> : null}
-        {inferred
-          ? " — the original wording is preserved, though some details were inferred during extraction."
-          : " — the original wording is preserved; nothing here was invented."}
+        {/* A claim scoped to what this app can actually vouch for: it renders
+            the extraction verbatim (D4 — raw_text unmodified, no client-side
+            re-bolding). It deliberately does NOT vouch for the extraction
+            itself. "nothing here was invented" did, and neither branch of the
+            payload can support that: `warnings` carries soft-validation CODES
+            (no_steps, low_overall_confidence, recipe_too_short — see
+            backend ingestion/validation.py), which neither prove invention nor,
+            when absent, prove its absence. Items that did trip validation are
+            already flagged to the reader by the status pill: persist.py sets
+            needs_review if and only if warnings is non-empty. */}
+        {" — shown exactly as extracted; nothing here was rewritten."}
       </p>
       <p className="flex flex-wrap gap-4 text-[12.5px] text-ink-faint">
         {schema ? (

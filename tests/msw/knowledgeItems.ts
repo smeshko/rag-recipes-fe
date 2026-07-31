@@ -258,14 +258,18 @@ export const nonRecipeItemFixture = {
   source_citations: [],
 };
 
+/* `warnings` holds soft-validation CODES, not prose — see the backend's
+   ingestion/validation.py — and persist.py sets needs_review if and only if
+   that list is non-empty, so a warned item is always a needs_review item. */
 export const warningsItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
     ...fullItemFixture.knowledge_item,
     id: "item_warned",
+    status: "needs_review",
     structured_data: {
       ...fullItemFixture.knowledge_item.structured_data,
-      warnings: ["yield inferred from step text"],
+      warnings: ["low_overall_confidence", "recipe_too_short"],
     },
   },
 };

@@ -86,24 +86,30 @@ describe("provenance", () => {
     expect(await screen.findByText("recipe.v1")).toBeInTheDocument();
     expect(screen.getByText("0.98")).toBeInTheDocument();
     expect(screen.getByText("1 of 1 spans")).toBeInTheDocument();
-    expect(
-      screen.getByText(/original wording is preserved/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/nothing here was rewritten/)).toBeInTheDocument();
   });
 
-  it("withdraws the no-invention claim when the payload reports inferred fields", async () => {
+  /* The footer vouches for the renderer, never for the extraction: warnings
+     carry validation codes, which neither prove invention nor disprove it. */
+  it("claims only that nothing was rewritten, and says so identically for a warned item", async () => {
     renderAt("/recipes/item_warned");
     expect(
-      await screen.findByText(/some details were inferred during extraction/),
+      await screen.findByText(
+        /shown exactly as extracted; nothing here was rewritten/,
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/nothing here was invented/)).toBeNull();
+    expect(screen.queryByText(/was invented/)).toBeNull();
+    expect(screen.queryByText(/inferred/)).toBeNull();
   });
 
-  it("keeps the no-invention claim when there are no warnings", async () => {
+  it("makes the same claim for an item with no warnings", async () => {
     renderAt("/recipes/item_full");
     expect(
-      await screen.findByText(/nothing here was invented/),
+      await screen.findByText(
+        /shown exactly as extracted; nothing here was rewritten/,
+      ),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/was invented/)).toBeNull();
   });
 
   it("omits confidence for the sparse fixture", async () => {
@@ -113,7 +119,7 @@ describe("provenance", () => {
     });
     await waitFor(() =>
       expect(
-        screen.getByText(/original wording is preserved/),
+        screen.getByText(/nothing here was rewritten/),
       ).toBeInTheDocument(),
     );
     expect(screen.queryByText(/^confidence$/)).toBeNull();
