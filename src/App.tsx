@@ -1,3 +1,26 @@
+import { useQuery } from "@tanstack/react-query";
+import { ApiError, type HealthResponse, request } from "./api";
+
+/* Temporary demo proving the typed client + proxy + provider end to end.
+   Moves into the search-page placeholder in phase 1.3. */
+function HealthProbe() {
+  const health = useQuery({
+    queryKey: ["health"],
+    queryFn: () => request<HealthResponse>("/health"),
+  });
+
+  if (health.isPending) {
+    return <span className="text-ink-faint">checking the stove…</span>;
+  }
+  if (health.isError) {
+    const err = health.error;
+    const label =
+      err instanceof ApiError ? `${err.code}: ${err.message}` : "unreachable";
+    return <span className="text-danger">backend {label}</span>;
+  }
+  return <span className="text-sage">backend {health.data.status}</span>;
+}
+
 function App() {
   return (
     <div className="mx-auto max-w-[1120px] px-9 pb-[100px]">
@@ -24,7 +47,8 @@ function App() {
           <em className="text-apricot italic">What are we cooking?</em>
         </h1>
         <p className="mt-2.5 text-[15px] text-ink-soft">
-          Theme placeholder — tokens, fonts and primitives under proof
+          Theme placeholder — tokens, fonts and primitives under proof ·{" "}
+          <HealthProbe />
         </p>
       </section>
 
