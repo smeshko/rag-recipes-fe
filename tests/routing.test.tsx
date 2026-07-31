@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../src/routes";
+import { libraryShelfHandlers } from "./msw/handlers";
+import { server } from "./msw/server";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -43,9 +45,16 @@ describe("routing", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the library placeholder at /library", () => {
+  it("renders the library shelf at /library", async () => {
+    server.use(...libraryShelfHandlers());
     renderAt("/library");
-    expect(screen.getByTestId("library-page")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "On the shelf" }),
+    ).toBeInTheDocument();
+    /* Let the shelf queries settle inside the test. */
+    expect(
+      await screen.findByRole("heading", { name: "One Pan to Rule Them All" }),
+    ).toBeInTheDocument();
   });
 
   /* The field is seeded from the URL, so history navigation must reseed it —
