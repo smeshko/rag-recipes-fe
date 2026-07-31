@@ -1,4 +1,9 @@
 @import "tailwindcss";
+
+/* Keeps the design/ mockups out of Tailwind's source scanning — they are a
+   visual spec, not app source, and their class names would otherwise feed the
+   production CSS. The path is relative to this file: if theme.css moves, this
+   must move with it, or the mockups silently rejoin the build (no error). */
 @source not "../design";
 
 /* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
@@ -37,6 +42,8 @@
   --shadow-card:
     0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
   --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
+  --shadow-focus:
+    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-apricot-soft);
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
