@@ -117,9 +117,4 @@
     background: var(--color-butter-soft);
     color: var(--color-butter-ink);
   }
-
-  /* The one real gradient surface besides the body radial (.answer-side). */
-  .panel-aside {
-    background: linear-gradient(180deg, #fdf6ea, #faf1e0);
-  }
 }
