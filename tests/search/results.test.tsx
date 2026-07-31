@@ -59,10 +59,30 @@ describe("results grid", () => {
 
   it("omits ingredients and badges rows for the minimal fixture card", async () => {
     renderAt("/?q=frittata");
-    const title = await screen.findByText(second.item.title);
-    const card = title.closest("article") as HTMLElement;
-    expect(within(card).queryAllByText(/·/)).toHaveLength(0);
-    expect(card.querySelectorAll("li")).toHaveLength(0);
+    const minimal = (await screen.findByText(second.item.title)).closest(
+      "article",
+    ) as HTMLElement;
+    const rich = screen
+      .getByText(first.item.title)
+      .closest("article") as HTMLElement;
+
+    /* The rich card proves both rows render at all — without this the
+       absence assertions below would pass just as happily against a
+       component that never renders ingredients or badges. */
+    expect(
+      within(rich).getByText(
+        first.structured_preview?.top_ingredients.join(" · ") as string,
+      ),
+    ).toBeInTheDocument();
+    for (const badge of first.display.badges) {
+      expect(within(rich).getByText(badge)).toBeInTheDocument();
+    }
+
+    /* The minimal fixture supplies neither, so neither row may appear. */
+    expect(within(minimal).queryAllByText(/·/)).toHaveLength(0);
+    for (const badge of first.display.badges) {
+      expect(within(minimal).queryByText(badge)).toBeNull();
+    }
   });
 
   it("links each card to /recipes/:id carrying {q, mode} state", async () => {
