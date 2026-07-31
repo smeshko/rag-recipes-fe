@@ -1,10 +1,16 @@
+import { Link } from "react-router";
 import type {
   DocumentCounts,
   DocumentDetailResponse,
   DocumentListItem,
 } from "../../api";
 import { Bloom, Pill } from "../../ui";
-import { isReadyIsh, spineAccent, statusPill } from "./presentation";
+import {
+  isReadyIsh,
+  REVIEW_QUEUE_SEARCH_URL,
+  spineAccent,
+  statusPill,
+} from "./presentation";
 import { relativeTime } from "./relativeTime";
 
 /* The detail query's three states each have a defined render — an errored
@@ -127,6 +133,14 @@ export function BookRow({ doc, detail, index }: BookRowProps) {
           <Pill size="md" tone={pill.tone}>
             {pill.label}
           </Pill>
+          {(counts?.needs_review_items ?? 0) > 0 && (
+            <Link
+              to={REVIEW_QUEUE_SEARCH_URL}
+              className="mt-2 block text-[12.5px] font-bold text-apricot hover:underline"
+            >
+              Open review queue →
+            </Link>
+          )}
         </div>
       </article>
     </Bloom>

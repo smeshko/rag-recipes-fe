@@ -1,6 +1,14 @@
 import type { DocumentStatus } from "../../api";
 import type { PillTone } from "../../ui";
 
+/**
+ * The review link-out URL contract: it arms the search screen's
+ * needs-review filter (filters.exclude_needs_review: false) — it carries
+ * no `q` because POST /search rejects an empty query. The user's first
+ * search from that landing is what returns review items.
+ */
+export const REVIEW_QUEUE_SEARCH_URL = "/?review=included";
+
 /** Books that show a counts row: processing is done enough to have items. */
 export function isReadyIsh(status: DocumentStatus): boolean {
   return status === "ready" || status === "needs_review";
