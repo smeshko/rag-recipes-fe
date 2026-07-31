@@ -16,7 +16,7 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 ### Stack
 
 - **Vite + React + TypeScript**, plain SPA. No SSR framework — nothing here needs it.
-- **Tailwind CSS v4** with the Sunday Kitchen tokens mapped into a custom theme (`@theme`: cream `#FBF7EF`, ink `#2B241A`, apricot `#C96F3B`, sage/butter/terra book-accents, radius/shadow scale). Hand-tuned pieces from the mockups (staggered `bloom` reveals, gradient card headers) live in a small CSS layer rather than being forced into utilities.
+- **Tailwind CSS v4** with the Sunday Kitchen tokens mapped into a custom theme (`@theme`: cream `#FBF7EF`, ink `#2B241A`, apricot `#C96F3B`, sage/butter/terra book-accents, radius/shadow scale). Hand-tuned pieces from the mockups (staggered `bloom` reveals, flat soft-fill card headers with an accent ink) live in a small CSS layer rather than being forced into utilities.
 - Fonts self-hosted via `@fontsource/petrona` + `@fontsource/figtree` (the app will be tunnel-exposed; no Google CDN dependency).
 
 ### Data layer
@@ -53,7 +53,7 @@ The four designed screens only: search+answer, recipe detail, library (upload, p
 ### Tooling
 
 - **pnpm** for packages, **Biome** for lint+format — one fast tool each, mirroring the backend's uv+ruff philosophy.
-- `justfile` gets frontend recipes: `fe-dev`, `fe-build`, `fe-lint`, `fe-test`, `fe-typegen` (openapi codegen).
+- `justfile` recipes (this is the frontend repo's own justfile, so no `fe-` prefix): `dev`, `build`, `lint`, `format`; `test` and `typegen` (openapi codegen) arrive with the test harness in phase 1.2.
 
 ## Project layout (planned)
 

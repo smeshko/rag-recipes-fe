@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* Keeps the design/ mockups out of Tailwind's source scanning — they are a
+   visual spec, not app source, and their class names would otherwise feed the
+   production CSS. The path is relative to this file: if theme.css moves, this
+   must move with it, or the mockups silently rejoin the build (no error). */
+@source not "../design";
+
+/* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
+   --sage is #5C6B4C (the value the mockups actually paint), not the dead
+   #7C8A6E declaration; see the plan's DECISIONS.md D4. */
+@theme {
+  --color-cream: #fbf7ef;
+  --color-card: #ffffff;
+  --color-ink: #2b241a;
+  --color-ink-soft: #6b6152;
+  --color-ink-faint: #a2977f;
+  --color-apricot: #c96f3b;
+  --color-apricot-soft: #f7e8dc;
+  --color-apricot-deep: #b25e2e;
+  --color-butter: #f4d9a0;
+  --color-butter-soft: #fbf0d3;
+  --color-butter-ink: #9a7b25;
+  --color-sage: #5c6b4c;
+  --color-sage-soft: #edf0e6;
+  --color-terra-soft: #f5e3d3;
+  --color-terra-ink: #a05a2c;
+  --color-danger: #b4472e;
+  --color-danger-soft: #fbeae4;
+  --color-danger-line: #f0cdbf;
+  --color-line: #ede5d6;
+
+  --font-display: "Petrona", serif;
+  --font-body: "Figtree", sans-serif;
+
+  --radius-chip: 6px;
+  --radius-reco: 14px;
+  --radius-card: 18px;
+  --radius-panel: 22px;
+  --radius-pill: 999px;
+
+  /* Names are TASK-002's. Which mockup surface each one belongs to, since the
+     pair reads as one surface's rest/hover state but is not: --shadow-card is
+     the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
+     no resting shadow. --shadow-card-hover is .card:hover only. */
+  --shadow-card:
+    0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
+  --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
+  --shadow-focus:
+    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-apricot-soft);
+}
+
+/* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
+   baseline is Figtree 15px/1.55 on the radial cream wash. */
+@layer base {
+  body {
+    /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
+       widgets (scrollbars, input chrome, autofill) against the cream wash. */
+    color-scheme: light;
+    background:
+      radial-gradient(1000px 500px at 50% -160px, #fdf0dc, transparent 70%),
+      var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+}
+
+@keyframes bloom {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --bloom-delay must not inherit. A .bloom-card nested inside a .bloom
+   ancestor that set a delay would otherwise inherit the ancestor's value
+   instead of falling back to 0s — exactly the shape epic 02 uses (an
+   answer card inside a bloomed section). */
+@property --bloom-delay {
+  syntax: "<time>";
+  inherits: false;
+  initial-value: 0s;
+}
+
+@layer components {
+  /* Staggered reveal: chrome uses .bloom (.7s), grids use .bloom-card (.6s);
+     per-element delay via --bloom-delay. */
+  .bloom {
+    animation: bloom 0.7s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
+      both;
+  }
+  .bloom-card {
+    animation: bloom 0.6s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
+      both;
+  }
+
+  /* The reveal is decoration: with `both` fill every element sits at
+     opacity 0 until it animates, so honour the OS preference rather than
+     translating/fading 11+ elements per screen. */
+  @media (prefers-reduced-motion: reduce) {
+    .bloom,
+    .bloom-card {
+      animation: none;
+    }
+  }
+
+  /* Card headers are flat soft fills with an accent ink — never gradients. */
+  .card-head-terra {
+    background: var(--color-terra-soft);
+    color: var(--color-terra-ink);
+  }
+  .card-head-sage {
+    background: var(--color-sage-soft);
+    color: var(--color-sage);
+  }
+  .card-head-butter {
+    background: var(--color-butter-soft);
+    color: var(--color-butter-ink);
+  }
+}

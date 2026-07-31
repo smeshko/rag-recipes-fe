@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [staging]
+
+# The workflow only reads the repo; don't inherit a read-write default token.
+permissions:
+  contents: read
+
+# A new push to an open PR supersedes the previous run rather than queueing it.
+# Cancelling is scoped to pull_request on purpose: for push-to-staging every run
+# shares the refs/heads/staging group, so cancelling would leave the superseded
+# staging commit with no green build — and staging's branch protection requires
+# this job to have passed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec biome ci .
+      - run: pnpm build
