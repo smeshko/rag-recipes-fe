@@ -34,9 +34,13 @@ describe("routing", () => {
     ).toHaveValue("test");
   });
 
-  it("echoes the item id at /recipes/:id", () => {
-    renderAt("/recipes/abc");
-    expect(screen.getByTestId("recipe-page")).toHaveTextContent("abc");
+  it("renders the item title at /recipes/:id", async () => {
+    renderAt("/recipes/item_full");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Spinach and Cheddar Frittata",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("renders the library placeholder at /library", () => {
