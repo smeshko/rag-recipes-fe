@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stove — Recipe · Spinach &amp; Cheddar Frittata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #FBF7EF;
+  --card: #FFFFFF;
+  --ink: #2B241A;
+  --ink-soft: #6B6152;
+  --ink-faint: #A2977F;
+  --apricot: #C96F3B;
+  --apricot-soft: #F7E8DC;
+  --sage: #5C6B4C;
+  --sage-soft: #EDF0E6;
+  --line: #EDE5D6;
+  --shadow: 0 10px 30px rgba(94,74,44,.08), 0 2px 6px rgba(94,74,44,.05);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background:
+    radial-gradient(1000px 500px at 50% -160px, #FDF0DC, transparent 70%),
+    var(--cream);
+  color: var(--ink);
+  font-family: "Figtree", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+.page { max-width: 1020px; margin: 0 auto; padding: 0 36px 100px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26px 0;
+  animation: bloom .7s cubic-bezier(.2,.7,.2,1) both;
+}
+.brand { font-family: "Petrona", serif; font-size: 23px; font-weight: 600; }
+.brand span { color: var(--apricot); }
+nav { display: flex; gap: 6px; }
+nav a {
+  font-size: 14px; font-weight: 600; color: var(--ink-soft);
+  text-decoration: none;
+  padding: 9px 18px; border-radius: 999px;
+  transition: background .2s, color .2s;
+}
+nav a.active { background: var(--ink); color: var(--cream); }
+nav a:not(.active):hover { background: var(--apricot-soft); color: var(--ink); }
+
+/* ---------- breadcrumb ---------- */
+.crumb {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 18px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+  animation: bloom .7s .04s cubic-bezier(.2,.7,.2,1) both;
+}
+.crumb a { color: var(--apricot); text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+.crumb .sep { color: var(--ink-faint); }
+.crumb em { font-style: italic; color: var(--ink-faint); font-weight: 500; }
+
+/* ---------- title block ---------- */
+.titleblock { padding: 34px 0 6px; animation: bloom .7s .08s cubic-bezier(.2,.7,.2,1) both; }
+.bookline { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.bookpill {
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--sage-soft); color: var(--sage);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.pagepill {
+  font-size: 12px; font-weight: 700;
+  background: var(--apricot-soft); color: var(--apricot);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+.statuspill {
+  font-size: 12px; font-weight: 700;
+  color: #3E7A50; background: #E6F2E6;
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+h1 {
+  font-family: "Petrona", serif;
+  font-weight: 600;
+  font-size: clamp(34px, 5vw, 50px);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+.summary {
+  font-family: "Petrona", serif;
+  font-size: 19px; font-style: italic;
+  color: var(--ink-soft);
+  max-width: 62ch;
+  margin-top: 16px;
+}
+.facts { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.fact {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 10px 18px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+}
+.fact b { color: var(--ink); font-weight: 700; }
+.fact svg { width: 15px; height: 15px; stroke: var(--apricot); fill: none; stroke-width: 2; }
+
+/* ---------- body columns ---------- */
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1.7fr);
+  gap: 26px;
+  margin-top: 40px;
+  align-items: start;
+}
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 26px 28px;
+}
+.panel h2 {
+  font-family: "Petrona", serif;
+  font-size: 21px; font-weight: 600;
+  margin-bottom: 6px;
+}
+.panel .sub { font-size: 12.5px; color: var(--ink-faint); font-weight: 600; margin-bottom: 18px; }
+
+.ingredients { position: sticky; top: 24px; animation: bloom .7s .14s cubic-bezier(.2,.7,.2,1) both; }
+.ing-item {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+  cursor: pointer;
+}
+.ing-item:last-child { border-bottom: none; }
+.ing-item .tick {
+  width: 17px; height: 17px; flex: none;
+  border: 2px solid var(--line); border-radius: 6px;
+  transform: translateY(3px);
+  transition: background .15s, border-color .15s;
+}
+.ing-item:hover .tick { border-color: var(--apricot); }
+.ing-item.done .tick { background: var(--apricot); border-color: var(--apricot); }
+.ing-item.done { color: var(--ink-faint); text-decoration: line-through; }
+.ing-item b { font-weight: 700; }
+
+.steps { animation: bloom .7s .18s cubic-bezier(.2,.7,.2,1) both; }
+.step {
+  display: grid; grid-template-columns: 40px 1fr; gap: 16px;
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+.step:last-child { border-bottom: none; }
+.step .n {
+  font-family: "Petrona", serif; font-style: italic; font-weight: 600;
+  font-size: 21px; color: var(--apricot);
+  line-height: 1.2;
+}
+.step p { font-size: 15px; line-height: 1.65; }
+.step p b { font-weight: 700; }
+.step .hint { font-size: 12.5px; color: var(--ink-faint); font-style: italic; margin-top: 4px; }
+
+/* ---------- provenance ---------- */
+.provenance {
+  margin-top: 26px;
+  background: linear-gradient(180deg, #FDF6EA, #FAF1E0);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px 28px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  flex-wrap: wrap;
+  animation: bloom .7s .22s cubic-bezier(.2,.7,.2,1) both;
+}
+.provenance .txt { font-size: 14px; color: var(--ink-soft); max-width: 56ch; }
+.provenance .txt b { color: var(--ink); }
+.provenance .meta {
+  font-size: 12px; color: var(--ink-faint); font-weight: 600;
+  display: flex; gap: 16px; flex-wrap: wrap;
+}
+.provenance .meta span b { color: var(--sage); }
+
+@keyframes bloom { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 880px) {
+  .cols { grid-template-columns: 1fr; }
+  .ingredients { position: static; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="brand">Stove<span>.</span></div>
+    <nav>
+      <a class="active" href="#">Cook</a>
+      <a href="#">Library</a>
+      <a href="#">Add books</a>
+    </nav>
+  </header>
+
+  <div class="crumb">
+    <a href="#">← Back to results</a>
+    <span class="sep">·</span>
+    <em>"a proper weekend breakfast for guests"</em>
+  </div>
+
+  <section class="titleblock">
+    <div class="bookline">
+      <span class="bookpill">One Pan to Rule Them All</span>
+      <span class="pagepill">page 22</span>
+      <span class="statuspill">Ready</span>
+    </div>
+    <h1>Spinach &amp; Cheddar Frittata</h1>
+    <p class="summary">All the awesomeness of an omelet without the folding — started in a skillet on the stovetop, then baked in the oven until puffy.</p>
+    <div class="facts">
+      <div class="fact">
+        <svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 10-8 0M4 21c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+        Serves <b>4–6</b>
+      </div>
+      <div class="fact">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Total <b>30 minutes</b>
+      </div>
+      <div class="fact">
+        <svg viewBox="0 0 24 24"><path d="M4 8h16M6 8V6a2 2 0 012-2h8a2 2 0 012 2v2M6 8l1 12h10l1-12"/></svg>
+        One <b>oven-safe skillet</b>
+      </div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <aside class="panel ingredients">
+      <h2>Ingredients</h2>
+      <div class="sub">7 items · tap to check off</div>
+      <div class="ing-item done"><span class="tick"></span><span><b>2 Tbsp</b> extra virgin olive oil</span></div>
+      <div class="ing-item done"><span class="tick"></span><span><b>1</b> small onion, peeled and diced</span></div>
+      <div class="ing-item"><span class="tick"></span><span><b>1 bag (6 oz)</b> baby spinach</span></div>
+      <div class="ing-item"><span class="tick"></span><span><b>8</b> large eggs</span></div>
+      <div class="ing-item"><span class="tick"></span><span><b>1 tsp</b> salt</span></div>
+      <div class="ing-item"><span class="tick"></span><span><b>½ tsp</b> black pepper</span></div>
+      <div class="ing-item"><span class="tick"></span><span><b>8 oz</b> sharp cheddar cheese, shredded</span></div>
+    </aside>
+
+    <section class="panel steps">
+      <h2>Method</h2>
+      <div class="sub">7 steps · extracted with 0.99 confidence</div>
+
+      <div class="step">
+        <span class="n">1.</span>
+        <p>Preheat the oven to <b>375°F</b>.</p>
+      </div>
+      <div class="step">
+        <span class="n">2.</span>
+        <p>Add the olive oil to your skillet and heat over medium. Once the oil begins to shimmer, add the onion. Sauté until translucent, about <b>6–8 minutes</b>.</p>
+      </div>
+      <div class="step">
+        <span class="n">3.</span>
+        <p>Add half the spinach and stir it into the onion — it will wilt quickly. Add the other half and wilt once again, <b>3–4 minutes</b>.</p>
+      </div>
+      <div class="step">
+        <span class="n">4.</span>
+        <p>Lower the heat to medium-low. In a large mixing bowl, whisk together the eggs, salt, pepper and cheese. Immediately pour the mixture into the skillet and gently stir with a rubber spatula to incorporate the spinach and onion.</p>
+      </div>
+      <div class="step">
+        <span class="n">5.</span>
+        <p>Leave the skillet over medium-low heat until small bubbles come to the surface regularly, about <b>6–8 minutes</b>.</p>
+        <p class="hint" style="grid-column:2">This is how you'll know the bottom crust is forming.</p>
+      </div>
+      <div class="step">
+        <span class="n">6.</span>
+        <p>Transfer the skillet to the oven and bake for <b>10 minutes</b>, or until the frittata gets "puffy." It will seem to deflate once removed — that's expected.</p>
+      </div>
+      <div class="step">
+        <span class="n">7.</span>
+        <p>Let it cool to room temperature. Serve directly from the skillet, or shake to release the bottom and slide onto a plate for cutting.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="provenance">
+    <p class="txt">Extracted from <b>One Pan to Rule Them All</b>, page 22 — the original wording is preserved; nothing here was invented.</p>
+    <div class="meta">
+      <span>schema <b>recipe.v1</b></span>
+      <span>confidence <b>0.99</b></span>
+      <span>1 source span</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

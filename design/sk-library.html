@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stove — Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #FBF7EF;
+  --card: #FFFFFF;
+  --ink: #2B241A;
+  --ink-soft: #6B6152;
+  --ink-faint: #A2977F;
+  --apricot: #C96F3B;
+  --apricot-soft: #F7E8DC;
+  --sage: #5C6B4C;
+  --sage-soft: #EDF0E6;
+  --butter-soft: #FBF0D3;
+  --butter-ink: #9A7B25;
+  --terra-soft: #F5E3D3;
+  --terra-ink: #A05A2C;
+  --line: #EDE5D6;
+  --danger: #B4472E;
+  --danger-soft: #FBEAE4;
+  --ok: #3E7A50;
+  --ok-soft: #E6F2E6;
+  --shadow: 0 10px 30px rgba(94,74,44,.08), 0 2px 6px rgba(94,74,44,.05);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background:
+    radial-gradient(1000px 500px at 50% -160px, #FDF0DC, transparent 70%),
+    var(--cream);
+  color: var(--ink);
+  font-family: "Figtree", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+.page { max-width: 1020px; margin: 0 auto; padding: 0 36px 100px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26px 0;
+  animation: bloom .7s cubic-bezier(.2,.7,.2,1) both;
+}
+.brand { font-family: "Petrona", serif; font-size: 23px; font-weight: 600; }
+.brand span { color: var(--apricot); }
+nav { display: flex; gap: 6px; }
+nav a {
+  font-size: 14px; font-weight: 600; color: var(--ink-soft);
+  text-decoration: none;
+  padding: 9px 18px; border-radius: 999px;
+  transition: background .2s, color .2s;
+}
+nav a.active { background: var(--ink); color: var(--cream); }
+nav a:not(.active):hover { background: var(--apricot-soft); color: var(--ink); }
+
+/* ---------- title ---------- */
+.pagehead { padding: 40px 0 8px; animation: bloom .7s .06s cubic-bezier(.2,.7,.2,1) both; }
+.pagehead h1 {
+  font-family: "Petrona", serif; font-weight: 500;
+  font-size: clamp(30px, 4vw, 40px);
+}
+.pagehead h1 em { font-style: italic; color: var(--apricot); }
+.pagehead .sub { margin-top: 8px; color: var(--ink-soft); font-size: 15px; }
+
+/* ---------- dropzone ---------- */
+.dropzone {
+  margin-top: 28px;
+  border: 2px dashed #DCCFB4;
+  border-radius: 20px;
+  background: rgba(255,255,255,.55);
+  padding: 34px;
+  display: flex; align-items: center; gap: 24px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  animation: bloom .7s .1s cubic-bezier(.2,.7,.2,1) both;
+}
+.dropzone:hover { border-color: var(--apricot); background: rgba(255,255,255,.85); }
+.dropzone .icon {
+  width: 54px; height: 54px; flex: none;
+  border-radius: 16px;
+  background: var(--apricot-soft);
+  display: grid; place-items: center;
+}
+.dropzone .icon svg { width: 24px; height: 24px; stroke: var(--apricot); fill: none; stroke-width: 2; }
+.dropzone b { font-family: "Petrona", serif; font-size: 18px; font-weight: 600; display: block; }
+.dropzone small { color: var(--ink-soft); font-size: 13.5px; display: block; margin-top: 3px; }
+.dropzone .btn {
+  margin-left: auto;
+  font-size: 14px; font-weight: 700;
+  background: var(--apricot); color: #fff;
+  border: none; border-radius: 999px;
+  padding: 12px 24px;
+  cursor: pointer;
+  flex: none;
+}
+.dropzone .btn:hover { background: #B25E2E; }
+
+/* ---------- shelf ---------- */
+.shelf-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 44px 0 18px;
+  animation: bloom .7s .14s cubic-bezier(.2,.7,.2,1) both;
+}
+.shelf-head h2 { font-family: "Petrona", serif; font-size: 24px; font-weight: 600; }
+.shelf-head span { font-size: 13px; color: var(--ink-faint); }
+
+.book {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+  animation: bloom .6s cubic-bezier(.2,.7,.2,1) both;
+  display: grid;
+  grid-template-columns: 6px minmax(0,1.4fr) minmax(0,2fr) auto;
+  align-items: center;
+  gap: 24px;
+}
+.book:nth-of-type(1) { animation-delay: .18s; }
+.book:nth-of-type(2) { animation-delay: .22s; }
+.book:nth-of-type(3) { animation-delay: .26s; }
+.book:nth-of-type(4) { animation-delay: .30s; }
+.book:nth-of-type(5) { animation-delay: .34s; }
+.book:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(94,74,44,.13); }
+.spine { align-self: stretch; }
+.spine.paleo { background: var(--terra-ink); }
+.spine.onepan { background: var(--sage); }
+.spine.baking { background: var(--butter-ink); }
+.spine.working { background: var(--apricot); }
+.spine.failed { background: var(--danger); }
+.book-id { padding: 20px 0; }
+.book-id h3 { font-family: "Petrona", serif; font-size: 20px; font-weight: 600; line-height: 1.25; }
+.book-id small { display: block; color: var(--ink-faint); font-size: 12.5px; margin-top: 4px; font-weight: 600; }
+.counts { display: flex; gap: 26px; flex-wrap: wrap; padding: 20px 0; }
+.count b { display: block; font-family: "Petrona", serif; font-size: 20px; font-weight: 600; }
+.count small { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.count.review b { color: var(--danger); }
+.bstatus { padding: 20px 24px 20px 0; text-align: right; }
+.pill {
+  display: inline-block;
+  font-size: 12px; font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.pill.ok { color: var(--ok); background: var(--ok-soft); }
+.pill.review { color: var(--danger); background: var(--danger-soft); }
+.pill.working { color: var(--apricot); background: var(--apricot-soft); }
+.pill.failed { color: #fff; background: var(--danger); }
+.bstatus .act {
+  display: block; margin-top: 8px;
+  font-size: 12.5px; font-weight: 700; color: var(--apricot);
+}
+.bstatus .act:hover { text-decoration: underline; }
+
+/* progress variant */
+.progress-wrap { padding: 20px 0; }
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.progress-label b { color: var(--apricot); }
+.bar {
+  height: 8px; border-radius: 4px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.bar i {
+  display: block; height: 100%;
+  width: 68%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #E8B08A, var(--apricot));
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.stages {
+  display: flex; gap: 6px; margin-top: 10px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.stages span { display: flex; align-items: center; gap: 4px; }
+.stages .done::before { content: "✓"; color: var(--ok); }
+.stages .now { color: var(--apricot); }
+.stages .now::before { content: "●"; animation: blinkdot 1.4s ease-in-out infinite; }
+
+.failed-note { font-size: 13px; color: var(--ink-soft); padding: 20px 0; }
+.failed-note b { color: var(--danger); }
+
+@keyframes bloom { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { 50% { opacity: .75; } }
+@keyframes blinkdot { 50% { opacity: .35; } }
+@media (max-width: 880px) {
+  .book { grid-template-columns: 6px 1fr; }
+  .counts, .bstatus, .progress-wrap, .failed-note { grid-column: 2; padding-top: 0; }
+  .bstatus { text-align: left; padding-bottom: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="brand">Stove<span>.</span></div>
+    <nav>
+      <a href="#">Cook</a>
+      <a class="active" href="#">Library</a>
+      <a href="#">Add books</a>
+    </nav>
+  </header>
+
+  <section class="pagehead">
+    <h1>The shelf, <em>as it stands.</em></h1>
+    <div class="sub">3 books ready · 269 recipes · 15 waiting for review</div>
+  </section>
+
+  <div class="dropzone">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+    </div>
+    <div>
+      <b>Drop cookbooks here</b>
+      <small>PDF only · duplicates are detected automatically · batches go through Anthropic overnight pricing</small>
+    </div>
+    <button class="btn">Choose files</button>
+  </div>
+
+  <div class="shelf-head">
+    <h2>On the shelf</h2>
+    <span>sorted by most recently added</span>
+  </div>
+
+  <article class="book">
+    <span class="spine working"></span>
+    <div class="book-id">
+      <h3>The Green Roasting Tin</h3>
+      <small>added 4 minutes ago · one-pan vegetarian</small>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Embedding chunks</span><b>212 / 312 pages</b></div>
+      <div class="bar"><i></i></div>
+      <div class="stages">
+        <span class="done">Text</span><span class="done">Spans</span><span class="done">Extract</span>
+        <span class="done">Validate</span><span class="done">Chunks</span><span class="now">Embed</span><span>Index</span>
+      </div>
+    </div>
+    <div class="bstatus"><span class="pill working">Processing</span></div>
+  </article>
+
+  <article class="book">
+    <span class="spine onepan"></span>
+    <div class="book-id">
+      <h3>One Pan to Rule Them All</h3>
+      <small>270 pages scanned</small>
+    </div>
+    <div class="counts">
+      <div class="count"><b>107</b><small>recipes</small></div>
+      <div class="count review"><b>1</b><small>to review</small></div>
+      <div class="count"><b>535</b><small>chunks</small></div>
+    </div>
+    <div class="bstatus">
+      <span class="pill ok">Ready</span>
+      <span class="act">Reprocess ↻</span>
+    </div>
+  </article>
+
+  <article class="book">
+    <span class="spine paleo"></span>
+    <div class="book-id">
+      <h3>Eat Drink Paleo</h3>
+      <small>226 pages scanned</small>
+    </div>
+    <div class="counts">
+      <div class="count"><b>105</b><small>recipes</small></div>
+      <div class="count"><b>0</b><small>to review</small></div>
+      <div class="count"><b>520</b><small>chunks</small></div>
+    </div>
+    <div class="bstatus">
+      <span class="pill ok">Ready</span>
+      <span class="act">Reprocess ↻</span>
+    </div>
+  </article>
+
+  <article class="book">
+    <span class="spine baking"></span>
+    <div class="book-id">
+      <h3>Baking with Less Sugar</h3>
+      <small>203 pages scanned</small>
+    </div>
+    <div class="counts">
+      <div class="count"><b>57</b><small>recipes</small></div>
+      <div class="count review"><b>14</b><small>to review</small></div>
+      <div class="count"><b>285</b><small>chunks</small></div>
+    </div>
+    <div class="bstatus">
+      <span class="pill review">14 need review</span>
+      <span class="act">Open review queue →</span>
+    </div>
+  </article>
+
+  <article class="book">
+    <span class="spine failed"></span>
+    <div class="book-id">
+      <h3>modernist-bread-vol2.pdf</h3>
+      <small>added yesterday</small>
+    </div>
+    <div class="failed-note">
+      <b>Failed during text extraction</b> — 340 of 418 pages came back empty; this looks like a scanned
+      copy with no text layer. OCR isn't supported yet.
+    </div>
+    <div class="bstatus">
+      <span class="pill failed">Failed</span>
+      <span class="act">Retry ↻ &nbsp;·&nbsp; Remove</span>
+    </div>
+  </article>
+
+</div>
+</body>
+</html>

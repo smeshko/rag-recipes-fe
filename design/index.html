@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rag-recipes — Sunday Kitchen screens</title>
+<style>
+:root {
+  --bg: #17181A;
+  --panel: #1F2124;
+  --text: #E8E6E1;
+  --dim: #8D8A83;
+  --accent: #C96F3B;
+  --line: rgba(232,230,225,.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- switcher bar ---------- */
+.bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: none;
+  position: sticky; top: 0; z-index: 10;
+}
+.bar .title { font-size: 12px; color: var(--dim); margin-right: 12px; letter-spacing: .08em; }
+.bar button {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: .06em;
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.bar button:hover { color: var(--text); border-color: var(--dim); }
+.bar button.on { color: var(--accent); border-color: var(--accent); background: rgba(201,111,59,.12); }
+.bar button b { margin-right: 7px; opacity: .6; }
+.bar .hint { margin-left: auto; font-size: 11px; color: var(--dim); }
+.bar a.raw {
+  font-size: 11px; color: var(--dim); text-decoration: none;
+  border-bottom: 1px dotted var(--dim); margin-left: 14px;
+}
+.bar a.raw:hover { color: var(--accent); }
+
+/* ---------- grid home ---------- */
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  padding: 28px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+.tile {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .2s, transform .2s;
+  display: flex; flex-direction: column;
+}
+.tile:hover { border-color: var(--accent); transform: translateY(-3px); }
+.tile .preview {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+  flex: none;
+  background: #0c0c0c;
+}
+.tile iframe {
+  width: 1280px; height: 1360px;
+  transform: scale(0.25);
+  transform-origin: top left;
+  border: none;
+  pointer-events: none;
+  position: absolute; top: 0; left: 50%;
+  margin-left: -160px;
+}
+.tile .label {
+  padding: 14px 18px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-top: 1px solid var(--line);
+}
+.tile .label h2 { font-size: 14px; letter-spacing: .04em; font-weight: 600; }
+.tile .label h2 b { color: var(--accent); margin-right: 8px; }
+.tile .label span { font-size: 11px; color: var(--dim); }
+
+/* ---------- full view ---------- */
+.viewer { display: none; }
+.viewer iframe { flex: 1; width: 100%; border: none; background: #fff; }
+body.viewing { height: 100vh; overflow: hidden; }
+body.viewing .grid { display: none; }
+body.viewing .viewer { display: flex; flex: 1; min-height: 0; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="title">rag-recipes · sunday kitchen</span>
+  <button data-k="0" class="on"><b>0</b>Grid</button>
+  <button data-k="1"><b>1</b>Search</button>
+  <button data-k="2"><b>2</b>Recipe</button>
+  <button data-k="3"><b>3</b>Library</button>
+  <button data-k="4"><b>4</b>Fallback</button>
+  <a class="raw" id="rawlink" href="#" target="_blank" style="display:none">open standalone ↗</a>
+  <span class="hint">keys 0–4 · ←/→ to cycle</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="tile" data-k="1">
+    <div class="preview"><iframe src="e-sunday-kitchen.html" loading="lazy" scrolling="no" tabindex="-1"></iframe></div>
+    <div class="label"><h2><b>1</b>Search &amp; Answer</h2><span>greeting home · grounded answer · result cards</span></div>
+  </div>
+  <div class="tile" data-k="2">
+    <div class="preview"><iframe src="sk-recipe.html" loading="lazy" scrolling="no" tabindex="-1"></iframe></div>
+    <div class="label"><h2><b>2</b>Recipe Detail</h2><span>ingredients checklist · numbered method · provenance</span></div>
+  </div>
+  <div class="tile" data-k="3">
+    <div class="preview"><iframe src="sk-library.html" loading="lazy" scrolling="no" tabindex="-1"></iframe></div>
+    <div class="label"><h2><b>3</b>Library</h2><span>dropzone · book shelf · ingestion progress + failure</span></div>
+  </div>
+  <div class="tile" data-k="4">
+    <div class="preview"><iframe src="sk-fallback.html" loading="lazy" scrolling="no" tabindex="-1"></iframe></div>
+    <div class="label"><h2><b>4</b>Answer Fallback</h2><span>no grounded answer · warning · results still shown</span></div>
+  </div>
+</div>
+
+<div class="viewer"><iframe id="frame" src="about:blank"></iframe></div>
+
+<script>
+const pages = {
+  1: "e-sunday-kitchen.html",
+  2: "sk-recipe.html",
+  3: "sk-library.html",
+  4: "sk-fallback.html",
+};
+const frame = document.getElementById("frame");
+const rawlink = document.getElementById("rawlink");
+const buttons = document.querySelectorAll(".bar button");
+let current = 0;
+
+function show(k) {
+  k = Number(k);
+  current = k;
+  buttons.forEach(b => b.classList.toggle("on", Number(b.dataset.k) === k));
+  if (k === 0) {
+    document.body.classList.remove("viewing");
+    frame.src = "about:blank";
+    rawlink.style.display = "none";
+    location.hash = "";
+  } else {
+    document.body.classList.add("viewing");
+    frame.src = pages[k];
+    rawlink.href = pages[k];
+    rawlink.style.display = "";
+    location.hash = k;
+  }
+}
+
+buttons.forEach(b => b.addEventListener("click", () => show(b.dataset.k)));
+document.querySelectorAll(".tile").forEach(t => t.addEventListener("click", () => show(t.dataset.k)));
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (["0","1","2","3","4"].includes(e.key)) show(e.key);
+  if (e.key === "ArrowRight") show(current === 4 ? 0 : current + 1);
+  if (e.key === "ArrowLeft") show(current === 0 ? 4 : current - 1);
+});
+
+const h = Number(location.hash.slice(1));
+if (h >= 1 && h <= 4) show(h);
+</script>
+</body>
+</html>

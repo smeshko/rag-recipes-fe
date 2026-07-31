@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stove — Option E · Sunday Kitchen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Petrona:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #FBF7EF;
+  --card: #FFFFFF;
+  --ink: #2B241A;
+  --ink-soft: #6B6152;
+  --ink-faint: #A2977F;
+  --apricot: #C96F3B;
+  --apricot-soft: #F7E8DC;
+  --butter: #F4D9A0;
+  --sage: #7C8A6E;
+  --sage-soft: #EDF0E6;
+  --terra-soft: #F5E3D3;
+  --line: #EDE5D6;
+  --shadow: 0 10px 30px rgba(94,74,44,.08), 0 2px 6px rgba(94,74,44,.05);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background:
+    radial-gradient(1000px 500px at 50% -160px, #FDF0DC, transparent 70%),
+    var(--cream);
+  color: var(--ink);
+  font-family: "Figtree", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+.page { max-width: 1120px; margin: 0 auto; padding: 0 36px 100px; }
+
+/* ---------- header ---------- */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26px 0;
+  animation: bloom .7s cubic-bezier(.2,.7,.2,1) both;
+}
+.brand { font-family: "Petrona", serif; font-size: 23px; font-weight: 600; }
+.brand span { color: var(--apricot); }
+nav { display: flex; gap: 6px; }
+nav a {
+  font-size: 14px; font-weight: 600; color: var(--ink-soft);
+  text-decoration: none;
+  padding: 9px 18px; border-radius: 999px;
+  transition: background .2s, color .2s;
+}
+nav a.active { background: var(--ink); color: var(--cream); }
+nav a:not(.active):hover { background: var(--apricot-soft); color: var(--ink); }
+
+/* ---------- greeting + search ---------- */
+.hero { text-align: center; padding: 64px 0 20px; animation: bloom .7s .06s cubic-bezier(.2,.7,.2,1) both; }
+.hero h1 {
+  font-family: "Petrona", serif;
+  font-weight: 500;
+  font-size: clamp(32px, 4.4vw, 46px);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.hero h1 em { font-style: italic; color: var(--apricot); }
+.hero .sub { margin-top: 10px; color: var(--ink-soft); font-size: 15px; }
+
+.searchwrap {
+  max-width: 720px; margin: 34px auto 0;
+  animation: bloom .7s .12s cubic-bezier(.2,.7,.2,1) both;
+}
+.search {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 8px 8px 26px;
+  box-shadow: var(--shadow);
+  transition: box-shadow .25s;
+}
+.search:focus-within { box-shadow: 0 14px 40px rgba(94,74,44,.14), 0 0 0 4px var(--apricot-soft); }
+.search svg { width: 18px; height: 18px; stroke: var(--apricot); fill: none; stroke-width: 2; flex: none; }
+.search input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-family: "Petrona", serif;
+  font-size: 19px; color: var(--ink);
+}
+.search button {
+  font-family: "Figtree", sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: .02em;
+  background: var(--apricot); color: #fff;
+  border: none; border-radius: 999px;
+  padding: 13px 26px;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+}
+.search button:hover { background: #B25E2E; }
+.search button:active { transform: scale(.97); }
+.chips { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.chips span {
+  font-size: 13px; font-weight: 500; color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s, background .2s;
+}
+.chips span:hover { border-color: var(--apricot); color: var(--apricot); }
+.chips span.on { background: var(--ink); border-color: var(--ink); color: var(--cream); }
+
+/* ---------- answer card ---------- */
+.answer {
+  margin-top: 56px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0,1.5fr) minmax(0,1fr);
+  animation: bloom .7s .2s cubic-bezier(.2,.7,.2,1) both;
+}
+.answer-main { padding: 34px 38px; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--apricot);
+  background: var(--apricot-soft);
+  border-radius: 999px;
+  padding: 6px 14px;
+  margin-bottom: 20px;
+}
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--apricot); }
+.answer-main p {
+  font-family: "Petrona", serif;
+  font-size: 19.5px; line-height: 1.65;
+  color: var(--ink);
+}
+.answer-main p + p { margin-top: .8em; }
+.cite {
+  display: inline-block;
+  font-family: "Figtree", sans-serif;
+  font-size: 11.5px; font-weight: 700;
+  color: var(--apricot);
+  background: var(--apricot-soft);
+  border-radius: 6px;
+  padding: 2px 7px;
+  vertical-align: 2px;
+  margin: 0 2px;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.cite:hover { background: var(--apricot); color: #fff; }
+.answer-side {
+  background: linear-gradient(180deg, #FDF6EA, #FAF1E0);
+  border-left: 1px solid var(--line);
+  padding: 30px 30px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.answer-side h4 {
+  font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.reco {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex; gap: 13px; align-items: flex-start;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.reco:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.reco .medal {
+  font-family: "Petrona", serif; font-style: italic; font-weight: 600;
+  color: var(--apricot); font-size: 15px;
+  padding-top: 1px;
+}
+.reco b { display: block; font-size: 14.5px; font-weight: 700; }
+.reco small { color: var(--ink-soft); font-size: 12.5px; display: block; margin-top: 2px; }
+
+/* ---------- results ---------- */
+.results-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 58px 0 22px;
+  animation: bloom .7s .26s cubic-bezier(.2,.7,.2,1) both;
+}
+.results-head h2 { font-family: "Petrona", serif; font-size: 27px; font-weight: 600; }
+.results-head span { font-size: 13.5px; color: var(--ink-faint); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  transition: transform .22s cubic-bezier(.2,.7,.2,1), box-shadow .22s;
+  animation: bloom .6s cubic-bezier(.2,.7,.2,1) both;
+}
+.grid .card:nth-child(1) { animation-delay: .30s; } .grid .card:nth-child(2) { animation-delay: .34s; }
+.grid .card:nth-child(3) { animation-delay: .38s; } .grid .card:nth-child(4) { animation-delay: .42s; }
+.grid .card:nth-child(5) { animation-delay: .46s; } .grid .card:nth-child(6) { animation-delay: .50s; }
+.card:hover { transform: translateY(-5px); box-shadow: 0 18px 44px rgba(94,74,44,.14); }
+.card-top {
+  padding: 12px 20px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.card-top.paleo { background: var(--terra-soft); color: #A05A2C; }
+.card-top.onepan { background: var(--sage-soft); color: #5C6B4C; }
+.card-top.baking { background: #FBF0D3; color: #9A7B25; }
+.card-top .pg { font-weight: 600; letter-spacing: .04em; opacity: .8; }
+.card-body { padding: 18px 20px 20px; display: flex; flex-direction: column; flex: 1; }
+.card-body h3 {
+  font-family: "Petrona", serif;
+  font-size: 19.5px; font-weight: 600; line-height: 1.28;
+  margin-bottom: 8px;
+}
+.card:hover h3 { color: var(--apricot); }
+.card-body .sum { font-size: 13.5px; color: var(--ink-soft); flex: 1; }
+.card-body .ing { font-size: 12.5px; color: var(--ink-faint); font-style: italic; margin-top: 12px; }
+.card-meta { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.pill {
+  font-size: 11.5px; font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 11px;
+}
+.pill.warn { color: #B4472E; background: #FBEAE4; border-color: #F0CDBF; }
+
+footer {
+  margin-top: 70px; text-align: center;
+  font-size: 13px; color: var(--ink-faint);
+}
+footer b { color: var(--ink-soft); font-weight: 600; }
+
+@keyframes bloom { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 960px) {
+  .answer { grid-template-columns: 1fr; }
+  .answer-side { border-left: none; border-top: 1px solid var(--line); }
+  .grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="brand">Stove<span>.</span></div>
+    <nav>
+      <a class="active" href="#">Cook</a>
+      <a href="#">Library</a>
+      <a href="#">Add books</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Good morning. <em>What are we cooking?</em></h1>
+    <div class="sub">3 cookbooks on the shelf · 269 recipes ready</div>
+  </section>
+
+  <div class="searchwrap">
+    <div class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input value="a proper weekend breakfast for guests" />
+      <button>Ask</button>
+    </div>
+    <div class="chips">
+      <span class="on">Hybrid</span>
+      <span>Keyword only</span>
+      <span>Vector only</span>
+      <span>· ideas: one-pan dinner</span>
+      <span>less-sugar bakes</span>
+    </div>
+  </div>
+
+  <section class="answer">
+    <div class="answer-main">
+      <div class="eyebrow"><span class="dot"></span>Grounded in your books · 3 citations</div>
+      <p>For guests, start with the <b>hazelnut pancakes with blood orange sauce</b> from
+      <em>Eat Drink Paleo</em> — the batch makes twelve, and the warm blood-orange vanilla
+      butter sauce is the kind of thing people remember<span class="cite">pp. 33–35</span>.</p>
+      <p>Alongside, the <b>manchego and mushroom Spanish tortilla</b> feeds six to eight
+      and is just as good warm as at room temperature, so it can sit while everyone
+      arrives<span class="cite">p. 28</span>. If you'd rather bake ahead, the
+      <b>pear-cardamom-walnut scones</b> make a dozen golden rounds<span class="cite">pp. 32–33</span>.</p>
+    </div>
+    <aside class="answer-side">
+      <h4>Tonight's picks</h4>
+      <div class="reco">
+        <span class="medal">i.</span>
+        <div><b>Hazelnut Pancakes</b><small>The centerpiece — makes 12, memorable sauce.</small></div>
+      </div>
+      <div class="reco">
+        <span class="medal">ii.</span>
+        <div><b>Spanish Tortilla</b><small>Feeds 6–8; happy at room temperature.</small></div>
+      </div>
+      <div class="reco">
+        <span class="medal">iii.</span>
+        <div><b>Pear-Cardamom Scones</b><small>Bake the night before; 12 rounds.</small></div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="results-head">
+    <h2>All six matches</h2>
+    <span>ranked by hybrid score · needs-review excluded</span>
+  </div>
+
+  <section class="grid">
+    <article class="card">
+      <div class="card-top paleo">Eat Drink Paleo <span class="pg">pp. 33–35</span></div>
+      <div class="card-body">
+        <h3>Hazelnut Pancakes with Blood Orange Sauce</h3>
+        <p class="sum">Fluffy paleo hazelnut pancakes with a warm blood orange and vanilla butter sauce.</p>
+        <div class="ing">blood oranges · butter · vanilla bean · coconut sugar</div>
+        <div class="card-meta"><span class="pill">12 pancakes</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-top onepan">One Pan to Rule Them All <span class="pg">p. 28</span></div>
+      <div class="card-body">
+        <h3>Manchego &amp; Mushroom Spanish Tortilla</h3>
+        <p class="sum">A Spanish tortilla with sautéed mushrooms, onions and manchego, baked in a skillet and served in wedges.</p>
+        <div class="ing">eggs · manchego · cremini mushrooms · onion</div>
+        <div class="card-meta"><span class="pill">6–8 servings</span><span class="pill">1 h 10 min</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-top onepan">One Pan to Rule Them All <span class="pg">p. 44</span></div>
+      <div class="card-body">
+        <h3>Fruit-Stuffed French Toast</h3>
+        <p class="sum">Cream cheese, yogurt and berry filling sandwiched in custard-dipped bread, pan-fried until golden.</p>
+        <div class="ing">eggs · cream cheese · greek yogurt · mixed berries</div>
+        <div class="card-meta"><span class="pill">6 servings</span><span class="pill">35 min</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-top baking">Baking with Less Sugar <span class="pg">pp. 32–33</span></div>
+      <div class="card-body">
+        <h3>Pear-Cardamom-Walnut Scones</h3>
+        <p class="sum">Cardamom-fragrant scones with sweet pears and toasted walnuts, enriched with crème fraîche.</p>
+        <div class="ing">pears · cardamom · walnuts · crème fraîche</div>
+        <div class="card-meta"><span class="pill">12 scones</span><span class="pill">35–45 min</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-top onepan">One Pan to Rule Them All <span class="pg">p. 22</span></div>
+      <div class="card-body">
+        <h3>Spinach &amp; Cheddar Frittata</h3>
+        <p class="sum">All the awesomeness of an omelet without the folding — stovetop then baked until puffy.</p>
+        <div class="ing">eggs · baby spinach · sharp cheddar · onion</div>
+        <div class="card-meta"><span class="pill">4–6 servings</span><span class="pill">30 min</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-top onepan">One Pan to Rule Them All <span class="pg">p. 70</span></div>
+      <div class="card-body">
+        <h3>Tomato &amp; Chile Poached Eggs</h3>
+        <p class="sum">Eggs poached in a spiced tomato-pepper sauce — huevos rancheros, shakshuka or uova al pomodoro, depending who you ask.</p>
+        <div class="ing">eggs · canned tomatoes · red pepper · cumin · paprika</div>
+        <div class="card-meta"><span class="pill">3–5 servings</span><span class="pill">40 min</span></div>
+      </div>
+    </article>
+  </section>
+
+  <footer>Answer grounded against <b>3 sources</b> · citations link to book pages · <b>Stove</b> is your private shelf</footer>
+
+</div>
+</body>
+</html>
