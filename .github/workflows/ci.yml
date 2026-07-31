@@ -10,9 +10,13 @@ permissions:
   contents: read
 
 # A new push to an open PR supersedes the previous run rather than queueing it.
+# Cancelling is scoped to pull_request on purpose: for push-to-staging every run
+# shares the refs/heads/staging group, so cancelling would leave the superseded
+# staging commit with no green build — and staging's branch protection requires
+# this job to have passed.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
