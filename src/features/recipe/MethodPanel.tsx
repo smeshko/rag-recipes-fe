@@ -11,20 +11,33 @@ export function MethodPanel({
   confidence: ItemConfidence | null;
 }) {
   /* `text` and `step_number` are both optional on the verbatim-dict type.
-     Drop textless rows before counting so the subheader can't promise steps
-     it renders blank, and number by render position when the payload omits
-     step_number — a bare "." helps nobody. */
-  const steps = (sd.steps ?? [])
-    .filter((step) => Boolean(step.text))
-    .sort((a, b) => (a.step_number ?? 0) - (b.step_number ?? 0))
-    /* Row identity is resolved here rather than in the JSX: step_number is
-       optional and repeatable, so render position is the only unique key
-       available, and the list is built once per payload and never reordered. */
-    .map((step, index) => ({
-      key: `${index}:${step.step_number ?? ""}`,
-      number: step.step_number ?? index + 1,
-      text: step.text,
-    }));
+     Textless rows are dropped before counting, so the subheader can't promise
+     steps it then renders blank. */
+  const retained = (sd.steps ?? []).filter((step) => Boolean(step.text));
+
+  /* Trust the payload's numbering only when it is wholly trustworthy: every
+     retained step numbered, finite, and distinct. Sorting a partially numbered
+     list would silently REORDER the method — [1, null, 2] sorts the unnumbered
+     step to the front — and that is a worse failure than ignoring the numbers,
+     because a reordered recipe still looks authoritative. When the numbering
+     is incomplete or repeats, keep arrival order and number sequentially. */
+  const numbers = retained.map((step) => step.step_number);
+  const trustNumbering =
+    numbers.every((n) => typeof n === "number" && Number.isFinite(n)) &&
+    new Set(numbers).size === numbers.length;
+
+  const ordered = trustNumbering
+    ? [...retained].sort((a, b) => (a.step_number ?? 0) - (b.step_number ?? 0))
+    : retained;
+
+  /* Row identity is resolved here rather than in the JSX: step_number is
+     optional and repeatable, so render position is the only unique key
+     available, and the list is built once per payload and never reordered. */
+  const steps = ordered.map((step, index) => ({
+    key: `${index}:${step.step_number ?? ""}`,
+    number: trustNumbering ? step.step_number : index + 1,
+    text: step.text,
+  }));
   const overall = confidence?.overall;
   const fragment =
     typeof overall === "number"

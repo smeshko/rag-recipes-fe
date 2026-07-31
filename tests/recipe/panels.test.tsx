@@ -127,6 +127,21 @@ describe("panels", () => {
     expect(within(methodPanel).getByText(/^2 steps/)).toBeInTheDocument();
   });
 
+  it("keeps arrival order when step numbering is only partial", async () => {
+    renderAt("/recipes/item_mixednum");
+    const methodPanel = (
+      await screen.findByRole("heading", { name: "Method" })
+    ).closest("section") as HTMLElement;
+    const items = within(methodPanel).getAllByRole("listitem");
+    /* The unnumbered step must NOT be sorted to the front, and the numbers
+       shown must not repeat. */
+    expect(items.map((li) => li.textContent)).toEqual([
+      "1.Warm the pan.",
+      "2.Add the eggs.",
+      "3.Serve.",
+    ]);
+  });
+
   it("renders the extracting copy for a mid-ingest item", async () => {
     renderAt("/recipes/item_extracting_empty");
     expect(await screen.findAllByText("Still being extracted…")).toHaveLength(

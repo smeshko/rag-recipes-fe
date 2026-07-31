@@ -175,6 +175,24 @@ export const malformedStepsItemFixture = {
   },
 };
 
+/** Partially numbered steps. Sorting on `step_number ?? 0` would drag the
+    unnumbered step to the front and change the cooking order. */
+export const mixedNumberingItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_mixednum",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      steps: [
+        { text: "Warm the pan.", step_number: 1, confidence: null },
+        { text: "Add the eggs.", step_number: null, confidence: null },
+        { text: "Serve.", step_number: 2, confidence: null },
+      ],
+    },
+  },
+};
+
 export const needsReviewItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -262,6 +280,7 @@ const byId: Record<string, unknown> = {
   item_nocite: zeroCitationItemFixture,
   item_dupes: duplicateLinesItemFixture,
   item_badsteps: malformedStepsItemFixture,
+  item_mixednum: mixedNumberingItemFixture,
   item_technique: nonRecipeItemFixture,
   item_warned: warningsItemFixture,
 };
