@@ -17,12 +17,23 @@ export interface AnswerBlock {
 
 const INLINE = /\*\*(.+?)\*\*|\s*[[(](cite_\d+)[\])]/g;
 
+/* Any ** reaching a text segment is unmatched by construction — the balanced
+   form was consumed by INLINE above. Drop it rather than print it: a model
+   answer truncated mid-bold is a real failure mode, and literal asterisks in
+   the prose are the one thing the parser exists to prevent. */
+function pushText(segments: InlineSegment[], value: string) {
+  const cleaned = value.replace(/\*\*/g, "");
+  if (cleaned !== "") {
+    segments.push({ kind: "text", value: cleaned });
+  }
+}
+
 function parseInline(text: string): InlineSegment[] {
   const segments: InlineSegment[] = [];
   let last = 0;
   for (const match of text.matchAll(INLINE)) {
     if (match.index > last) {
-      segments.push({ kind: "text", value: text.slice(last, match.index) });
+      pushText(segments, text.slice(last, match.index));
     }
     if (match[1] !== undefined) {
       segments.push({ kind: "bold", value: match[1] });
@@ -32,7 +43,7 @@ function parseInline(text: string): InlineSegment[] {
     last = match.index + match[0].length;
   }
   if (last < text.length) {
-    segments.push({ kind: "text", value: text.slice(last) });
+    pushText(segments, text.slice(last));
   }
   return segments;
 }

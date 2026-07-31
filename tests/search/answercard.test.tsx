@@ -134,6 +134,26 @@ describe("answer text parser", () => {
     expect(blocks[1]?.segments[0]).toEqual({ kind: "bold", value: "A" });
   });
 
+  it("drops the markers of an unclosed bold rather than printing them", () => {
+    /* A model answer truncated mid-bold. */
+    const blocks = parseAnswerText("Try the **Fruit-Stuffed French Toast");
+    const text = blocks
+      .flatMap((b) => b.segments)
+      .map((s) => (s.kind === "cite" ? "" : s.value))
+      .join("");
+    expect(text).toBe("Try the Fruit-Stuffed French Toast");
+    expect(text).not.toContain("**");
+  });
+
+  it("still bolds when the pair is balanced", () => {
+    const blocks = parseAnswerText("Try the **French Toast** tonight.");
+    expect(blocks[0]?.segments).toEqual([
+      { kind: "text", value: "Try the " },
+      { kind: "bold", value: "French Toast" },
+      { kind: "text", value: " tonight." },
+    ]);
+  });
+
   it("dedupes repeated inline ids", () => {
     expect(inlineCiteIds("a [cite_1] b [cite_1] c [cite_2]")).toEqual([
       "cite_1",
