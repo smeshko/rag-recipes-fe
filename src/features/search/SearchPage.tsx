@@ -54,8 +54,8 @@ export function SearchPage() {
      the header label and every card's router state must use the mode that
      produced them. Falls back to the URL's mode only when there is no data
      to describe. */
-  const results = search.data?.response.results ?? [];
-  const resultsMode = search.data?.mode ?? mode;
+  const results = search.data?.results ?? [];
+  const resultsMode = search.resultsMode;
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
