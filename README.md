@@ -6,7 +6,7 @@ Vite + React + TypeScript, Tailwind CSS v4 with the "Sunday Kitchen" theme, Biom
 
 ## Prerequisites
 
-- Node 22 (`node -v`)
+- Node 22.22+ (`node -v`) — react-router v8 declares `engines: node >=22.22.0`
 - pnpm 11 — pinned via `packageManager` in `package.json`, so `corepack enable` is enough
 - [`just`](https://github.com/casey/just) for the task recipes
 
