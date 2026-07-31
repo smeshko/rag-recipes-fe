@@ -29,7 +29,10 @@ describe("recipe title block", () => {
         name: fullItemFixture.display.title,
       }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("onepantorulethemall")).toBeInTheDocument();
+    /* Book title appears in the pill and again in the provenance footer. */
+    expect(
+      (await screen.findAllByText("onepantorulethemall")).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("page 22")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
     expect(

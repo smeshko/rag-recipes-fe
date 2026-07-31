@@ -32,6 +32,9 @@
   --color-danger-line: #f0cdbf;
   --color-line: #ede5d6;
 
+  /* The warm aside/provenance fill — the design set's one shared gradient. */
+  --gradient-warm: linear-gradient(180deg, #fdf6ea, #faf1e0);
+
   --font-display: "Petrona", serif;
   --font-body: "Figtree", sans-serif;
 
