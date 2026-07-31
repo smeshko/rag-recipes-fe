@@ -114,6 +114,19 @@ describe("panels", () => {
     warn.mockRestore();
   });
 
+  it("degrades on malformed steps — drops textless rows, numbers by position", async () => {
+    renderAt("/recipes/item_badsteps");
+    const methodPanel = (
+      await screen.findByRole("heading", { name: "Method" })
+    ).closest("section") as HTMLElement;
+    const items = within(methodPanel).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("1.Warm the pan.");
+    expect(items[1]).toHaveTextContent("2.Serve.");
+    /* The count must match what is rendered, not what arrived. */
+    expect(within(methodPanel).getByText(/^2 steps/)).toBeInTheDocument();
+  });
+
   it("renders the extracting copy for a mid-ingest item", async () => {
     renderAt("/recipes/item_extracting_empty");
     expect(await screen.findAllByText("Still being extracted…")).toHaveLength(

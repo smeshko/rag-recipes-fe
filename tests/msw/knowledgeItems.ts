@@ -157,6 +157,24 @@ export const duplicateLinesItemFixture = {
   },
 };
 
+/** Malformed steps: no live incidence, but the verbatim-dict type admits a
+    null step_number and a textless row — both must degrade, not mislead. */
+export const malformedStepsItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_badsteps",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      steps: [
+        { text: "Warm the pan.", step_number: null, confidence: null },
+        { text: null, step_number: null, confidence: null },
+        { text: "Serve.", step_number: null, confidence: null },
+      ],
+    },
+  },
+};
+
 export const needsReviewItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -243,6 +261,7 @@ const byId: Record<string, unknown> = {
   item_extracting_empty: extractingEmptyItemFixture,
   item_nocite: zeroCitationItemFixture,
   item_dupes: duplicateLinesItemFixture,
+  item_badsteps: malformedStepsItemFixture,
   item_technique: nonRecipeItemFixture,
   item_warned: warningsItemFixture,
 };
