@@ -42,12 +42,17 @@ function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
  * (and later the production front) injects credentials server-side.
  */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  /* Normalize through Headers: RequestInit.headers may be a record, a
+     Headers instance or an array of tuples, and object spread preserves
+     only the first. Accept is a default, so a caller-supplied one wins. */
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Accept")) {
+    headers.set("Accept", "application/json");
+  }
+
   let response: Response;
   try {
-    response = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: { Accept: "application/json", ...init?.headers },
-    });
+    response = await fetch(`${BASE}${path}`, { ...init, headers });
   } catch {
     throw new ApiError(
       "network_error",

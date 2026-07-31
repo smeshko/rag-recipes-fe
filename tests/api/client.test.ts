@@ -54,3 +54,54 @@ describe("request", () => {
     expect((err as ApiError).status).toBeNull();
   });
 });
+
+/* RequestInit.headers has three legal shapes and all three must survive the
+   merge with our default Accept — a Headers instance has no own enumerable
+   properties and a tuple array spreads to index keys, so object spread
+   silently drops both. */
+describe("request header merging", () => {
+  type Echo = { accept: string | null; contentType: string | null };
+
+  const echoHandler = http.post("/api/v1/echo", ({ request: req }) =>
+    HttpResponse.json({
+      accept: req.headers.get("accept"),
+      contentType: req.headers.get("content-type"),
+    }),
+  );
+
+  const echo = (headers: HeadersInit) => {
+    server.use(echoHandler);
+    return request<Echo>("/echo", { method: "POST", headers });
+  };
+
+  it("preserves a plain object", async () => {
+    const body = await echo({ "Content-Type": "application/json" });
+    expect(body.contentType).toBe("application/json");
+    expect(body.accept).toBe("application/json");
+  });
+
+  it("preserves a Headers instance", async () => {
+    const body = await echo(
+      new Headers({ "Content-Type": "application/json" }),
+    );
+    expect(body.contentType).toBe("application/json");
+    expect(body.accept).toBe("application/json");
+  });
+
+  it("preserves a tuple array", async () => {
+    const body = await echo([["Content-Type", "application/json"]]);
+    expect(body.contentType).toBe("application/json");
+    expect(body.accept).toBe("application/json");
+  });
+
+  it("lets a caller-supplied Accept win over the default", async () => {
+    const body = await echo({ Accept: "text/plain" });
+    expect(body.accept).toBe("text/plain");
+  });
+
+  it("sends the default Accept when no headers are passed", async () => {
+    server.use(echoHandler);
+    const body = await request<Echo>("/echo", { method: "POST" });
+    expect(body.accept).toBe("application/json");
+  });
+});
