@@ -135,6 +135,24 @@ export interface UploadResponse {
   ingestion: { status: DocumentStatus };
 }
 
+/* POST /documents/batch — per-file wire result. Batch `status` is
+   authoritative (the backend content-hash check names duplicates itself);
+   `error` carries only the backend's message string, never a code. */
+export interface BatchUploadItemResult {
+  filename: string;
+  status: "created" | "duplicate" | "error";
+  document_id: string | null;
+  error: string | null;
+}
+
+export interface BatchUploadResponse {
+  items: BatchUploadItemResult[];
+  total: number;
+  created: number;
+  duplicates: number;
+  errors: number;
+}
+
 export interface DocumentCounts {
   source_spans: number;
   knowledge_items: number;

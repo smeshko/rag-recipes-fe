@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 import type {
+  BatchUploadResponse,
   DocumentDetailResponse,
   DocumentListItem,
   DocumentResponse,
@@ -500,6 +501,41 @@ export const uploadErrorHandler = (
   onUpload?: (observed: ObservedUpload) => void,
 ) =>
   http.post("/api/v1/documents", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    return HttpResponse.json(envelope, { status });
+  });
+
+/** The batch refusal when the Anthropic path is disabled — 409, generic code. */
+export const batchNotEnabledEnvelope = {
+  error: {
+    code: "invalid_request",
+    message:
+      "Batch upload requires the Anthropic batch path (LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY).",
+    details: {},
+  },
+};
+
+/*
+ * 201 batch handler. The response states its OWN items[].filename values —
+ * never derived from the received parts, which under jsdom would all read
+ * "blob" and enshrine a harness artifact as the contract.
+ */
+export const uploadBatchHandler = (
+  response: BatchUploadResponse,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents/batch", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    return HttpResponse.json(response, { status: 201 });
+  });
+
+/** Error-envelope handler for POST /documents/batch (409 refusal, 500 …). */
+export const uploadBatchErrorHandler = (
+  status: number,
+  envelope: ErrorEnvelope,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents/batch", async ({ request }) => {
     onUpload?.(await observeUpload(request));
     return HttpResponse.json(envelope, { status });
   });

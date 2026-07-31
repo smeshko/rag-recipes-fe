@@ -1,9 +1,25 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { delay, HttpResponse, http } from "msw";
+import { createElement, type ReactNode } from "react";
+import type { BatchUploadResponse } from "../../src/api";
 import { ApiError } from "../../src/api";
-import { classifyUpload, uploadDocument } from "../../src/api/uploads";
 import {
+  classifyUpload,
+  uploadDocument,
+  useUploadBooks,
+} from "../../src/api/uploads";
+import {
+  batchNotEnabledEnvelope,
+  documentsListHandler,
+  internalErrorEnvelope,
+  libraryBookDetails,
+  libraryBookList,
   missingFileEnvelope,
   type ObservedUpload,
   unsupportedFileTypeEnvelope,
+  uploadBatchErrorHandler,
+  uploadBatchHandler,
   uploadDocumentHandler,
   uploadErrorHandler,
   uploadedDocument,
@@ -86,5 +102,341 @@ describe("classifyUpload", () => {
       "created",
     );
     expect(classifyUpload(stillProcessing, new Set())).toBe("created");
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* useUploadBooks — batch orchestration, 409 fallback, memoization.    */
+/* ------------------------------------------------------------------ */
+
+function renderUploadBooks() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
+  const { result } = renderHook(() => useUploadBooks(), { wrapper });
+  return { queryClient, result };
+}
+
+interface SingleUploadStats {
+  calls: number;
+  maxInFlight: number;
+  /** Handler-entry order — grows by one per request, strictly after exits. */
+  entries: number[];
+}
+
+type SingleOutcome =
+  | { kind: "created"; document: ReturnType<typeof uploadedDocument> }
+  | { kind: "error"; status: number; envelope: typeof internalErrorEnvelope };
+
+/**
+ * Sequenced POST /documents handler: pops one scripted outcome per request,
+ * tracking an in-flight counter — timestamps on sub-millisecond in-process
+ * handlers are noise, so overlap is disproven by the counter never
+ * exceeding 1 across the deliberate 10ms handler delay.
+ */
+function sequencedSingleUploadHandler(
+  outcomes: SingleOutcome[],
+  stats: SingleUploadStats,
+) {
+  let inFlight = 0;
+  return http.post("/api/v1/documents", async () => {
+    inFlight += 1;
+    stats.calls += 1;
+    stats.entries.push(stats.calls);
+    stats.maxInFlight = Math.max(stats.maxInFlight, inFlight);
+    await delay(10);
+    const outcome = outcomes.shift();
+    inFlight -= 1;
+    if (!outcome) {
+      return HttpResponse.json(internalErrorEnvelope, { status: 500 });
+    }
+    if (outcome.kind === "error") {
+      return HttpResponse.json(outcome.envelope, { status: outcome.status });
+    }
+    return HttpResponse.json(
+      { document: outcome.document, ingestion: { status: "queued" } },
+      { status: 201 },
+    );
+  });
+}
+
+const emptyStats = (): SingleUploadStats => ({
+  calls: 0,
+  maxInFlight: 0,
+  entries: [],
+});
+
+describe("useUploadBooks", () => {
+  it("multi-file: posts one batch request with N parts under `files` and resolves the summary unchanged", async () => {
+    const batchResponse: BatchUploadResponse = {
+      items: [
+        {
+          filename: "one.pdf",
+          status: "created",
+          document_id: "doc-batch-1",
+          error: null,
+        },
+        {
+          filename: "two.pdf",
+          status: "duplicate",
+          document_id: "book-one-pan",
+          error: null,
+        },
+        {
+          filename: "three.txt",
+          status: "error",
+          document_id: null,
+          error: "Only PDF uploads are supported.",
+        },
+      ],
+      total: 3,
+      created: 1,
+      duplicates: 1,
+      errors: 1,
+    };
+    let batchCalls = 0;
+    let observed: ObservedUpload | null = null;
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchHandler(batchResponse, (o) => {
+        batchCalls += 1;
+        observed = o;
+      }),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("one.pdf"),
+      pdfFile("two.pdf"),
+      pdfFile("three.txt"),
+    ]);
+
+    expect(summary).toEqual(batchResponse);
+    expect(batchCalls).toBe(1);
+    const seen = observed as unknown as ObservedUpload;
+    expect(seen.filesPartCount).toBe(3);
+    expect(seen.fieldNames).toContain("files");
+    expect(seen.category).toBe("recipes");
+    /* created or duplicate present → shelf invalidated. */
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("single file: classifies a content-hash hit as duplicate via the id snapshot", async () => {
+    const existing = libraryBookDetails["book-one-pan"].document;
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadDocumentHandler(existing),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("one-pan-again.pdf"),
+    ]);
+
+    expect(summary.items).toEqual([
+      {
+        filename: "one-pan-again.pdf",
+        status: "duplicate",
+        document_id: "book-one-pan",
+        error: null,
+        code: null,
+        title: existing.title,
+      },
+    ]);
+    expect(summary).toMatchObject({
+      total: 1,
+      created: 0,
+      duplicates: 1,
+      errors: 0,
+    });
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("batch 409: falls back to strictly sequential singles with a unified summary", async () => {
+    const stats = emptyStats();
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope),
+      sequencedSingleUploadHandler(
+        [
+          {
+            kind: "created",
+            document: uploadedDocument("doc-f1", "Fresh One"),
+          },
+          {
+            kind: "created",
+            document: libraryBookDetails["book-one-pan"].document,
+          },
+          {
+            kind: "error",
+            status: 415,
+            envelope: unsupportedFileTypeEnvelope,
+          },
+        ],
+        stats,
+      ),
+    );
+    const { result } = renderUploadBooks();
+
+    const files = [
+      pdfFile("fresh.pdf"),
+      pdfFile("one-pan-again.pdf"),
+      pdfFile("notes.txt"),
+    ];
+    const summary = await result.current.mutateAsync(files);
+
+    expect(stats.calls).toBe(3);
+    expect(stats.maxInFlight).toBe(1);
+    expect(stats.entries).toEqual([1, 2, 3]);
+    /* Client-side File.name survives — items map input order. */
+    expect(summary.items.map((i) => i.filename)).toEqual([
+      "fresh.pdf",
+      "one-pan-again.pdf",
+      "notes.txt",
+    ]);
+    expect(summary.items.map((i) => i.status)).toEqual([
+      "created",
+      "duplicate",
+      "error",
+    ]);
+    expect(summary.items[2].error).toBe("Only PDF uploads are supported.");
+    expect(summary.items[2].code).toBe("unsupported_file_type");
+    expect(summary).toMatchObject({
+      total: 3,
+      created: 1,
+      duplicates: 1,
+      errors: 1,
+    });
+  });
+
+  it("memoizes the 409 for the page load: a second multi-file drop issues no batch request", async () => {
+    let batchCalls = 0;
+    const stats = emptyStats();
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope, () => {
+        batchCalls += 1;
+      }),
+      sequencedSingleUploadHandler(
+        [
+          { kind: "created", document: uploadedDocument("doc-m1", "Memo One") },
+          { kind: "created", document: uploadedDocument("doc-m2", "Memo Two") },
+          {
+            kind: "created",
+            document: uploadedDocument("doc-m3", "Memo Three"),
+          },
+          {
+            kind: "created",
+            document: uploadedDocument("doc-m4", "Memo Four"),
+          },
+        ],
+        stats,
+      ),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    await result.current.mutateAsync([pdfFile("a.pdf"), pdfFile("b.pdf")]);
+    expect(batchCalls).toBe(1);
+    expect(stats.calls).toBe(2);
+
+    await result.current.mutateAsync([pdfFile("c.pdf"), pdfFile("d.pdf")]);
+    expect(batchCalls).toBe(1);
+    expect(stats.calls).toBe(4);
+
+    /* The memo must survive GC — an observerless setQueryData entry with the
+       default 5-minute gcTime would silently evict and re-probe. */
+    const memo = queryClient
+      .getQueryCache()
+      .find({ queryKey: ["capabilities", "batch"] });
+    expect(memo?.gcTime).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("classifies the same file dropped twice in one cohort as created + duplicate", async () => {
+    const stats = emptyStats();
+    const sameDoc = uploadedDocument("doc-same", "Dropped Twice");
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope),
+      sequencedSingleUploadHandler(
+        [
+          { kind: "created", document: sameDoc },
+          /* Content-hash hit: the backend returns the SAME document again. */
+          { kind: "created", document: sameDoc },
+        ],
+        stats,
+      ),
+    );
+    const { result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("same.pdf"),
+      pdfFile("same.pdf"),
+    ]);
+
+    expect(summary.items.map((i) => i.status)).toEqual([
+      "created",
+      "duplicate",
+    ]);
+    expect(summary).toMatchObject({ created: 1, duplicates: 1, errors: 0 });
+  });
+
+  it("surfaces a batch 500 as ApiError without any fallback attempt", async () => {
+    const stats = emptyStats();
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchErrorHandler(500, internalErrorEnvelope),
+      sequencedSingleUploadHandler([], stats),
+    );
+    const { result } = renderUploadBooks();
+
+    const err = await result.current
+      .mutateAsync([pdfFile("a.pdf"), pdfFile("b.pdf")])
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(500);
+    expect(stats.calls).toBe(0);
+  });
+
+  it("leaves ['documents'] uninvalidated when nothing was created or duplicate", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadErrorHandler(415, unsupportedFileTypeEnvelope),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([pdfFile("notes.txt")]);
+
+    expect(summary).toMatchObject({ created: 0, duplicates: 0, errors: 1 });
+    expect(summary.items[0].code).toBe("unsupported_file_type");
+    expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(false);
+  });
+
+  it("degrades to the cached snapshot when the pre-upload list refresh fails", async () => {
+    server.use(
+      http.get("/api/v1/documents", () =>
+        HttpResponse.json(internalErrorEnvelope, { status: 500 }),
+      ),
+      uploadDocumentHandler(libraryBookDetails["book-one-pan"].document),
+    );
+    const { queryClient, result } = renderUploadBooks();
+    /* A previous shelf visit populated the cache. */
+    queryClient.setQueryData(["documents"], libraryBookList);
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("one-pan-again.pdf"),
+    ]);
+
+    expect(summary.items[0].status).toBe("duplicate");
   });
 });
