@@ -64,15 +64,21 @@ export function parseAnswerText(text: string): AnswerBlock[] {
     });
 }
 
-/** Distinct cite ids that appear inline in the text, in order. */
-export function inlineCiteIds(text: string): string[] {
+/** Cite ids inline in the text, in order, one entry per occurrence — the
+    chips actually rendered, so a count taken from this matches the DOM. */
+export function inlineCiteOccurrences(text: string): string[] {
   const ids: string[] = [];
   for (const block of parseAnswerText(text)) {
     for (const segment of block.segments) {
-      if (segment.kind === "cite" && !ids.includes(segment.id)) {
+      if (segment.kind === "cite") {
         ids.push(segment.id);
       }
     }
   }
   return ids;
+}
+
+/** Distinct cite ids that appear inline in the text, in order. */
+export function inlineCiteIds(text: string): string[] {
+  return [...new Set(inlineCiteOccurrences(text))];
 }

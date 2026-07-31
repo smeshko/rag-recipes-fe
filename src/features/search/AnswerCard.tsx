@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import type { AnswerResponse } from "../../api";
 import type { SearchMode } from "../../api/search";
 import { Bloom, Eyebrow } from "../../ui";
-import { inlineCiteIds } from "./answerText";
+import { inlineCiteOccurrences } from "./answerText";
 import { AnswerText, type CitationMap, TrailingChips } from "./CitationChips";
 
 const NUMERALS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
@@ -19,19 +19,26 @@ export function AnswerCard({
   const map: CitationMap = new Map(
     answer.citations.map((c) => [c.citation_id, c]),
   );
-  /* Count and chips both derive from citations[] — the union the backend
-     builds — so the eyebrow can never disagree with the rendered chips. */
-  const distinctCount = new Set(answer.citations.map((c) => c.citation_id))
-    .size;
-  const inline = inlineCiteIds(answer.answer.text).filter((id) => map.has(id));
+  /* The eyebrow counts the chips it is about to render, not the distinct
+     sources: AnswerText emits one chip per inline marker, so a prose that
+     cites the same page twice shows two chips, and a count of distinct ids
+     would under-report what the reader can see. Unresolvable ids are
+     filtered first — they render as nothing, so they must not be counted. */
+  const occurrences = inlineCiteOccurrences(answer.answer.text).filter((id) =>
+    map.has(id),
+  );
+  const inline = [...new Set(occurrences)];
+  const trailingCount =
+    new Set(answer.citations.map((c) => c.citation_id)).size - inline.length;
+  const chipCount = occurrences.length + trailingCount;
 
   return (
     <Bloom duration={0.7} delay={0.2} className="mt-14">
       <section className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] overflow-hidden rounded-panel border border-line bg-card shadow-card max-[960px]:grid-cols-1">
         <div className="px-[38px] py-[34px]">
           <Eyebrow>
-            Grounded in your books · {distinctCount} citation
-            {distinctCount === 1 ? "" : "s"}
+            Grounded in your books · {chipCount} citation
+            {chipCount === 1 ? "" : "s"}
           </Eyebrow>
           <div className="mt-5">
             <AnswerText text={answer.answer.text} map={map} q={q} mode={mode} />

@@ -77,6 +77,17 @@ export const groundedParenFixture: AnswerResponse = {
   },
 };
 
+/** Same page cited twice in the prose — two chips for one source. Pins the
+    eyebrow count to what is rendered rather than to distinct citation ids. */
+export const groundedRepeatedCiteFixture: AnswerResponse = {
+  ...groundedAnswerFixture,
+  answer: {
+    ...groundedAnswerFixture.answer,
+    text: "Start with the **French Toast** [cite_1] and note the make-ahead step [cite_1].",
+    citations: ["cite_1"],
+  },
+};
+
 /* Backend constants copied verbatim (answers/service.py:56-61). */
 export const FALLBACK_WARNING =
   "I found relevant results, but could not generate a citation-safe answer. Here are the retrieved items instead.";

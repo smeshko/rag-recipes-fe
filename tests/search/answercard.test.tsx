@@ -12,6 +12,7 @@ import {
   answersHandler,
   groundedAnswerFixture,
   groundedParenFixture,
+  groundedRepeatedCiteFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
 
@@ -113,6 +114,21 @@ describe("answer card", () => {
     expect(within(trailing).queryByText("pp. 33–35")).toBeNull();
     /* Eyebrow still counts the full union. */
     expect(within(card).getByText(/3 citations/)).toBeInTheDocument();
+  });
+
+  it("counts the chips it renders when a page is cited twice", async () => {
+    renderAsked(groundedRepeatedCiteFixture);
+    await ask();
+    const card = (await screen.findByText(/Grounded in your books/)).closest(
+      "section",
+    ) as HTMLElement;
+    /* cite_1 twice inline + cite_4 and cite_8 in the trailing row = 4 chips,
+       even though only 3 distinct sources are cited. */
+    const chips = within(card)
+      .getAllByRole("link")
+      .filter((el) => el.getAttribute("aria-label")?.includes("open recipe"));
+    expect(chips).toHaveLength(4);
+    expect(within(card).getByText(/4 citations/)).toBeInTheDocument();
   });
 });
 
