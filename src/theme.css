@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@source not "../design";
+
+/* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
+   --sage is #5C6B4C (the value the mockups actually paint), not the dead
+   #7C8A6E declaration; see the plan's DECISIONS.md D4. */
+@theme {
+  --color-cream: #fbf7ef;
+  --color-card: #ffffff;
+  --color-ink: #2b241a;
+  --color-ink-soft: #6b6152;
+  --color-ink-faint: #a2977f;
+  --color-apricot: #c96f3b;
+  --color-apricot-soft: #f7e8dc;
+  --color-apricot-deep: #b25e2e;
+  --color-butter: #f4d9a0;
+  --color-butter-soft: #fbf0d3;
+  --color-butter-ink: #9a7b25;
+  --color-sage: #5c6b4c;
+  --color-sage-soft: #edf0e6;
+  --color-terra-soft: #f5e3d3;
+  --color-terra-ink: #a05a2c;
+  --color-danger: #b4472e;
+  --color-danger-soft: #fbeae4;
+  --color-danger-line: #f0cdbf;
+  --color-line: #ede5d6;
+
+  --font-display: "Petrona", serif;
+  --font-body: "Figtree", sans-serif;
+
+  --radius-chip: 6px;
+  --radius-reco: 14px;
+  --radius-card: 18px;
+  --radius-panel: 22px;
+  --radius-pill: 999px;
+
+  --shadow-card:
+    0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
+  --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
+}
+
+/* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
+   baseline is Figtree 15px/1.55 on the radial cream wash. */
+@layer base {
+  body {
+    background:
+      radial-gradient(1000px 500px at 50% -160px, #fdf0dc, transparent 70%),
+      var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+}
+
+@keyframes bloom {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer components {
+  /* Staggered reveal: chrome uses .bloom (.7s), grids use .bloom-card (.6s);
+     per-element delay via --bloom-delay. */
+  .bloom {
+    animation: bloom 0.7s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
+      both;
+  }
+  .bloom-card {
+    animation: bloom 0.6s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
+      both;
+  }
+
+  /* Card headers are flat soft fills with an accent ink — never gradients. */
+  .card-head-terra {
+    background: var(--color-terra-soft);
+    color: var(--color-terra-ink);
+  }
+  .card-head-sage {
+    background: var(--color-sage-soft);
+    color: var(--color-sage);
+  }
+  .card-head-butter {
+    background: var(--color-butter-soft);
+    color: var(--color-butter-ink);
+  }
+
+  /* The one real gradient surface besides the body radial (.answer-side). */
+  .panel-aside {
+    background: linear-gradient(180deg, #fdf6ea, #faf1e0);
+  }
+}
