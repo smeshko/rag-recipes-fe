@@ -59,8 +59,13 @@ describe("answer card", () => {
     expect(bolded).toBeInTheDocument();
     expect(card.querySelectorAll("ol > li").length).toBe(3);
 
-    /* Inline chips consumed their brackets and link with {q, mode} state. */
-    const chip = within(card).getByRole("link", { name: "pp. 33–35" });
+    /* Inline chips consumed their brackets and link with {q, mode} state.
+       The visible text is the page label; the accessible name also states the
+       destination, because the chip goes to the recipe, not to the page. */
+    const chip = within(card).getByRole("link", {
+      name: "pp. 33–35 — open recipe",
+    });
+    expect(chip).toHaveTextContent("pp. 33–35");
     expect(chip.getAttribute("href")).toBe("/recipes/item_frenchtoast");
 
     /* Picks sidebar. */

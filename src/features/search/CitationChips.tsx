@@ -19,10 +19,18 @@ function Chip({
   q: string;
   mode: SearchMode;
 }) {
+  /* The visible label is a page reference ("pp. 33–35") but the destination
+     is the recipe record — the backend has no source-page endpoint yet
+     (ARCHITECTURE.md open question 4). Name the destination explicitly so the
+     control does not misrepresent itself; the visible text stays the leading
+     part of the accessible name, so WCAG 2.5.3 still holds. */
+  const destination = `${citation.label} — open recipe`;
   return (
     <Link
       to={`/recipes/${citation.knowledge_item_id}`}
       state={{ q, mode }}
+      aria-label={destination}
+      title={destination}
       className="mx-0.5 inline-block rounded-chip bg-apricot-soft px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-apricot transition-colors hover:bg-apricot hover:text-white"
     >
       {citation.label}
