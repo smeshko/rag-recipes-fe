@@ -86,30 +86,24 @@ describe("provenance", () => {
     expect(await screen.findByText("recipe.v1")).toBeInTheDocument();
     expect(screen.getByText("0.98")).toBeInTheDocument();
     expect(screen.getByText("1 of 1 spans")).toBeInTheDocument();
-    expect(screen.getByText(/nothing here was rewritten/)).toBeInTheDocument();
+    expect(screen.getByText(/Extracted from/)).toBeInTheDocument();
   });
 
-  /* The footer vouches for the renderer, never for the extraction: warnings
-     carry validation codes, which neither prove invention nor disprove it. */
-  it("claims only that nothing was rewritten, and says so identically for a warned item", async () => {
-    renderAt("/recipes/item_warned");
-    expect(
-      await screen.findByText(
-        /shown exactly as extracted; nothing here was rewritten/,
-      ),
-    ).toBeInTheDocument();
+  /* The footer attributes; it never guarantees fidelity. The renderer itself
+     trims, orders and renumbers, so any such claim would be falsifiable. */
+  it.each([
+    ["a warned item", "/recipes/item_warned"],
+    ["an unwarned item", "/recipes/item_full"],
+    ["a sparse item rendered from text fallbacks", "/recipes/item_sparse"],
+    ["an item whose steps were renumbered", "/recipes/item_mixednum"],
+  ])("makes no fidelity claim for %s", async (_label, path) => {
+    renderAt(path);
+    await screen.findByText(/Extracted/);
     expect(screen.queryByText(/was invented/)).toBeNull();
     expect(screen.queryByText(/inferred/)).toBeNull();
-  });
-
-  it("makes the same claim for an item with no warnings", async () => {
-    renderAt("/recipes/item_full");
-    expect(
-      await screen.findByText(
-        /shown exactly as extracted; nothing here was rewritten/,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/was invented/)).toBeNull();
+    expect(screen.queryByText(/wording is preserved/)).toBeNull();
+    expect(screen.queryByText(/nothing here was rewritten/)).toBeNull();
+    expect(screen.queryByText(/exactly as extracted/)).toBeNull();
   });
 
   it("omits confidence for the sparse fixture", async () => {
@@ -118,9 +112,7 @@ describe("provenance", () => {
       name: sparseItemFixture.display.title,
     });
     await waitFor(() =>
-      expect(
-        screen.getByText(/nothing here was rewritten/),
-      ).toBeInTheDocument(),
+      expect(screen.getByText(/Extracted/)).toBeInTheDocument(),
     );
     expect(screen.queryByText(/^confidence$/)).toBeNull();
   });

@@ -20,18 +20,22 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
             from <b className="text-ink">{doc.data.document.title}</b>
           </>
         ) : null}
-        {label ? <>, {label}</> : null}
-        {/* A claim scoped to what this app can actually vouch for: it renders
-            the extraction verbatim (D4 — raw_text unmodified, no client-side
-            re-bolding). It deliberately does NOT vouch for the extraction
-            itself. "nothing here was invented" did, and neither branch of the
-            payload can support that: `warnings` carries soft-validation CODES
-            (no_steps, low_overall_confidence, recipe_too_short — see
-            backend ingestion/validation.py), which neither prove invention nor,
-            when absent, prove its absence. Items that did trip validation are
-            already flagged to the reader by the status pill: persist.py sets
-            needs_review if and only if warnings is non-empty. */}
-        {" — shown exactly as extracted; nothing here was rewritten."}
+        {label ? <>, {label}</> : null}.
+        {/* Attribution only — no fidelity guarantee. The mockup's "the original
+            wording is preserved; nothing here was invented" (sk-recipe.html:291)
+            is sample copy this screen cannot honour on either side: it does not
+            vouch for the extraction (warnings carries validation CODES, whose
+            presence proves no invention and whose absence disproves none), and
+            it cannot even vouch for the renderer, which trims text-fallback
+            lines, orders ingredients by `position`, and substitutes sequential
+            numbers when step numbering is untrustworthy.
+
+            Overriding unsupportable mockup copy is this plan's own established
+            practice: D3 drops the mockup's equipment fact because recipe.v1 has
+            no such field, and the meta line replaces its "1 source span" with
+            "{n} of {m} spans" for exactly this honesty reason. What the reader
+            needs is carried by things that are true: the status pill (needs_review
+            iff the payload has warnings) and the confidence figure beside it. */}
       </p>
       <p className="flex flex-wrap gap-4 text-[12.5px] text-ink-faint">
         {schema ? (
