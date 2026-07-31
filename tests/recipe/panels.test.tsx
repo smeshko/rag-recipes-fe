@@ -96,6 +96,24 @@ describe("panels", () => {
     expect(screen.queryByText(/confidence/)).toBeNull();
   });
 
+  it("checks off a repeated ingredient line independently of its twin", async () => {
+    const user = userEvent.setup();
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderAt("/recipes/item_dupes");
+    const rows = await screen.findAllByRole("button", { pressed: false });
+    expect(rows).toHaveLength(3);
+    /* Rows 0 and 2 carry the same text; ticking the second must not tick
+       the first (index-keyed state over a text-keyed list). */
+    await user.click(rows[2] as HTMLElement);
+    expect(rows[2]).toHaveAttribute("aria-pressed", "true");
+    expect(rows[0]).toHaveAttribute("aria-pressed", "false");
+    expect(rows[1]).toHaveAttribute("aria-pressed", "false");
+    expect(
+      warn.mock.calls.some((call) => String(call[0]).includes("same key")),
+    ).toBe(false);
+    warn.mockRestore();
+  });
+
   it("renders the extracting copy for a mid-ingest item", async () => {
     renderAt("/recipes/item_extracting_empty");
     expect(await screen.findAllByText("Still being extracted…")).toHaveLength(

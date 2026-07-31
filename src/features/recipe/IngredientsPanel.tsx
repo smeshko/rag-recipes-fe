@@ -43,7 +43,12 @@ export function IngredientsPanel({
             {resolution.lines.map((line, index) => {
               const done = checked.has(index);
               return (
-                <li key={line}>
+                /* Keyed by position, not text: recipes legitimately repeat a
+                   line ("1 tsp sea salt" for the rub and again for the sauce
+                   — 9 of 118 live items do), and the checked state is indexed
+                   by position, so a text key would collide the twins onto one
+                   fiber. The list is render-order-stable, never reordered. */
+                <li key={`${index}:${line}`}>
                   <button
                     type="button"
                     aria-pressed={done}

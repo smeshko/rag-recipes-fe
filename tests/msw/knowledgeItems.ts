@@ -139,6 +139,24 @@ export const sparseItemFixture = {
   source_citations: [],
 };
 
+/** A line repeated verbatim — 9 of 118 live items do this (a second "1 tsp
+    salt" for the sauce, etc.). Rows must stay individually addressable. */
+export const duplicateLinesItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_dupes",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      ingredients: [
+        ingredient(1, "1 tsp sea salt", "sea salt"),
+        ingredient(2, "8 large eggs", "eggs"),
+        ingredient(3, "1 tsp sea salt", "sea salt"),
+      ],
+    },
+  },
+};
+
 export const needsReviewItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -224,6 +242,7 @@ const byId: Record<string, unknown> = {
   item_extracting: extractingItemFixture,
   item_extracting_empty: extractingEmptyItemFixture,
   item_nocite: zeroCitationItemFixture,
+  item_dupes: duplicateLinesItemFixture,
   item_technique: nonRecipeItemFixture,
   item_warned: warningsItemFixture,
 };
