@@ -135,6 +135,10 @@ describe("ask affordance", () => {
     await settleGrid();
     /* Mutation reset: no answer artifacts and no new POST. */
     expect(screen.queryByTestId("answer-skeleton")).toBeNull();
+    /* The card itself is gone, and the live region does not keep claiming an
+       answer is ready for a query it was never asked about. */
+    expect(screen.queryByText(/Grounded in your books/)).toBeNull();
+    expect(screen.getByTestId("answer-status")).toHaveTextContent("");
     expect(answersCalls).toHaveLength(1);
   });
 

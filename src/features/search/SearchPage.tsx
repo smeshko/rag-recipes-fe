@@ -180,11 +180,23 @@ export function SearchPage() {
     inputRef.current?.select();
   };
 
+  /* Synchronous query gate. reset() runs in a passive effect, so the render
+     between a ?q= change and that effect would otherwise show the previous
+     answer under the new query — and hand the new q to its recipe links,
+     which is wrong provenance, not just a cosmetic flash. Deriving liveness
+     from the mutation's own variables makes "an answer never appears for a
+     query it wasn't asked about" true by construction; reset() stays as the
+     cleanup that returns the slot to idle. */
+  const answerIsForCurrentQuery = answer.variables?.query === q;
+
   /* The fallback grid replaces 2.1's section only while the answer still
      matches the current search — /answers ran its own retrieval at the
      answer-time mode, so after a chip toggle the live grid returns. */
   const fallbackData =
-    answer.isSuccess && answer.data && isFallback(answer.data)
+    answerIsForCurrentQuery &&
+    answer.isSuccess &&
+    answer.data &&
+    isFallback(answer.data)
       ? answer.data
       : null;
   const answerMatchesSearch = answer.variables?.mode === mode;
@@ -204,11 +216,13 @@ export function SearchPage() {
      than being read twice. Deliberately no role attribute — role="status"
      would make this a second status node and the notice would stop being
      uniquely addressable. */
-  const answerStatus = answer.isPending
-    ? "Asking the shelf…"
-    : fallbackData === null && answer.isSuccess && answer.data
-      ? "The answer is ready."
-      : "";
+  const answerStatus = !answerIsForCurrentQuery
+    ? ""
+    : answer.isPending
+      ? "Asking the shelf…"
+      : fallbackData === null && answer.isSuccess && answer.data
+        ? "The answer is ready."
+        : "";
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -240,18 +254,22 @@ export function SearchPage() {
         {answerStatus}
       </p>
 
-      {/* Answer slot: explicit-action only; fallback is never error UI. */}
-      <AnswerSection
-        answer={answer}
-        q={q}
-        mode={mode}
-        onRephrase={rephrase}
-        onRetry={() => {
-          if (answer.variables) {
-            runAnswer(answer.variables);
-          }
-        }}
-      />
+      {/* Answer slot: explicit-action only; fallback is never error UI.
+          Gated on the mutation's own query so no frame can bind it to a
+          different one. */}
+      {answerIsForCurrentQuery ? (
+        <AnswerSection
+          answer={answer}
+          q={q}
+          mode={mode}
+          onRephrase={rephrase}
+          onRetry={() => {
+            if (answer.variables) {
+              runAnswer(answer.variables);
+            }
+          }}
+        />
+      ) : null}
 
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
