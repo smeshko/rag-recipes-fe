@@ -25,7 +25,7 @@ describe("useShelfStats", () => {
     );
   });
 
-  it("withholds the total rather than undercounting when a book fails", async () => {
+  it("resolves a flagged floor rather than a false total when a book fails", async () => {
     server.use(
       http.get("/api/v1/documents/doc_baking", () =>
         HttpResponse.json(documentNotFoundEnvelope("doc_baking"), {
@@ -37,12 +37,21 @@ describe("useShelfStats", () => {
       wrapper: wrapper(),
     });
     await waitFor(() => expect(result.current.cookbookCount).toBe(3));
-    /* The two healthy books sum to 212, but the shelf holds three: publishing
-       212 would state a short total as if it were exact. The cookbook count
-       still renders, so the hero degrades rather than breaking. */
-    await new Promise((resolve) => setTimeout(resolve, 120));
-    expect(result.current.readyRecipes).toBeUndefined();
-    expect(result.current.cookbookCount).toBe(3);
+    /* 107 + 105 from the two healthy books; the 404 must not hang the sum
+       (TASK-001), but 212 is a floor, not the shelf's total — `partial` is
+       what stops the hero stating it as exact. */
+    await waitFor(() => expect(result.current.readyRecipes).toBe(212));
+    expect(result.current.partial).toBe(true);
+  });
+
+  it("does not flag a complete shelf as partial", async () => {
+    const { result } = renderHook(() => useShelfStats(), {
+      wrapper: wrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.readyRecipes).toBe(fixtureReadyRecipes),
+    );
+    expect(result.current.partial).toBe(false);
   });
 
   it("reports zero — not unknown — for an empty shelf", async () => {

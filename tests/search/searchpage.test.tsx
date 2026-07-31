@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http } from "msw";
+import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
@@ -130,6 +130,27 @@ describe("SearchPage URL ↔ state", () => {
             `3 cookbooks on the shelf · ${fixtureReadyRecipes} recipes ready`,
           ),
         ),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("marks the hero total as a floor when a book's counts fail", async () => {
+    server.use(
+      http.get("/api/v1/documents/doc_baking", () =>
+        HttpResponse.json(
+          { error: { code: "document_not_found" } },
+          {
+            status: 404,
+          },
+        ),
+      ),
+    );
+    renderAt("/");
+    /* "212+", never a bare "212" — the third book never reported, so the
+       exact figure is unknown and the hero must not claim it. */
+    await waitFor(() =>
+      expect(
+        screen.getByText(/3 cookbooks on the shelf · 212\+ recipes ready/),
       ).toBeInTheDocument(),
     );
   });

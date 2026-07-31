@@ -14,14 +14,20 @@ function parseMode(raw: string | null): SearchMode {
 }
 
 function ShelfStatsLine() {
-  const { cookbookCount, readyRecipes } = useShelfStats();
+  const { cookbookCount, readyRecipes, partial } = useShelfStats();
   if (cookbookCount === undefined) {
     return <span className="text-ink-faint">warming up the shelf…</span>;
   }
+  /* A book whose counts failed to load makes the sum a floor, not a total —
+     say so with a "+" rather than presenting a short number as exact. */
+  const readyLabel =
+    readyRecipes === undefined
+      ? ""
+      : ` · ${readyRecipes}${partial ? "+" : ""} recipes ready`;
   return (
     <>
       {cookbookCount} cookbook{cookbookCount === 1 ? "" : "s"} on the shelf
-      {readyRecipes !== undefined ? ` · ${readyRecipes} recipes ready` : ""}
+      {readyLabel}
     </>
   );
 }
