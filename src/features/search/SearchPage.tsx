@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { type ApiError, isFallback, useAnswer, useShelfStats } from "../../api";
+import {
+  type AnswerResponse,
+  type ApiError,
+  isFallback,
+  useAnswer,
+  useShelfStats,
+} from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
 import { AnswerCard } from "./AnswerCard";
+import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
+import { FallbackNotice } from "./FallbackNotice";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -40,6 +48,47 @@ function ShelfStatsLine() {
   );
 }
 
+/* The answer slot's four arms in one place so SearchPage stays readable. */
+function AnswerSection({
+  answer,
+  q,
+  mode,
+  onRephrase,
+  onRetry,
+}: {
+  answer: {
+    isPending: boolean;
+    isSuccess: boolean;
+    isError: boolean;
+    data: AnswerResponse | undefined;
+    error: unknown;
+  };
+  q: string;
+  mode: SearchMode;
+  onRephrase: () => void;
+  onRetry: () => void;
+}) {
+  if (answer.isPending) {
+    return <AnswerSkeleton />;
+  }
+  if (answer.isError) {
+    return <AnswerError error={answer.error as ApiError} onRetry={onRetry} />;
+  }
+  if (answer.isSuccess && answer.data) {
+    if (isFallback(answer.data)) {
+      return (
+        <FallbackNotice
+          warnings={answer.data.warnings}
+          hasResults={answer.data.results.length > 0}
+          onRephrase={onRephrase}
+        />
+      );
+    }
+    return <AnswerCard answer={answer.data} q={q} mode={mode} />;
+  }
+  return null;
+}
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
@@ -49,6 +98,7 @@ export function SearchPage() {
      typing. The effect resyncs the box on Back/Forward navigation. */
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   /* Functional updater so unknown params (e.g. epic 03's review=included)
      survive every write; hybrid stays out of the URL (D1). */
@@ -103,6 +153,27 @@ export function SearchPage() {
     answer.mutate({ query: asked, mode });
   };
 
+  const rephrase = () => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  };
+
+  /* The fallback grid replaces 2.1's section only while the answer still
+     matches the current search — /answers ran its own retrieval at the
+     answer-time mode, so after a chip toggle the live grid returns. */
+  const fallbackData =
+    answer.isSuccess && answer.data && isFallback(answer.data)
+      ? answer.data
+      : null;
+  const answerMatchesSearch = answer.variables?.mode === mode;
+  const showFallbackGrid =
+    fallbackData !== null &&
+    fallbackData.results.length > 0 &&
+    answerMatchesSearch;
+  /* A zero-result fallback already says "nothing found" — don't say it twice. */
+  const suppressSearchSection =
+    showFallbackGrid || (fallbackData !== null && answerMatchesSearch);
+
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
       <Bloom duration={0.7} delay={0.06} className="pt-16 pb-5 text-center">
@@ -117,6 +188,7 @@ export function SearchPage() {
 
       <Bloom duration={0.7} delay={0.12} className="mx-auto max-w-[720px]">
         <SearchInput
+          ref={inputRef}
           value={text}
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
@@ -125,17 +197,43 @@ export function SearchPage() {
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
 
-      {/* Answer slot: explicit-action only. Fallback/error arms fill in
-          TASK-004; a warning must never render as a grounded card. */}
-      {answer.isPending ? (
-        <AnswerSkeleton />
-      ) : answer.isSuccess && !isFallback(answer.data) ? (
-        <AnswerCard answer={answer.data} q={q} mode={mode} />
+      {/* Answer slot: explicit-action only; fallback is never error UI. */}
+      <AnswerSection
+        answer={answer}
+        q={q}
+        mode={mode}
+        onRephrase={rephrase}
+        onRetry={() => {
+          if (answer.variables) {
+            answer.mutate(answer.variables);
+          }
+        }}
+      />
+
+      {showFallbackGrid && fallbackData ? (
+        <ResultsGrid
+          results={fallbackData.results}
+          q={q}
+          mode={answer.variables?.mode ?? mode}
+          bloomBase={0.24}
+          heading={
+            <>
+              What the shelf <em className="text-apricot italic">does</em> know
+            </>
+          }
+          subline={
+            <>
+              {fallbackData.results.length} match
+              {fallbackData.results.length === 1 ? "" : "es"} · ranked by{" "}
+              {answer.variables?.mode ?? mode} score
+            </>
+          }
+        />
       ) : null}
 
       {/* Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
-      {q === "" ? null : search.isLoading ? (
+      {suppressSearchSection || q === "" ? null : search.isLoading ? (
         <SearchSkeleton />
       ) : search.error ? (
         <SearchError
