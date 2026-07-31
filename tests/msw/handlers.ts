@@ -7,6 +7,7 @@ import type {
   DocumentStatus,
   ErrorEnvelope,
   IngestionStatusResponse,
+  ReprocessResponse,
   UploadResponse,
 } from "../../src/api";
 import { TERMINAL_STATUSES } from "../../src/api";
@@ -616,6 +617,46 @@ export const statusErrorHandler = (
     onRequest?.();
     return HttpResponse.json(envelope, { status });
   });
+
+/* ------------------------------------------------------------------ */
+/* Reprocess fixtures (phase 3.3). The 409's server message is real —  */
+/* the UI keys off the CODE, never this string.                        */
+/* ------------------------------------------------------------------ */
+
+export const ingestionAlreadyRunningEnvelope = (documentId: string) => ({
+  error: {
+    code: "ingestion_already_running",
+    message: "Document is not in a terminal state.",
+    details: { document_id: documentId },
+  },
+});
+
+/** 200 queued response for POST /documents/{id}/reprocess. */
+export const reprocessHandler = (
+  id: string,
+  onRequest?: (body: unknown) => void,
+) =>
+  http.post(`/api/v1/documents/${id}/reprocess`, async ({ request }) => {
+    onRequest?.(await request.json());
+    const body: ReprocessResponse = {
+      document_id: id,
+      status: "queued",
+      previous_active_source_version: 1,
+      current_source_version: 2,
+    };
+    return HttpResponse.json(body);
+  });
+
+/** Error-envelope handler for reprocess (409, 404, 500 …). The envelope is
+    a factory so tests can flip server-side state at request time. */
+export const reprocessErrorHandler = (
+  id: string,
+  status: number,
+  envelope: () => ErrorEnvelope,
+) =>
+  http.post(`/api/v1/documents/${id}/reprocess`, () =>
+    HttpResponse.json(envelope(), { status }),
+  );
 
 export const handlers = [
   http.get("/api/v1/health", () => HttpResponse.json(healthOk)),

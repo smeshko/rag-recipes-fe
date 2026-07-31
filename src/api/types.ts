@@ -173,6 +173,15 @@ export interface IngestionStatusResponse {
   terminal: boolean;
 }
 
+/* POST /documents/{id}/reprocess — 200 answer; the guarded update yields a
+   409 `ingestion_already_running` envelope for non-terminal documents. */
+export interface ReprocessResponse {
+  document_id: string;
+  status: "queued";
+  previous_active_source_version: number | null;
+  current_source_version: number | null;
+}
+
 export interface DocumentCounts {
   source_spans: number;
   knowledge_items: number;

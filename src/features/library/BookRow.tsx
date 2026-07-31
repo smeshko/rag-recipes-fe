@@ -4,8 +4,14 @@ import type {
   DocumentDetailResponse,
   DocumentListItem,
 } from "../../api";
-import { TERMINAL_STATUSES, useIngestionStatus } from "../../api";
+import {
+  ApiError,
+  TERMINAL_STATUSES,
+  useIngestionStatus,
+  useReprocess,
+} from "../../api";
 import { Bloom, Pill } from "../../ui";
+import { CalmNotice } from "./CalmNotice";
 import { IngestionProgress } from "./IngestionProgress";
 import {
   isReadyIsh,
@@ -126,6 +132,15 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
     ...pollOptions,
   });
 
+  const reprocess = useReprocess(doc.id);
+  const reprocessError =
+    reprocess.error instanceof ApiError ? reprocess.error : null;
+  const alreadyRunning = reprocessError?.code === "ingestion_already_running";
+  /* A 404 refreshes the stale row away — surfacing it would alarm over a
+     row that is about to disappear. */
+  const quietError =
+    alreadyRunning || reprocessError?.code === "document_not_found";
+
   return (
     <Bloom index={index} base={0.18} step={0.04} className="mb-4">
       <article className="grid cursor-pointer grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-line bg-card shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_16px_40px_rgba(94,74,44,0.13)] max-[880px]:grid-cols-[6px_1fr]">
@@ -170,6 +185,29 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
             >
               Open review queue →
             </Link>
+          )}
+          {isTerminal(doc.status) && (
+            <button
+              type="button"
+              disabled={reprocess.isPending}
+              onClick={() => reprocess.mutate()}
+              className="mt-2 block w-full text-right text-[12.5px] font-bold text-apricot hover:underline disabled:opacity-50 max-[880px]:text-left"
+            >
+              {doc.status === "failed" ? "Retry ↻" : "Reprocess ↻"}
+            </button>
+          )}
+          {alreadyRunning && (
+            <CalmNotice>Already processing — hang tight.</CalmNotice>
+          )}
+          {reprocess.isError && !quietError && (
+            <span
+              role="alert"
+              className="mt-2 block text-[12.5px] font-semibold text-danger"
+            >
+              {reprocess.error instanceof Error
+                ? reprocess.error.message
+                : "Reprocess failed."}
+            </span>
           )}
         </div>
       </article>

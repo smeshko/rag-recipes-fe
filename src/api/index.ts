@@ -18,6 +18,7 @@ export {
   useDocumentDetails,
   useDocuments,
   useIngestionStatus,
+  useReprocess,
   useShelfStats,
 } from "./documents";
 export { useKnowledgeItem } from "./knowledgeItems";
@@ -52,6 +53,7 @@ export type {
   KnowledgeItemResponse,
   RecipeStructuredData,
   Recommendation,
+  ReprocessResponse,
   Step,
   TerminalStatus,
   UploadResponse,

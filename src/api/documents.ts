@@ -1,6 +1,7 @@
 import {
   type QueryClient,
   queryOptions,
+  useMutation,
   useQueries,
   useQuery,
   useQueryClient,
@@ -8,12 +9,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, request } from "./client";
 import { route } from "./routes";
+import type { components } from "./schema";
 import type {
   DocumentDetailResponse,
   DocumentListItem,
   DocumentListResponse,
   DocumentStatus,
   IngestionStatusResponse,
+  ReprocessResponse,
 } from "./types";
 
 /* The backend pages this endpoint (default 50 rows, max 200) and returns no
@@ -464,4 +467,64 @@ export function useIngestionStatus(
   }, [refetch]);
 
   return { data, error, isPending, stopReason, checkAgain };
+}
+
+/* ------------------------------------------------------------------ */
+/* Reprocess (phase 3.3).                                              */
+/* ------------------------------------------------------------------ */
+
+/** Whether a row polls is derived from the LIST status — so any outcome
+    that means "the list is stale" must invalidate all three keys, or the
+    row keeps rendering terminal and the poller never mounts. */
+function invalidateAfterReprocess(queryClient: QueryClient, id: string): void {
+  void queryClient.invalidateQueries({ queryKey: ["documents"] });
+  void queryClient.invalidateQueries({
+    queryKey: ["document", id],
+    exact: true,
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["document", id, "status"],
+  });
+}
+
+/**
+ * POST /documents/{id}/reprocess with mode fixed to `auto` (the epic's
+ * contract; reuse/new-version modes stay curl-only). A 409
+ * `ingestion_already_running` is a STATE REPORT, not an error: the doc is
+ * genuinely running and the list is stale by definition, so it invalidates
+ * the same three keys success does — the UI renders a calm notice and the
+ * row starts polling. A 404 means the row is stale the other way:
+ * refresh the list, surface nothing alarming.
+ */
+export function useReprocess(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => {
+      const body: components["schemas"]["ReprocessRequest"] = { mode: "auto" };
+      return request<ReprocessResponse>(
+        route("/documents/{document_id}/reprocess", "post", {
+          params: { document_id: id },
+        }),
+        {
+          body: JSON.stringify(body),
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    },
+    onSuccess: () => {
+      invalidateAfterReprocess(queryClient, id);
+    },
+    onError: (error) => {
+      if (!(error instanceof ApiError)) {
+        return;
+      }
+      if (error.code === "ingestion_already_running") {
+        invalidateAfterReprocess(queryClient, id);
+        return;
+      }
+      if (error.code === "document_not_found") {
+        void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      }
+    },
+  });
 }
