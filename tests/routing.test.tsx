@@ -58,6 +58,19 @@ describe("routing", () => {
     expect(field()).toHaveValue("scones");
   });
 
+  /* Reseeding must not remount the field: a keyboard user refining a query
+     would otherwise be dropped back to the document after every submit. */
+  it("keeps focus in the search field after submitting", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+    const field = () => screen.getByRole("textbox");
+
+    await user.type(field(), "scones{Enter}");
+
+    expect(field()).toHaveValue("scones");
+    expect(field()).toHaveFocus();
+  });
+
   it("renders the themed not-found on unknown paths", () => {
     renderAt("/nope");
     expect(screen.getByTestId("notfound-page")).toBeInTheDocument();

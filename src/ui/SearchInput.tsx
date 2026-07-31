@@ -17,6 +17,17 @@ export function SearchInput({
 }: SearchInputProps) {
   const [value, setValue] = useState(defaultValue);
 
+  /* Reseed when the caller's defaultValue moves (the URL query changing under
+     us on Back/Forward). React's documented "adjust state during render"
+     pattern rather than a key-based remount: remounting would drop keyboard
+     focus on every submit. The prop contract is unchanged — epic 02 phase 2.1
+     still owns making this controlled. */
+  const [seed, setSeed] = useState(defaultValue);
+  if (seed !== defaultValue) {
+    setSeed(defaultValue);
+    setValue(defaultValue);
+  }
+
   return (
     <form
       className="flex items-center gap-3.5 rounded-pill border border-line bg-card py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-[0_14px_40px_rgba(94,74,44,0.14),0_0_0_4px_var(--color-apricot-soft)]"
