@@ -89,6 +89,51 @@ describe("fallback", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("zero-result fallback still lets the live search grid own the page", async () => {
+    /* The two retrievals genuinely diverge — verified live, where the same
+       query gave /answers 10 results and /search 0. TASK-004: a zero-result
+       fallback suppresses SearchEmpty only, never the whole 2.1 ladder, so
+       results /search did find must not be hidden behind the amber notice. */
+    server.use(answersHandler(fallbackNoResultsFixture));
+    renderAt("/?q=wine+pairing");
+    await ask();
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(NO_RESULTS_WARNING);
+    /* 2.1's grid, with its own heading — not the fallback heading. */
+    expect(await screen.findByText("2 matches")).toBeInTheDocument();
+    expect(screen.getByText("Spinach & Cheddar Frittata")).toBeInTheDocument();
+    expect(screen.queryByText("The shelf has nothing for that.")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("zero-result fallback does not swallow a live search error", async () => {
+    server.use(
+      answersHandler(fallbackNoResultsFixture),
+      http.post("/api/v1/search", () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "internal_error",
+              message: "The pantry is unreachable.",
+              details: {},
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderAt("/?q=wine+pairing");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled(),
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Ask" }));
+    await screen.findByRole("status");
+    /* The search failure still surfaces; it is not an answer-layer concern. */
+    expect(
+      await screen.findByText("The pantry is unreachable."),
+    ).toBeInTheDocument();
+  });
+
   it("mode toggle after a fallback brings the live grid back, notice stays", async () => {
     server.use(answersHandler(fallbackWithResultsFixture));
     renderAt("/?q=wine+pairing");

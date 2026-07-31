@@ -204,9 +204,16 @@ export function SearchPage() {
     fallbackData !== null &&
     fallbackData.results.length > 0 &&
     answerMatchesSearch;
-  /* A zero-result fallback already says "nothing found" — don't say it twice. */
-  const suppressSearchSection =
-    showFallbackGrid || (fallbackData !== null && answerMatchesSearch);
+  /* A zero-result fallback already says "nothing found" — don't say it twice.
+     It suppresses *only* SearchEmpty, not the whole ladder (TASK-004): the
+     2.1 section still owns the page, and /answers runs its own retrieval, so
+     a live grid, a loading state or a search error must all still surface.
+     Verified live: the two retrievals genuinely diverge — "xyzzy quantum
+     blockchain tractor" gives /answers 10 results and /search 0. */
+  const zeroResultFallback =
+    fallbackData !== null &&
+    fallbackData.results.length === 0 &&
+    answerMatchesSearch;
 
   /* Two of the answer slot's four states carry no announcement of their own:
      the skeleton is aria-hidden and the answer card is plain content. A
@@ -294,7 +301,7 @@ export function SearchPage() {
 
       {/* Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
-      {suppressSearchSection || q === "" ? null : search.isLoading ? (
+      {showFallbackGrid || q === "" ? null : search.isLoading ? (
         <SearchSkeleton />
       ) : search.error ? (
         <SearchError
@@ -302,7 +309,9 @@ export function SearchPage() {
           onRetry={() => search.refetch()}
         />
       ) : results.length === 0 ? (
-        <SearchEmpty />
+        zeroResultFallback ? null : (
+          <SearchEmpty />
+        )
       ) : (
         <ResultsGrid
           results={results}
