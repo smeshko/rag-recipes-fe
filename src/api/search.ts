@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { request } from "./client";
 import { route } from "./routes";
 import type { components } from "./schema";
@@ -33,8 +33,8 @@ interface SearchQueryData {
   response: SearchResponse;
 }
 
-export function useSearch(q: string, mode: SearchMode) {
-  const query = useQuery({
+function searchQueryOptions(q: string, mode: SearchMode) {
+  return queryOptions({
     queryKey: ["search", q, mode],
     enabled: q !== "",
     /* Mode-scoped: a mode toggle on the same query keeps the previous grid
@@ -53,13 +53,25 @@ export function useSearch(q: string, mode: SearchMode) {
       return { mode, response };
     },
   });
+}
+
+export function useSearch(q: string, mode: SearchMode) {
+  const options = searchQueryOptions(q, mode);
+  /* Unwrap with `select`, at the OBSERVER — not by overriding `data` on the
+     returned object. `select` is what makes EVERY data-bearing member of the
+     result a `SearchResponse`: `data`, `await refetch()`, and `promise`.
+     Patching `data` alone left `refetch()` handing back the internal wrapper,
+     so the "internal" shape leaked through a documented API. */
+  const query = useQuery({ ...options, select: (d) => d.response });
+  /* A second observer on the SAME key — one query, one fetch, deduped by
+     TanStack — selecting only the producing mode. Keeps the mode available
+     across D7's placeholder window without putting it in the response. */
+  const producing = useQuery({ ...options, select: (d) => d.mode });
 
   return {
     ...query,
-    /** `SearchResponse` per TASK-001's contract. */
-    data: query.data?.response,
     /** The mode that produced `data` — not necessarily the requested `mode`
         while a mode change is still in flight. */
-    resultsMode: query.data?.mode ?? mode,
+    resultsMode: producing.data ?? mode,
   };
 }

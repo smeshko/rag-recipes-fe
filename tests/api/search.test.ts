@@ -59,6 +59,21 @@ describe("useSearch", () => {
     expect(result.current.resultsMode).toBe("hybrid");
   });
 
+  it("returns SearchResponse from refetch too, not the internal wrapper", async () => {
+    const { result } = renderHook(() => useSearch("frittata", "hybrid"), {
+      wrapper: wrapper(),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    /* The whole result must honour TASK-001's contract, not just top-level
+       `data`: a consumer awaiting refetch() reads `.data.results` too. */
+    const refetched = await result.current.refetch();
+    expect(refetched.data?.results).toHaveLength(2);
+    expect(refetched.data?.results[0]?.item.title).toBe(
+      "Spinach & Cheddar Frittata",
+    );
+    expect(refetched.data).not.toHaveProperty("response");
+  });
+
   it("fires no request for an empty query", async () => {
     const spy = searchSpy();
     const { result } = renderHook(() => useSearch("", "hybrid"), {
