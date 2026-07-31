@@ -70,6 +70,33 @@ export interface SearchResponse {
 
 /* ---------- documents ---------- */
 
+/** Pipeline order first, then the three terminal states (storage/enums.py). */
+export type DocumentStatus =
+  | "queued"
+  | "extracting_text"
+  | "creating_source_spans"
+  | "extracting_items"
+  | "validating_items"
+  | "creating_chunks"
+  | "embedding_chunks"
+  | "indexing"
+  | "ready"
+  | "needs_review"
+  | "failed";
+
+export const TERMINAL_STATUSES = [
+  "ready",
+  "needs_review",
+  "failed",
+] as const satisfies readonly DocumentStatus[];
+
+export type TerminalStatus = (typeof TERMINAL_STATUSES)[number];
+
+/* The list item is deliberately smaller than DocumentResponse (no asset_id,
+   language or timestamps) — keep the two shapes distinct, never merge them
+   into one optional-field type. `title`/`author` are non-nullable in the
+   backend models; the nullable fields are `subcategory`, `language` and
+   `active_source_version`. */
 export interface DocumentListItem {
   id: string;
   category: string;
@@ -77,7 +104,7 @@ export interface DocumentListItem {
   title: string;
   author: string;
   source_type: string;
-  status: string;
+  status: DocumentStatus;
   active_source_version: number | null;
 }
 
@@ -85,20 +112,32 @@ export interface DocumentListResponse {
   documents: DocumentListItem[];
 }
 
+export interface DocumentResponse {
+  id: string;
+  asset_id: string;
+  category: string;
+  subcategory: string | null;
+  title: string;
+  author: string;
+  source_type: string;
+  language: string | null;
+  active_source_version: number | null;
+  status: DocumentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentCounts {
+  source_spans: number;
+  knowledge_items: number;
+  ready_items: number;
+  needs_review_items: number;
+  chunks: number;
+}
+
 export interface DocumentDetailResponse {
-  document: DocumentListItem & {
-    asset_id: string;
-    language: string | null;
-    created_at: string;
-    updated_at: string;
-  };
-  counts: {
-    source_spans: number;
-    knowledge_items: number;
-    ready_items: number;
-    needs_review_items: number;
-    chunks: number;
-  };
+  document: DocumentResponse;
+  counts: DocumentCounts;
 }
 
 /* ---------- knowledge items (2.2) ---------- */

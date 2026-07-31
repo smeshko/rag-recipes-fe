@@ -1,4 +1,5 @@
 import { ApiError, shouldRetry } from "../../src/api";
+import { PaginationCapError } from "../../src/api/documents";
 
 describe("shouldRetry", () => {
   const envelope = (status: number | null) =>
@@ -21,6 +22,10 @@ describe("shouldRetry", () => {
     expect(shouldRetry(0, network)).toBe(true);
     expect(shouldRetry(1, network)).toBe(true);
     expect(shouldRetry(2, network)).toBe(false);
+  });
+
+  it("never retries a pagination cap error — the runaway loop must not rerun", () => {
+    expect(shouldRetry(0, new PaginationCapError(50))).toBe(false);
   });
 
   it("retries non-ApiError failures at most twice", () => {

@@ -2,7 +2,11 @@ export { isFallback, useAnswer } from "./answers";
 export { ApiError, request } from "./client";
 export {
   documentDetailQueryOptions,
+  documentsQueryOptions,
+  fetchAllDocuments,
+  PaginationCapError,
   useDocument,
+  useDocumentDetails,
   useDocuments,
   useShelfStats,
 } from "./documents";
@@ -22,6 +26,12 @@ export { useSearch } from "./search";
 export type {
   AnswerCitation,
   AnswerResponse,
+  DocumentCounts,
+  DocumentDetailResponse,
+  DocumentListItem,
+  DocumentListResponse,
+  DocumentResponse,
+  DocumentStatus,
   ErrorEnvelope,
   HealthResponse,
   Ingredient,
@@ -30,4 +40,6 @@ export type {
   RecipeStructuredData,
   Recommendation,
   Step,
+  TerminalStatus,
 } from "./types";
+export { TERMINAL_STATUSES } from "./types";
