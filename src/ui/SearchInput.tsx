@@ -6,12 +6,17 @@ import { useState } from "react";
    ring shadow (mockup :82) rather than stacking on top of it. */
 export interface SearchInputProps {
   placeholder?: string;
+  /** Accessible name for the field. The design has no visible label, and a
+      placeholder alone computes to no accessible name, so this is what
+      assistive technology announces. */
+  label?: string;
   defaultValue?: string;
   onSubmit: (query: string) => void;
 }
 
 export function SearchInput({
   placeholder = "What are we cooking?",
+  label = "Search your cookbooks",
   defaultValue = "",
   onSubmit,
 }: SearchInputProps) {
@@ -52,6 +57,7 @@ export function SearchInput({
       <input
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        aria-label={label}
         placeholder={placeholder}
         className="flex-1 border-none bg-transparent font-display text-[19px] text-ink outline-none"
       />

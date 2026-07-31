@@ -59,6 +59,22 @@ describe("SearchInput", () => {
     expect(onSubmit).toHaveBeenCalledWith("weekend breakfast");
   });
 
+  /* The design shows no visible label and a placeholder alone computes to no
+     accessible name, so the field must carry one explicitly. */
+  it("exposes the field by an accessible name", () => {
+    render(<SearchInput onSubmit={vi.fn()} />);
+    expect(
+      screen.getByRole("textbox", { name: "Search your cookbooks" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the caller override the accessible name", () => {
+    render(<SearchInput label="Search this book" onSubmit={vi.fn()} />);
+    expect(
+      screen.getByRole("textbox", { name: "Search this book" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the magnifier out of the accessibility tree", () => {
     const { container } = render(<SearchInput onSubmit={vi.fn()} />);
     expect(container.querySelector("svg")).toHaveAttribute(
