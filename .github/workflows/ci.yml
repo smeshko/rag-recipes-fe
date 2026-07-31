@@ -5,6 +5,15 @@ on:
   push:
     branches: [staging]
 
+# The workflow only reads the repo; don't inherit a read-write default token.
+permissions:
+  contents: read
+
+# A new push to an open PR supersedes the previous run rather than queueing it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     runs-on: ubuntu-latest
