@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { ApiError, request } from "../../src/api";
+import { ApiError, request, route } from "../../src/api";
 import {
   documentNotFoundEnvelope,
   healthOk,
@@ -15,9 +15,11 @@ describe("request", () => {
   });
 
   it("throws ApiError carrying the envelope on an error response", async () => {
-    const err = (await request("/documents/does-not-exist").catch(
-      (e: unknown) => e,
-    )) as ApiError;
+    const err = (await request(
+      route("/documents/{document_id}", "get", {
+        document_id: "does-not-exist",
+      }),
+    ).catch((e: unknown) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     const envelope = documentNotFoundEnvelope("does-not-exist");
     expect(err.code).toBe(envelope.error.code);
@@ -62,7 +64,9 @@ describe("request", () => {
 describe("request header merging", () => {
   type Echo = { accept: string | null; contentType: string | null };
 
-  const echoHandler = http.post("/api/v1/echo", ({ request: req }) =>
+  /* /search is a real schema route (POST), so the typed surface accepts it
+     while the handler just echoes back what the client actually sent. */
+  const echoHandler = http.post("/api/v1/search", ({ request: req }) =>
     HttpResponse.json({
       accept: req.headers.get("accept"),
       contentType: req.headers.get("content-type"),
@@ -71,7 +75,7 @@ describe("request header merging", () => {
 
   const echo = (headers: HeadersInit) => {
     server.use(echoHandler);
-    return request<Echo>("/echo", { method: "POST", headers });
+    return request<Echo>("/search", { method: "POST", headers });
   };
 
   it("preserves a plain object", async () => {
@@ -101,7 +105,7 @@ describe("request header merging", () => {
 
   it("sends the default Accept when no headers are passed", async () => {
     server.use(echoHandler);
-    const body = await request<Echo>("/echo", { method: "POST" });
+    const body = await request<Echo>("/search", { method: "POST" });
     expect(body.accept).toBe("application/json");
   });
 });

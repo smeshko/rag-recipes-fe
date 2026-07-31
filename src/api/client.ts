@@ -1,3 +1,4 @@
+import type { RequestPath } from "./routes";
 import type { ErrorEnvelope } from "./types";
 
 const BASE = "/api/v1";
@@ -40,8 +41,15 @@ function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
  * Thin fetch wrapper over the relative /api/v1 base. Knows exactly two
  * things: the error envelope and the base path. No auth — the dev proxy
  * (and later the production front) injects credentials server-side.
+ *
+ * `path` is schema-derived: a paramless route template verbatim, or a path
+ * built by `route()` for templates that take parameters. The response type
+ * stays a caller assertion — the backend declares no response_models.
  */
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(
+  path: RequestPath,
+  init?: RequestInit,
+): Promise<T> {
   /* Normalize through Headers: RequestInit.headers may be a record, a
      Headers instance or an array of tuples, and object spread preserves
      only the first. Accept is a default, so a caller-supplied one wins. */
