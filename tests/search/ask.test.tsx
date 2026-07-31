@@ -4,7 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
-import { answersHandler, groundedAnswerFixture } from "../msw/answers";
+import {
+  answersHandler,
+  FALLBACK_WARNING,
+  fallbackWithResultsFixture,
+  groundedAnswerFixture,
+} from "../msw/answers";
 import { server } from "../msw/server";
 
 function renderAt(path: string) {
@@ -170,6 +175,38 @@ describe("ask affordance", () => {
     await waitFor(() => expect(askButton()).toBeEnabled());
     await user.click(askButton());
     await waitFor(() => expect(answersCalls).toHaveLength(2));
+  });
+
+  it("announces the answer lifecycle in a polite live region", async () => {
+    server.use(answersHandler(groundedAnswerFixture));
+    renderAt("/?q=breakfast");
+    await settleGrid();
+    /* Present from mount, empty — a live region injected together with its
+       content is announced unreliably. */
+    const region = screen.getByTestId("answer-status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveTextContent("");
+    /* Not a second role="status" node: the fallback notice must stay the
+       uniquely addressable one. */
+    expect(screen.queryByRole("status")).toBeNull();
+
+    fireEvent.click(askButton());
+    expect(region).toHaveTextContent("Asking the shelf…");
+    await waitFor(() =>
+      expect(region).toHaveTextContent("The answer is ready."),
+    );
+  });
+
+  it("stays silent on the fallback path — the notice announces itself", async () => {
+    server.use(answersHandler(fallbackWithResultsFixture));
+    const user = userEvent.setup();
+    renderAt("/?q=wine+pairing");
+    await settleGrid();
+    await user.click(askButton());
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(FALLBACK_WARNING);
+    /* Blank, so the warning is not announced twice. */
+    expect(screen.getByTestId("answer-status")).toHaveTextContent("");
   });
 
   it("deep-loading /?q= fires no /answers", async () => {

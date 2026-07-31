@@ -196,6 +196,20 @@ export function SearchPage() {
   const suppressSearchSection =
     showFallbackGrid || (fallbackData !== null && answerMatchesSearch);
 
+  /* Two of the answer slot's four states carry no announcement of their own:
+     the skeleton is aria-hidden and the answer card is plain content. A
+     screen-reader user would click Ask and hear nothing, then nothing again
+     when the answer landed. The fallback notice (role="status") and the
+     error (role="alert") already announce, so they stay blank here rather
+     than being read twice. Deliberately no role attribute — role="status"
+     would make this a second status node and the notice would stop being
+     uniquely addressable. */
+  const answerStatus = answer.isPending
+    ? "Asking the shelf…"
+    : fallbackData === null && answer.isSuccess && answer.data
+      ? "The answer is ready."
+      : "";
+
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
       <Bloom duration={0.7} delay={0.06} className="pt-16 pb-5 text-center">
@@ -219,6 +233,12 @@ export function SearchPage() {
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
+
+      {/* Mounted unconditionally: a live region has to exist before its
+          content changes for the change to be announced reliably. */}
+      <p aria-live="polite" className="sr-only" data-testid="answer-status">
+        {answerStatus}
+      </p>
 
       {/* Answer slot: explicit-action only; fallback is never error UI. */}
       <AnswerSection
