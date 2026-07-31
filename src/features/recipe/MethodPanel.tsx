@@ -23,8 +23,16 @@ export function MethodPanel({
      is incomplete or repeats, keep arrival order and number sequentially. */
   const numbers = retained.map((step) => step.step_number);
   const trustNumbering =
-    numbers.every((n) => typeof n === "number" && Number.isFinite(n)) &&
-    new Set(numbers).size === numbers.length;
+    /* Positive integers only. The backend's model types step_number as a bare
+       int with no lower bound and soft validation never rejects one, so 0, -1
+       and 2.5 can all reach us through a clean model_dump — and sorting on a
+       malformed ordinal reorders the method ([-1, 2, 1]) while rendering it as
+       an authoritative "-1.". Gaps ARE trusted: a payload numbered [1, 2, 4]
+       most likely lost step 3 in extraction, and renumbering it to 1-2-3 would
+       erase the only evidence the reader has of the omission. */
+    numbers.every(
+      (n) => typeof n === "number" && Number.isInteger(n) && n > 0,
+    ) && new Set(numbers).size === numbers.length;
 
   const ordered = trustNumbering
     ? [...retained].sort((a, b) => (a.step_number ?? 0) - (b.step_number ?? 0))

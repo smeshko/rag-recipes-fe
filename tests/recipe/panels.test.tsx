@@ -142,6 +142,34 @@ describe("panels", () => {
     ]);
   });
 
+  it("ignores non-positive step ordinals rather than ordering by them", async () => {
+    renderAt("/recipes/item_badordinal");
+    const methodPanel = (
+      await screen.findByRole("heading", { name: "Method" })
+    ).closest("section") as HTMLElement;
+    const items = within(methodPanel).getAllByRole("listitem");
+    /* Arrival order kept; no "-1." presented as a step number. */
+    expect(items.map((li) => li.textContent)).toEqual([
+      "1.Warm the pan.",
+      "2.Add the eggs.",
+      "3.Serve.",
+    ]);
+  });
+
+  it("preserves a gap in otherwise sound numbering", async () => {
+    renderAt("/recipes/item_gapped");
+    const methodPanel = (
+      await screen.findByRole("heading", { name: "Method" })
+    ).closest("section") as HTMLElement;
+    const items = within(methodPanel).getAllByRole("listitem");
+    /* Renumbering to 1-2-3 would hide that extraction dropped a step. */
+    expect(items.map((li) => li.textContent)).toEqual([
+      "1.Warm the pan.",
+      "2.Add the eggs.",
+      "4.Serve.",
+    ]);
+  });
+
   it("renders the extracting copy for a mid-ingest item", async () => {
     renderAt("/recipes/item_extracting_empty");
     expect(await screen.findAllByText("Still being extracted…")).toHaveLength(

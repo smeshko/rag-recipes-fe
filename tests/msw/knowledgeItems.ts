@@ -193,6 +193,43 @@ export const mixedNumberingItemFixture = {
   },
 };
 
+/** Non-positive ordinals. The backend types step_number as a bare int with
+    no lower bound, so 0 and -1 survive a clean model_dump; sorting on them
+    reorders the method and renders "-1." as if it were authoritative. */
+export const badOrdinalItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_badordinal",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      steps: [
+        { text: "Warm the pan.", step_number: -1, confidence: null },
+        { text: "Add the eggs.", step_number: 2, confidence: null },
+        { text: "Serve.", step_number: 1, confidence: null },
+      ],
+    },
+  },
+};
+
+/** A gap in otherwise sound numbering — extraction most likely dropped step
+    3. The gap is preserved, not renumbered away. */
+export const gappedNumberingItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_gapped",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      steps: [
+        { text: "Warm the pan.", step_number: 1, confidence: null },
+        { text: "Add the eggs.", step_number: 2, confidence: null },
+        { text: "Serve.", step_number: 4, confidence: null },
+      ],
+    },
+  },
+};
+
 export const needsReviewItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -285,6 +322,8 @@ const byId: Record<string, unknown> = {
   item_dupes: duplicateLinesItemFixture,
   item_badsteps: malformedStepsItemFixture,
   item_mixednum: mixedNumberingItemFixture,
+  item_badordinal: badOrdinalItemFixture,
+  item_gapped: gappedNumberingItemFixture,
   item_technique: nonRecipeItemFixture,
   item_warned: warningsItemFixture,
 };
