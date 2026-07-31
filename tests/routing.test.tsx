@@ -19,14 +19,19 @@ function renderAt(path: string) {
 }
 
 describe("routing", () => {
-  it("renders the search placeholder at /", () => {
+  it("renders the search screen at /", () => {
     renderAt("/");
     expect(screen.getByTestId("search-page")).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "What are we cooking?" }),
+    ).toBeInTheDocument();
   });
 
-  it("shows the query from ?q= at /", () => {
+  it("restores the query from ?q= into the search box", () => {
     renderAt("/?q=test");
-    expect(screen.getByTestId("search-query")).toHaveTextContent("test");
+    expect(
+      screen.getByRole("textbox", { name: "What are we cooking?" }),
+    ).toHaveValue("test");
   });
 
   it("echoes the item id at /recipes/:id", () => {
