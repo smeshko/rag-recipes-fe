@@ -5,6 +5,7 @@ import {
 } from "../../api";
 import { Bloom, Panel } from "../../ui";
 import { BookRow, type DetailState } from "./BookRow";
+import { Dropzone } from "./Dropzone";
 
 /* Section blooms follow the mockup's 0/.06/(.1)/.14 chrome stagger — 0 is
    the Shell header, .1 is the dropzone's slot (arrives in phase 3.2). */
@@ -75,6 +76,10 @@ export function LibraryPage() {
             counts unavailable for {unavailable} {plural(unavailable, "book")}
           </div>
         )}
+      </Bloom>
+
+      <Bloom duration={0.7} delay={0.1} className="mt-7">
+        <Dropzone />
       </Bloom>
 
       <Bloom
