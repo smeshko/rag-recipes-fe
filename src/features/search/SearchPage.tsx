@@ -83,7 +83,12 @@ export function SearchPage() {
       </Bloom>
 
       <Bloom duration={0.7} delay={0.12} className="mx-auto max-w-[720px]">
+        {/* `key` reseeds the uncontrolled field whenever the URL query moves
+            under it (Back/Forward), which its once-only defaultValue cannot do.
+            Deliberately a call-site fix: epic 02 phase 2.1 owns making
+            SearchInput controlled, which supersedes this. */}
         <SearchInput
+          key={q}
           defaultValue={q}
           onSubmit={(text) => setSearchParams(text ? { q: text } : {})}
         />
