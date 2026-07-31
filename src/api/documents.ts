@@ -68,6 +68,11 @@ export function documentDetailQueryOptions(id: string | undefined) {
   });
 }
 
+/** Detail-screen consumer of the shared factory (dependent query in 2.2). */
+export function useDocument(id: string | undefined) {
+  return useQuery(documentDetailQueryOptions(id));
+}
+
 export interface ShelfStats {
   cookbookCount: number | undefined;
   /** Sum of `counts.ready_items`; `undefined` until every book has settled. */
