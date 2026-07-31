@@ -65,6 +65,16 @@
   }
 }
 
+/* --bloom-delay must not inherit. A .bloom-card nested inside a .bloom
+   ancestor that set a delay would otherwise inherit the ancestor's value
+   instead of falling back to 0s — exactly the shape epic 02 uses (an
+   answer card inside a bloomed section). */
+@property --bloom-delay {
+  syntax: "<time>";
+  inherits: false;
+  initial-value: 0s;
+}
+
 @layer components {
   /* Staggered reveal: chrome uses .bloom (.7s), grids use .bloom-card (.6s);
      per-element delay via --bloom-delay. */
@@ -75,6 +85,16 @@
   .bloom-card {
     animation: bloom 0.6s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
       both;
+  }
+
+  /* The reveal is decoration: with `both` fill every element sits at
+     opacity 0 until it animates, so honour the OS preference rather than
+     translating/fading 11+ elements per screen. */
+  @media (prefers-reduced-motion: reduce) {
+    .bloom,
+    .bloom-card {
+      animation: none;
+    }
   }
 
   /* Card headers are flat soft fills with an accent ink — never gradients. */
