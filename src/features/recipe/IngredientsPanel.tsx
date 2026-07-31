@@ -11,6 +11,19 @@ export function IngredientsPanel({
   status: string;
 }) {
   const resolution = ingredientLines(sd);
+  /* Row identity is resolved here rather than in the JSX. Recipes legitimately
+     repeat a line verbatim — 9 of 118 items on the live shelf do, a second
+     "1 tsp sea salt" for the sauce — so keying on the text alone collides the
+     twins onto one React fiber. The list is built once per payload and never
+     reordered, and the checked state is addressed by the same index. */
+  const rows =
+    resolution.kind === "empty"
+      ? []
+      : resolution.lines.map((line, index) => ({
+          key: `${index}:${line}`,
+          index,
+          line,
+        }));
   /* Purely visual; resets on navigation by design. */
   const [checked, setChecked] = useState<Set<number>>(new Set());
 
@@ -37,18 +50,13 @@ export function IngredientsPanel({
       ) : (
         <>
           <p className="mt-1 text-[12.5px] text-ink-faint">
-            {resolution.lines.length} items · tap to check off
+            {rows.length} items · tap to check off
           </p>
           <ul className="mt-4 flex flex-col gap-1.5">
-            {resolution.lines.map((line, index) => {
+            {rows.map(({ key, index, line }) => {
               const done = checked.has(index);
               return (
-                /* Keyed by position, not text: recipes legitimately repeat a
-                   line ("1 tsp sea salt" for the rub and again for the sauce
-                   — 9 of 118 live items do), and the checked state is indexed
-                   by position, so a text key would collide the twins onto one
-                   fiber. The list is render-order-stable, never reordered. */
-                <li key={`${index}:${line}`}>
+                <li key={key}>
                   <button
                     type="button"
                     aria-pressed={done}
