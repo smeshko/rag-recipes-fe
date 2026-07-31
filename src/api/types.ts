@@ -127,6 +127,14 @@ export interface DocumentResponse {
   updated_at: string;
 }
 
+/* POST /documents answers 201 with this shape for BOTH fresh creates and
+   content-hash duplicates — the backend serializes no duplicate marker, so
+   created-vs-duplicate is classified client-side by prior id membership. */
+export interface UploadResponse {
+  document: DocumentResponse;
+  ingestion: { status: DocumentStatus };
+}
+
 export interface DocumentCounts {
   source_spans: number;
   knowledge_items: number;

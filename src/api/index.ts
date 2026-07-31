@@ -41,5 +41,7 @@ export type {
   Recommendation,
   Step,
   TerminalStatus,
+  UploadResponse,
 } from "./types";
 export { TERMINAL_STATUSES } from "./types";
+export { classifyUpload, uploadDocument } from "./uploads";
