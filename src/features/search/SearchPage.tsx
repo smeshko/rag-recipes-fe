@@ -131,6 +131,28 @@ export function SearchPage() {
   const answer = useAnswer();
   const { reset } = answer;
 
+  /* Synchronous in-flight latch. answer.isPending only flips on the *next*
+     render, so two clicks dispatched inside one frame would both pass an
+     isPending check and buy two LLM round-trips. The disabled button is the
+     visible layer; this ref closes the same-frame window behind it.
+     Cleared by observing isPending rather than a per-mutate onSettled: a
+     reset() during flight (a q change mid-answer) detaches the observer and
+     that callback would never fire, latching Ask off forever. */
+  const inFlight = useRef(false);
+  useEffect(() => {
+    if (!answer.isPending) {
+      inFlight.current = false;
+    }
+  }, [answer.isPending]);
+
+  const runAnswer = (vars: { query: string; mode: SearchMode }) => {
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
+    answer.mutate(vars);
+  };
+
   /* Reset guard: a q change clears the answer — except when the change was
      the Ask commit itself. The ref is set by our own code immediately before
      mutate(), so the guard never depends on mutation-dispatch timing. */
@@ -150,7 +172,7 @@ export function SearchPage() {
     }
     askedFor.current = asked;
     writeParams(asked, mode);
-    answer.mutate({ query: asked, mode });
+    runAnswer({ query: asked, mode });
   };
 
   const rephrase = () => {
@@ -193,6 +215,7 @@ export function SearchPage() {
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
           onAsk={askShelf}
+          asking={answer.isPending}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
@@ -205,7 +228,7 @@ export function SearchPage() {
         onRephrase={rephrase}
         onRetry={() => {
           if (answer.variables) {
-            answer.mutate(answer.variables);
+            runAnswer(answer.variables);
           }
         }}
       />

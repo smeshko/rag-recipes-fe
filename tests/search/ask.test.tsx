@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -131,6 +131,45 @@ describe("ask affordance", () => {
     /* Mutation reset: no answer artifacts and no new POST. */
     expect(screen.queryByTestId("answer-skeleton")).toBeNull();
     expect(answersCalls).toHaveLength(1);
+  });
+
+  it("rapid repeated Ask clicks buy exactly one LLM round-trip", async () => {
+    server.use(answersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
+    renderAt("/?q=breakfast");
+    await settleGrid();
+    /* Two clicks dispatched inside one frame — no re-render in between, so
+       the disabled attribute cannot have applied yet. Only the synchronous
+       in-flight latch can stop the second one. */
+    const button = askButton();
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(answersCalls).toHaveLength(1));
+    /* And the button is disabled for the duration of the flight. */
+    await waitFor(() => expect(askButton()).toBeEnabled());
+    expect(answersCalls).toHaveLength(1);
+
+    /* The latch releases: a later Ask on a new query still works. */
+    await user.clear(searchBox());
+    await user.type(searchBox(), "scones");
+    await user.click(askButton());
+    await waitFor(() => expect(answersCalls).toHaveLength(2));
+  });
+
+  it("a q change mid-flight does not latch Ask off permanently", async () => {
+    server.use(answersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
+    renderAt("/?q=breakfast");
+    await settleGrid();
+    fireEvent.click(askButton());
+    /* Reset the mutation mid-flight by changing ?q= — this detaches the
+       observer, so anything keyed to a per-mutate callback would stick. */
+    await user.clear(searchBox());
+    await user.type(searchBox(), "scones{Enter}");
+    await settleGrid();
+    await waitFor(() => expect(askButton()).toBeEnabled());
+    await user.click(askButton());
+    await waitFor(() => expect(answersCalls).toHaveLength(2));
   });
 
   it("deep-loading /?q= fires no /answers", async () => {

@@ -13,6 +13,10 @@ export interface SearchInputProps {
      trimmed value: the backend 400s an empty query, and an unguarded Ask
      would paint a danger notice on a virgin screen. */
   onAsk?: () => void;
+  /* Ask is in flight. Disables the button so a second click cannot buy a
+     second LLM round-trip. Only meaningful alongside onAsk; the plain
+     submit-button path ignores it. */
+  asking?: boolean;
   placeholder?: string;
   /** Accessible name override. Defaults to the placeholder: the placeholder is
       the field's only visible prompt, and WCAG 2.5.3 (Label in Name) wants the
@@ -28,6 +32,7 @@ export function SearchInput({
   onChange,
   onSubmit,
   onAsk,
+  asking = false,
   placeholder = "What are we cooking?",
   label,
   ref,
@@ -64,7 +69,8 @@ export function SearchInput({
       <button
         type={onAsk ? "button" : "submit"}
         onClick={onAsk}
-        disabled={onAsk ? value.trim() === "" : false}
+        disabled={onAsk ? value.trim() === "" || asking : false}
+        aria-busy={onAsk && asking ? true : undefined}
         className="rounded-pill bg-apricot px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-white transition-[background-color,transform] duration-[200ms] hover:bg-apricot-deep active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Ask
