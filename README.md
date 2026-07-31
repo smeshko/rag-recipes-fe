@@ -1,32 +1,50 @@
-# React + TypeScript + Vite
+# Stove — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Single-user web frontend for the rag-recipes backend: search the recipe library, read a synthesised answer with citations, and manage uploads.
 
-Currently, two official plugins are available:
+Vite + React + TypeScript, Tailwind CSS v4 with the "Sunday Kitchen" theme, Biome for lint and format, pnpm for packages.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Prerequisites
 
-## React Compiler
+- Node 22 (`node -v`)
+- pnpm 11 — pinned via `packageManager` in `package.json`, so `corepack enable` is enough
+- [`just`](https://github.com/casey/just) for the task recipes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting started
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+pnpm install
+just dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The dev server runs on <http://localhost:5173>.
+
+## Recipes
+
+| Command | What it does |
+|---|---|
+| `just dev` | Vite dev server with HMR |
+| `just build` | Type-check (`tsc -b`) then production build to `dist/` |
+| `just lint` | Biome lint + format check (`biome check .`) |
+| `just format` | Biome format, safe fixes and import sorting (`biome check --write .`) |
+
+`just` with no arguments lists everything available.
+
+`test` and `typegen` (OpenAPI codegen against the backend) arrive with the test harness in epic 01 phase 1.2.
+
+## Layout
+
+```
+src/
+  theme.css   Tailwind v4 @theme tokens + the hand-tuned bloom / card-header layer
+  main.tsx    entry point; self-hosted @fontsource imports
+  App.tsx     placeholder proving the theme
+design/       standalone HTML mockups — the visual spec
+```
+
+## Design and architecture
+
+- `ARCHITECTURE.md` — stack, data layer, routing and project layout decisions.
+- `design/e-sunday-kitchen.html` — the visual spec the theme tokens are derived from. Open it side by side with the app when changing `src/theme.css`.
+
+The mockups in `design/` load fonts from Google's CDN, but the app itself does not: Petrona and Figtree are self-hosted through `@fontsource` and bundled. `design/` is excluded from both Biome and Tailwind's source scanning.
