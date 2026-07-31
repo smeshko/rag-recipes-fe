@@ -3,7 +3,14 @@ default:
     @just --list
 
 # Run the Vite dev server.
+#
+# Export RAG_RECIPES_TOKEN first — the dev proxy injects it as
+# `Authorization: Bearer $RAG_RECIPES_TOKEN` on every /api request. It is the
+# frontend-side name for the secret the backend reads as PERSONAL_API_TOKEN;
+# set it in the shell, never in a .env file. Unset → header omitted → the
+# backend answers 401 on every call.
 dev:
+    @[ -n "${RAG_RECIPES_TOKEN:-}" ] || echo "warning: RAG_RECIPES_TOKEN is not set — the proxy will omit Authorization and the backend will answer 401. Export it (same value as the backend's PERSONAL_API_TOKEN)."
     pnpm dev
 
 # Type-check and produce the production build.

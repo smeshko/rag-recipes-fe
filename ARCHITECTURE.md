@@ -11,7 +11,7 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 ### Runtime & deployment
 
 - **Target**: home server, same machine as the backend, exposed via a **cloudflared tunnel**. Frontend protected by **Cloudflare Access**; backend will need its own protection (likely an access token). **Specifics are TBD** — deferred until after the app is built.
-- Consequence for the code now: stay deployment-agnostic. API calls go to a **relative `/api` base**; the Vite dev server proxies `/api` → `http://localhost:8001`. Whatever fronts the app in production (Caddy/nginx/cloudflared config) does the same path-split. No CORS work needed on the backend as long as the origin is shared; auth header injection stays pluggable (dev: Vite proxy injects `Authorization: Bearer $PERSONAL_API_TOKEN`; prod: reverse proxy or CF Access JWT — open question).
+- Consequence for the code now: stay deployment-agnostic. API calls go to a **relative `/api` base**; the Vite dev server proxies `/api` → `http://localhost:8001`. Whatever fronts the app in production (Caddy/nginx/cloudflared config) does the same path-split. No CORS work needed on the backend as long as the origin is shared; auth header injection stays pluggable (dev: Vite proxy injects `Authorization: Bearer $RAG_RECIPES_TOKEN` — the frontend-side name for the same secret the backend reads as `PERSONAL_API_TOKEN`, kept distinct so both can live in one shell; prod: reverse proxy or CF Access JWT — open question).
 
 ### Stack
 
