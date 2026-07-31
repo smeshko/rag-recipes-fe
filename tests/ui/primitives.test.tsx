@@ -59,19 +59,27 @@ describe("SearchInput", () => {
     expect(onSubmit).toHaveBeenCalledWith("weekend breakfast");
   });
 
-  /* The design shows no visible label and a placeholder alone computes to no
-     accessible name, so the field must carry one explicitly. */
-  it("exposes the field by an accessible name", () => {
+  /* A placeholder alone computes to no accessible name, so the field must
+     carry one — and it must match the visible prompt (WCAG 2.5.3), otherwise
+     a voice-control user cannot target it by what they see. */
+  it("names the field after its visible placeholder", () => {
     render(<SearchInput onSubmit={vi.fn()} />);
     expect(
-      screen.getByRole("textbox", { name: "Search your cookbooks" }),
+      screen.getByRole("textbox", { name: "What are we cooking?" }),
     ).toBeInTheDocument();
   });
 
-  it("lets the caller override the accessible name", () => {
-    render(<SearchInput label="Search this book" onSubmit={vi.fn()} />);
+  it("follows a customised placeholder", () => {
+    render(<SearchInput placeholder="Search this book" onSubmit={vi.fn()} />);
     expect(
       screen.getByRole("textbox", { name: "Search this book" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the caller override the accessible name explicitly", () => {
+    render(<SearchInput label="Search your cookbooks" onSubmit={vi.fn()} />);
+    expect(
+      screen.getByRole("textbox", { name: "Search your cookbooks" }),
     ).toBeInTheDocument();
   });
 
