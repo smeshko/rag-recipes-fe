@@ -10,7 +10,6 @@ import "@fontsource/figtree/latin-400-italic.css";
 import "@fontsource/figtree/latin-500.css";
 import "@fontsource/figtree/latin-600.css";
 import "@fontsource/figtree/latin-700.css";
-import "./index.css";
 import "./theme.css";
 import App from "./App.tsx";
 
