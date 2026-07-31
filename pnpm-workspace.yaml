@@ -1,0 +1,4 @@
+# pnpm settings (pnpm >= 10 reads these from here, not package.json).
+# msw's postinstall is approved so installs don't fail the ignored-builds check.
+allowBuilds:
+  msw: true
