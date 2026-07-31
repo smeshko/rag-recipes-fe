@@ -1,5 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { accentFor } from "../../src/features/search/accent";
@@ -76,6 +78,50 @@ describe("results grid", () => {
       q: "frittata",
       mode: "vector",
     });
+  });
+
+  it("keeps the producing mode on held-over cards during a mode change", async () => {
+    /* Gate the vector response on a promise the test releases, so the
+       placeholder window is deterministic rather than a timing race. */
+    let releaseVector = () => {};
+    const vectorInFlight = new Promise<void>((resolve) => {
+      releaseVector = resolve;
+    });
+    server.use(
+      http.post("/api/v1/search", async ({ request }) => {
+        const body = (await request.json()) as { query: string; mode: string };
+        if (body.mode === "vector") {
+          await vectorInFlight;
+        }
+        return HttpResponse.json(searchFixture(body.query));
+      }),
+    );
+
+    const user = userEvent.setup();
+    const router = renderAt("/?q=frittata");
+    await screen.findByText(first.item.title);
+    await user.click(screen.getByRole("button", { name: "Vector only" }));
+
+    /* Vector is selected in the URL, but the grid still holds hybrid results:
+       it must say so, and must not hand them a vector back-link. */
+    await waitFor(() =>
+      expect(router.state.location.search).toBe("?q=frittata&mode=vector"),
+    );
+    expect(
+      screen.getByText(/ranked by hybrid score · needs-review excluded/),
+    ).toBeInTheDocument();
+
+    const link = screen.getByText(first.item.title).closest("a");
+    (link as HTMLAnchorElement).click();
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/recipes/${first.item.id}`),
+    );
+    expect(router.state.location.state).toEqual({
+      q: "frittata",
+      mode: "hybrid",
+    });
+
+    releaseVector();
   });
 
   it("renders the empty state on zero hits", async () => {

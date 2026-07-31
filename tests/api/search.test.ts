@@ -50,10 +50,13 @@ describe("useSearch", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(capturedType).toContain("application/json");
     expect(capturedBody).toEqual({ query: "frittata", mode: "hybrid" });
-    expect(result.current.data?.results).toHaveLength(2);
-    expect(result.current.data?.results[0]?.item.title).toBe(
+    expect(result.current.data?.response.results).toHaveLength(2);
+    expect(result.current.data?.response.results[0]?.item.title).toBe(
       "Spinach & Cheddar Frittata",
     );
+    /* The producing mode travels with the results — see the placeholder case
+       below for why the URL's mode is not a safe substitute. */
+    expect(result.current.data?.mode).toBe("hybrid");
   });
 
   it("fires no request for an empty query", async () => {
@@ -111,8 +114,13 @@ describe("useSearch", () => {
 
     rerender({ q: "frittata", mode: "keyword" });
     expect(result.current.isPlaceholderData).toBe(true);
-    expect(result.current.data?.results).toHaveLength(2);
+    expect(result.current.data?.response.results).toHaveLength(2);
+    /* The held-over data still reports the mode that produced it, not the
+       newly-selected one — this is what stops the grid relabelling stale
+       hybrid cards as keyword-ranked. */
+    expect(result.current.data?.mode).toBe("hybrid");
     await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+    expect(result.current.data?.mode).toBe("keyword");
 
     rerender({ q: "scones", mode: "keyword" });
     expect(result.current.data).toBeUndefined();

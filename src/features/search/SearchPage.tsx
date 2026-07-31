@@ -49,6 +49,13 @@ export function SearchPage() {
   };
 
   const search = useSearch(q, mode);
+  /* Render what the data says, not what the URL says: during a mode change
+     the grid still holds the previous mode's results (D7's placeholder), so
+     the header label and every card's router state must use the mode that
+     produced them. Falls back to the URL's mode only when there is no data
+     to describe. */
+  const results = search.data?.response.results ?? [];
+  const resultsMode = search.data?.mode ?? mode;
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -80,13 +87,13 @@ export function SearchPage() {
           error={search.error as ApiError}
           onRetry={() => search.refetch()}
         />
-      ) : (search.data?.results.length ?? 0) === 0 ? (
+      ) : results.length === 0 ? (
         <SearchEmpty />
       ) : (
         <ResultsGrid
-          results={search.data?.results ?? []}
+          results={results}
           q={q}
-          mode={mode}
+          mode={resultsMode}
           dimmed={search.isPlaceholderData}
         />
       )}
