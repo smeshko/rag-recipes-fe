@@ -39,6 +39,10 @@
   --radius-panel: 22px;
   --radius-pill: 999px;
 
+  /* Names are TASK-002's. Which mockup surface each one belongs to, since the
+     pair reads as one surface's rest/hover state but is not: --shadow-card is
+     the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
+     no resting shadow. --shadow-card-hover is .card:hover only. */
   --shadow-card:
     0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
   --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
@@ -50,6 +54,9 @@
    baseline is Figtree 15px/1.55 on the radial cream wash. */
 @layer base {
   body {
+    /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
+       widgets (scrollbars, input chrome, autofill) against the cream wash. */
+    color-scheme: light;
     background:
       radial-gradient(1000px 500px at 50% -160px, #fdf0dc, transparent 70%),
       var(--color-cream);
