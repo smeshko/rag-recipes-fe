@@ -2,11 +2,12 @@ export { ApiError, request } from "./client";
 export { createQueryClient, shouldRetry } from "./queryClient";
 export type {
   ApiMethod,
-  ApiPath,
   ApiRoute,
+  Endpoint,
   ParamlessRoute,
   PathParams,
-  RequestPath,
+  QueryParams,
+  RouteOptions,
 } from "./routes";
 export { route } from "./routes";
 export type { ErrorEnvelope, HealthResponse } from "./types";

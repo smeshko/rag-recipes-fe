@@ -1,4 +1,4 @@
-import type { RequestPath } from "./routes";
+import type { Endpoint } from "./routes";
 import type { ErrorEnvelope } from "./types";
 
 const BASE = "/api/v1";
@@ -42,13 +42,15 @@ function isErrorEnvelope(body: unknown): body is ErrorEnvelope {
  * things: the error envelope and the base path. No auth — the dev proxy
  * (and later the production front) injects credentials server-side.
  *
- * `path` is schema-derived: a paramless route template verbatim, or a path
- * built by `route()` for templates that take parameters. The response type
- * stays a caller assertion — the backend declares no response_models.
+ * The target is an `Endpoint` from `route()`, which carries the path and the
+ * schema-declared method, so an unchecked path or a method the backend does
+ * not serve cannot get here. `init` therefore cannot set `method`. The
+ * response type stays a caller assertion — the backend declares no
+ * response_models.
  */
 export async function request<T>(
-  path: RequestPath,
-  init?: RequestInit,
+  endpoint: Endpoint,
+  init?: Omit<RequestInit, "method">,
 ): Promise<T> {
   /* Normalize through Headers: RequestInit.headers may be a record, a
      Headers instance or an array of tuples, and object spread preserves
@@ -60,7 +62,11 @@ export async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${BASE}${path}`, { ...init, headers });
+    response = await fetch(`${BASE}${endpoint.path}`, {
+      ...init,
+      method: endpoint.method,
+      headers,
+    });
   } catch {
     throw new ApiError(
       "network_error",

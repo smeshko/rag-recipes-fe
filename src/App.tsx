@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { ApiError, type HealthResponse, request } from "./api";
+import { ApiError, type HealthResponse, request, route } from "./api";
+
+const healthEndpoint = route("/health", "get");
 
 /* Temporary demo proving the typed client + proxy + provider end to end.
    Moves into the search-page placeholder in phase 1.3. */
 function HealthProbe() {
   const health = useQuery({
     queryKey: ["health"],
-    queryFn: () => request<HealthResponse>("/health"),
+    queryFn: () => request<HealthResponse>(healthEndpoint),
   });
 
   if (health.isPending) {
