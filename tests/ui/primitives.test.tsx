@@ -59,6 +59,16 @@ describe("SearchInput", () => {
     expect(onSubmit).toHaveBeenCalledWith("weekend breakfast");
   });
 
+  it("keeps the magnifier out of the accessibility tree", () => {
+    const { container } = render(<SearchInput onSubmit={vi.fn()} />);
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    // A <title> under aria-hidden would be unreachable markup, not a label.
+    expect(screen.queryByTitle("Search")).toBeNull();
+  });
+
   it("keeps the default value editable", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

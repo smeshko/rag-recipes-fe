@@ -25,13 +25,16 @@ export function SearchInput({
         onSubmit(value);
       }}
     >
+      {/* Decorative: the placeholder and the Ask button carry the meaning, so
+          the icon is hidden from the a11y tree. No <title> — aria-hidden
+          prunes the subtree, so a title here would be unreachable markup
+          implying an accessible name the icon does not have. */}
       <svg
         viewBox="0 0 24 24"
         className="h-[18px] w-[18px] flex-none stroke-apricot stroke-2"
         fill="none"
         aria-hidden="true"
       >
-        <title>Search</title>
         <circle cx="11" cy="11" r="7" />
         <path d="M20 20l-3.5-3.5" />
       </svg>
