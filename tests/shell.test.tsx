@@ -29,15 +29,23 @@ describe("shell nav active state", () => {
     ["/?q=test", "Cook"],
     ["/recipes/abc", "Cook"],
     ["/library", "Library"],
+    // The router ignores a trailing slash when matching; Nav must too.
+    ["/library/", "Library"],
   ])("%s marks %s active", (path, pill) => {
     renderAt(path);
     expect(currentPill()).toBe(pill);
   });
 
-  it("marks no pill active on unknown paths", () => {
-    renderAt("/nope");
-    expect(currentPill()).toBeNull();
-  });
+  /* Nav must match what the router matches: these all fall through to the
+     `*` route, so none of them may light a pill up. */
+  it.each(["/nope", "/recipes", "/recipes-old", "/recipes/abc/extra"])(
+    "%s is a not-found path and marks no pill active",
+    (path) => {
+      renderAt(path);
+      expect(screen.getByTestId("notfound-page")).toBeInTheDocument();
+      expect(currentPill()).toBeNull();
+    },
+  );
 
   it("never marks Add books active", () => {
     for (const path of ["/", "/library", "/recipes/abc", "/nope"]) {

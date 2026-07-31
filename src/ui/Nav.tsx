@@ -1,15 +1,18 @@
-import { Link, useLocation } from "react-router";
+import { Link, matchPath, useLocation } from "react-router";
 
 /* Active state is derived once from pathname — NavLink can't express
    "Cook stays active on /recipes/*" (its root match ignores `end`), so these
    are plain Links with aria-current set by hand on the single active pill. */
 type ActivePill = "cook" | "library" | null;
 
+/* matchPath, not string prefixes: it applies the router's own matching, so a
+   path only lights a pill up if it really resolves to that route. Prefixes
+   claimed /recipes, /recipes-old and /recipes/a/b, all of which are 404s. */
 function activePill(pathname: string): ActivePill {
-  if (pathname === "/" || pathname.startsWith("/recipes")) {
+  if (matchPath("/", pathname) || matchPath("/recipes/:id", pathname)) {
     return "cook";
   }
-  if (pathname === "/library") {
+  if (matchPath("/library", pathname)) {
     return "library";
   }
   return null;
