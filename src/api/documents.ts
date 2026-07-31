@@ -1,14 +1,53 @@
 import { queryOptions, useQueries, useQuery } from "@tanstack/react-query";
 import { request } from "./client";
 import { route } from "./routes";
-import type { DocumentDetailResponse, DocumentListResponse } from "./types";
+import type {
+  DocumentDetailResponse,
+  DocumentListItem,
+  DocumentListResponse,
+} from "./types";
 
-const documentsEndpoint = route("/documents", "get");
+/* The backend pages this endpoint (default 50 rows, max 200) and returns no
+   total, so a single unparameterised call silently truncates the shelf — and
+   both `cookbookCount` and the ready-recipes fan-out treat what comes back as
+   the whole of it. Walk pages until one comes back short. */
+const LIST_PAGE_SIZE = 200;
+/** Hard stop at 5000 documents so a mispaging backend cannot spin forever. */
+const LIST_MAX_PAGES = 25;
+
+async function fetchAllDocuments(): Promise<DocumentListResponse> {
+  const documents: DocumentListItem[] = [];
+  const seen = new Set<string>();
+
+  for (let page = 0; page < LIST_MAX_PAGES; page += 1) {
+    const batch = await request<DocumentListResponse>(
+      route("/documents", "get", {
+        query: {
+          limit: String(LIST_PAGE_SIZE),
+          offset: String(page * LIST_PAGE_SIZE),
+        },
+      }),
+    );
+    for (const doc of batch.documents) {
+      /* Offsets shift under a concurrent insert, which can repeat a row
+         across pages; ids keep the shelf count honest either way. */
+      if (!seen.has(doc.id)) {
+        seen.add(doc.id);
+        documents.push(doc);
+      }
+    }
+    if (batch.documents.length < LIST_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return { documents };
+}
 
 export function useDocuments() {
   return useQuery({
     queryKey: ["documents"],
-    queryFn: () => request<DocumentListResponse>(documentsEndpoint),
+    queryFn: fetchAllDocuments,
   });
 }
 
