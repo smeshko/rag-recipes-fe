@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
-import { useShelfStats } from "../../api";
+import { type ApiError, useShelfStats } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
 import { ModeChips } from "./ModeChips";
+import { ResultsGrid } from "./ResultsGrid";
+import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
 
 const MODES = ["hybrid", "keyword", "vector"] as const;
 
@@ -68,6 +70,26 @@ export function SearchPage() {
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
+
+      {/* Branch order matters; never isPending — a disabled query is pending
+          forever, which would pin a skeleton on the bare /. */}
+      {q === "" ? null : search.isLoading ? (
+        <SearchSkeleton />
+      ) : search.error ? (
+        <SearchError
+          error={search.error as ApiError}
+          onRetry={() => search.refetch()}
+        />
+      ) : (search.data?.results.length ?? 0) === 0 ? (
+        <SearchEmpty />
+      ) : (
+        <ResultsGrid
+          results={search.data?.results ?? []}
+          q={q}
+          mode={mode}
+          dimmed={search.isPlaceholderData}
+        />
+      )}
     </div>
   );
 }
