@@ -25,7 +25,7 @@ describe("useShelfStats", () => {
     );
   });
 
-  it("still resolves when one detail query fails", async () => {
+  it("withholds the total rather than undercounting when a book fails", async () => {
     server.use(
       http.get("/api/v1/documents/doc_baking", () =>
         HttpResponse.json(documentNotFoundEnvelope("doc_baking"), {
@@ -37,7 +37,22 @@ describe("useShelfStats", () => {
       wrapper: wrapper(),
     });
     await waitFor(() => expect(result.current.cookbookCount).toBe(3));
-    /* 107 + 105 from the two healthy books; the 404 must not hang the sum. */
-    await waitFor(() => expect(result.current.readyRecipes).toBe(212));
+    /* The two healthy books sum to 212, but the shelf holds three: publishing
+       212 would state a short total as if it were exact. The cookbook count
+       still renders, so the hero degrades rather than breaking. */
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(result.current.readyRecipes).toBeUndefined();
+    expect(result.current.cookbookCount).toBe(3);
+  });
+
+  it("reports zero — not unknown — for an empty shelf", async () => {
+    server.use(
+      http.get("/api/v1/documents", () => HttpResponse.json({ documents: [] })),
+    );
+    const { result } = renderHook(() => useShelfStats(), {
+      wrapper: wrapper(),
+    });
+    await waitFor(() => expect(result.current.cookbookCount).toBe(0));
+    await waitFor(() => expect(result.current.readyRecipes).toBe(0));
   });
 });
