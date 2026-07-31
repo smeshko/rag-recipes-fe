@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { type ApiError, useShelfStats } from "../../api";
+import { type ApiError, useAnswer, useShelfStats } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
+import { AnswerSkeleton } from "./AnswerSkeleton";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -48,16 +49,23 @@ export function SearchPage() {
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
 
+  /* Functional updater so unknown params (e.g. epic 03's review=included)
+     survive every write; hybrid stays out of the URL (D1). */
   const writeParams = (nextQ: string, nextMode: SearchMode) => {
-    const params: Record<string, string> = {};
-    if (nextQ) {
-      params.q = nextQ;
-    }
-    /* hybrid is the default — keep it out of the URL (D1). */
-    if (nextMode !== "hybrid") {
-      params.mode = nextMode;
-    }
-    setSearchParams(params);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (nextQ) {
+        params.set("q", nextQ);
+      } else {
+        params.delete("q");
+      }
+      if (nextMode !== "hybrid") {
+        params.set("mode", nextMode);
+      } else {
+        params.delete("mode");
+      }
+      return params;
+    });
   };
 
   const search = useSearch(q, mode);
@@ -68,6 +76,31 @@ export function SearchPage() {
      to describe. */
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
+
+  const answer = useAnswer();
+  const { reset } = answer;
+
+  /* Reset guard: a q change clears the answer — except when the change was
+     the Ask commit itself. The ref is set by our own code immediately before
+     mutate(), so the guard never depends on mutation-dispatch timing. */
+  const askedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (askedFor.current !== q) {
+      askedFor.current = null;
+      reset();
+    }
+  }, [q, reset]);
+
+  /* URL commit before mutate — named so the ordering is testable. */
+  const askShelf = () => {
+    const asked = text.trim();
+    if (asked === "") {
+      return;
+    }
+    askedFor.current = asked;
+    writeParams(asked, mode);
+    answer.mutate({ query: asked, mode });
+  };
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -86,9 +119,14 @@ export function SearchPage() {
           value={text}
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
+          onAsk={askShelf}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
+
+      {/* Answer slot: explicit-action only; TASK-003/004 replace the
+          placeholder success/fallback/error renderings. */}
+      {answer.isPending ? <AnswerSkeleton /> : null}
 
       {/* Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
