@@ -1,10 +1,19 @@
-import { queryOptions, useQueries, useQuery } from "@tanstack/react-query";
-import { request } from "./client";
+import {
+  type QueryClient,
+  queryOptions,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError, request } from "./client";
 import { route } from "./routes";
 import type {
   DocumentDetailResponse,
   DocumentListItem,
   DocumentListResponse,
+  DocumentStatus,
+  IngestionStatusResponse,
 } from "./types";
 
 /* The backend pages this endpoint (default 50 rows, max 200) and returns no
@@ -179,4 +188,280 @@ export function useShelfStats(): ShelfStats {
     partial,
     unavailable: documents.isError,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Ingestion status polling (phase 3.3).                               */
+/* ------------------------------------------------------------------ */
+
+/** Production poll cadence. Tests inject `intervalMs` instead — ESM imports
+    are read-only live bindings, so an exported const cannot be reassigned. */
+export const POLL_INTERVAL_MS = 2500;
+
+/** Stall budget: ≈100s at the production cadence. Only meaningful because
+    the guard is armed solely in `queued`/`creating_source_spans`. */
+export const POLL_STALL_LIMIT = 40;
+
+/** Give up after this many consecutive failed poll ROUNDS (not retries —
+    production allows 2 in-fetch retries, so this is up to 12 requests). */
+const MAX_FAILED_ROUNDS = 4;
+
+/** Why polling stopped — the UI branches its affordances on this. */
+export type IngestionStopReason = "terminal" | "error" | "stalled" | null;
+
+/**
+ * Debounce window for the shared ['documents'] invalidation: a batch
+ * finishing together would otherwise abort and restart 3.1's in-flight
+ * fetch-all loop once per row (`invalidateQueries` defaults to
+ * `cancelRefetch: true`) instead of coalescing.
+ */
+export const SHELF_INVALIDATION_DEBOUNCE_MS = 150;
+
+/* Keyed per QueryClient, not per hook instance — the fan-in this blunts is
+   N ROWS finishing together, and a per-instance timer cannot see across
+   rows. WeakMap so a per-test client never leaks its timer to the next. */
+const shelfInvalidationTimers = new WeakMap<
+  QueryClient,
+  ReturnType<typeof setTimeout>
+>();
+
+function invalidateOnTerminal(queryClient: QueryClient, id: string): void {
+  /* `exact` matters: a bare ['document', id] prefix would also match
+     ['document', id, 'status'] and refire the poll this stop just ended. */
+  void queryClient.invalidateQueries({
+    queryKey: ["document", id],
+    exact: true,
+  });
+  if (shelfInvalidationTimers.has(queryClient)) {
+    return;
+  }
+  shelfInvalidationTimers.set(
+    queryClient,
+    setTimeout(() => {
+      shelfInvalidationTimers.delete(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+    }, SHELF_INVALIDATION_DEBOUNCE_MS),
+  );
+}
+
+/** The two states where a stall is diagnosable from this payload alone:
+    the enqueue is best-effort (`queued`) and the span stage is exempt from
+    the backend's stuck-job sweep (`creating_source_spans`). Everywhere
+    else the signals are legitimately frozen — `extracting_items` holds
+    both status and span count still for the whole extraction. */
+function stallGuardArmed(status: DocumentStatus): boolean {
+  return status === "queued" || status === "creating_source_spans";
+}
+
+function is4xx(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status !== null &&
+    error.status >= 400 &&
+    error.status < 500
+  );
+}
+
+export function ingestionStatusQueryOptions(id: string) {
+  return {
+    /* No staleTime here — load-bearing: after a run ends the cached payload
+       holds terminal: true, and a remount only resumes polling after a
+       reprocess because staleTime 0 forces the mount refetch. */
+    queryKey: ["document", id, "status"] as const,
+    queryFn: () =>
+      request<IngestionStatusResponse>(
+        route("/documents/{document_id}/status", "get", {
+          params: { document_id: id },
+        }),
+      ),
+  };
+}
+
+export interface UseIngestionStatusOptions {
+  enabled: boolean;
+  intervalMs?: number;
+  stallLimit?: number;
+}
+
+export interface UseIngestionStatusResult {
+  data: IngestionStatusResponse | undefined;
+  error: unknown;
+  isPending: boolean;
+  stopReason: IngestionStopReason;
+  /** Reset both counters, clear the stop, refetch — the UI's way back. */
+  checkAgain: () => void;
+}
+
+/**
+ * Poll GET /documents/{id}/status until it answers `terminal: true` — or
+ * until one of the three degraded stops: a 4xx (hard stop, the row is
+ * stale), ~4 consecutive failed rounds of 5xx/network (with 2× backoff
+ * per round), or `stallLimit` unchanged polls while parked in an armed
+ * state. On the non-terminal → terminal transition, invalidates
+ * ['documents'] (debounced) and ['document', id] so the row re-renders
+ * from fresh counts.
+ */
+export function useIngestionStatus(
+  id: string,
+  {
+    enabled,
+    intervalMs = POLL_INTERVAL_MS,
+    stallLimit = POLL_STALL_LIMIT,
+  }: UseIngestionStatusOptions,
+): UseIngestionStatusResult {
+  const queryClient = useQueryClient();
+
+  /* Counters and stopReason are useState, never refs: once a guard trips
+     the interval returns false, the timer clears, and no further query
+     update arrives — a ref-held stopReason would never reach the DOM. */
+  const [stallCount, setStallCount] = useState(0);
+  const [failedRounds, setFailedRounds] = useState(0);
+  const [stopReason, setStopReason] = useState<IngestionStopReason>(null);
+
+  /* Prev-value bookkeeping (safe as refs — they never render). */
+  const lastSampleRef = useRef<{
+    status: DocumentStatus;
+    pages: number | null;
+  } | null>(null);
+  const prevTerminalRef = useRef<boolean | undefined>(undefined);
+  const processedDataAtRef = useRef(0);
+  const processedErrorAtRef = useRef(0);
+  const prevEnabledRef = useRef(enabled);
+
+  const query = useQuery({
+    ...ingestionStatusQueryOptions(id),
+    enabled,
+    /* jsdom reports visibilityState "prerender" and TanStack skips interval
+       refetches when unfocused; this also unfreezes real backgrounded tabs. */
+    refetchIntervalInBackground: true,
+    refetchInterval: (q) => {
+      /* Computed per RENDER, not per poll (setOptions recomputes it every
+         render) — it must stay a pure read of state; counting happens in
+         the effects below, once per completed fetch. */
+      if (q.state.data?.terminal) {
+        return false;
+      }
+      if (q.state.error) {
+        if (is4xx(q.state.error)) {
+          return false;
+        }
+        if (failedRounds >= MAX_FAILED_ROUNDS) {
+          return false;
+        }
+        return intervalMs * 2 ** failedRounds;
+      }
+      if (stallCount >= stallLimit) {
+        return false;
+      }
+      return intervalMs;
+    },
+  });
+
+  const { data, error, isPending, dataUpdatedAt, errorUpdatedAt, refetch } =
+    query;
+
+  /* Reset on the non-terminal ENTRY (enabled false→true), never at mount:
+     a shelf left open through one long ingest would otherwise hand the
+     next reprocess a spent budget that trips on its first render. */
+  useEffect(() => {
+    if (!prevEnabledRef.current && enabled) {
+      setStallCount(0);
+      setFailedRounds(0);
+      setStopReason(null);
+      lastSampleRef.current = null;
+    }
+    prevEnabledRef.current = enabled;
+  }, [enabled]);
+
+  /* Count once per COMPLETED fetch, keyed on dataUpdatedAt — never inside
+     refetchInterval (fires per render) and never keyed on `data` alone
+     (structural sharing reuses the reference for an unchanged payload,
+     which is exactly the stall case). The processed-at ref keeps counter
+     updates from re-running the effect against the same fetch. */
+  useEffect(() => {
+    if (
+      dataUpdatedAt === 0 ||
+      dataUpdatedAt === processedDataAtRef.current ||
+      data === undefined
+    ) {
+      return;
+    }
+    processedDataAtRef.current = dataUpdatedAt;
+    setFailedRounds(0);
+
+    if (data.terminal) {
+      lastSampleRef.current = null;
+      setStopReason("terminal");
+      return;
+    }
+
+    const sample = {
+      status: data.status,
+      pages: data.progress.pages_processed,
+    };
+    const last = lastSampleRef.current;
+    lastSampleRef.current = sample;
+
+    /* First non-terminal payload or an armed-status change resets the
+       budget; an unchanged payload only counts while the guard is armed. */
+    if (last === null || last.status !== sample.status) {
+      setStallCount(0);
+      setStopReason(null);
+      return;
+    }
+    if (stallGuardArmed(sample.status) && last.pages === sample.pages) {
+      const next = stallCount + 1;
+      setStallCount(next);
+      setStopReason(next >= stallLimit ? "stalled" : null);
+      return;
+    }
+    setStallCount(0);
+    setStopReason(null);
+  }, [dataUpdatedAt, data, stallCount, stallLimit]);
+
+  /* Consecutive failed ROUNDS — never `fetchFailureCount`, which counts
+     retries within one fetch and resets each fetch (production's 2 retries
+     would read 3 after a single failed round). */
+  useEffect(() => {
+    if (
+      errorUpdatedAt === 0 ||
+      errorUpdatedAt === processedErrorAtRef.current ||
+      !error
+    ) {
+      return;
+    }
+    processedErrorAtRef.current = errorUpdatedAt;
+    if (is4xx(error)) {
+      setStopReason("error");
+      return;
+    }
+    const next = failedRounds + 1;
+    setFailedRounds(next);
+    if (next >= MAX_FAILED_ROUNDS) {
+      setStopReason("error");
+    }
+  }, [errorUpdatedAt, error, failedRounds]);
+
+  /* Terminal handoff. The predicate is prev === false && next === true —
+     `prev !== next` would treat undefined → terminal as a transition and
+     fire on mount for every failed row TASK-002 fetches once. v5 removed
+     onSuccess from useQuery, so an effect is the only legal home. */
+  useEffect(() => {
+    const terminal = data?.terminal;
+    const prev = prevTerminalRef.current;
+    prevTerminalRef.current = terminal;
+    if (prev === false && terminal === true) {
+      invalidateOnTerminal(queryClient, id);
+    }
+  }, [data, queryClient, id]);
+
+  const checkAgain = useCallback(() => {
+    setStallCount(0);
+    setFailedRounds(0);
+    setStopReason(null);
+    lastSampleRef.current = null;
+    void refetch();
+  }, [refetch]);
+
+  return { data, error, isPending, stopReason, checkAgain };
 }
