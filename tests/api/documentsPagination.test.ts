@@ -45,7 +45,7 @@ describe("fetchAllDocuments pagination loop", () => {
     const urls: URL[] = [];
     server.use(documentsListHandler(books, (url) => urls.push(url)));
 
-    const result = await fetchAllDocuments();
+    const result = (await fetchAllDocuments()).documents;
 
     expect(result).toHaveLength(205);
     expect(result.map((d) => d.id)).toEqual(books.map((d) => d.id));
@@ -61,7 +61,7 @@ describe("fetchAllDocuments pagination loop", () => {
     const urls: URL[] = [];
     server.use(documentsListHandler(books, (url) => urls.push(url)));
 
-    const result = await fetchAllDocuments();
+    const result = (await fetchAllDocuments()).documents;
 
     expect(result).toHaveLength(200);
     expect(urls).toHaveLength(2);
@@ -85,7 +85,7 @@ describe("fetchAllDocuments pagination loop", () => {
       }),
     );
 
-    const result = await fetchAllDocuments();
+    const result = (await fetchAllDocuments()).documents;
 
     const ids = result.map((d) => d.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -114,7 +114,7 @@ describe("useDocuments", () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(3);
+    expect(result.current.data?.documents).toHaveLength(3);
   });
 });
 

@@ -27,7 +27,7 @@ function detailStateOf(query: {
 
 export function LibraryPage() {
   const documents = useDocuments();
-  const docs = documents.data ?? [];
+  const docs = documents.data?.documents ?? [];
   const details = useDocumentDetails(docs.map((d) => d.id));
 
   const booksReady = docs.filter(
