@@ -100,3 +100,68 @@ export interface DocumentDetailResponse {
     chunks: number;
   };
 }
+
+/* ---------- knowledge items (2.2) ---------- */
+
+/** Per-ingredient parse — verbatim pass-through, treat as untrusted. */
+export interface Ingredient {
+  position?: number | null;
+  raw_text?: string | null;
+  item_text?: string | null;
+  item_normalized?: string | null;
+  unit_raw?: string | null;
+  unit_normalized?: string | null;
+  quantity_text?: string | null;
+  quantity_value?: number | null;
+  preparation?: string | null;
+  notes?: string | null;
+  confidence?: Record<string, number> | null;
+}
+
+export interface Step {
+  step_number?: number | null;
+  text?: string | null;
+  confidence?: Record<string, number> | null;
+  source_span_ids?: string[] | null;
+}
+
+/** The real confidence shape — members optional (verbatim pass-through). */
+export interface ItemConfidence {
+  overall?: number | null;
+  boundary?: number | null;
+  fields?: Record<string, number> | null;
+}
+
+/* Defensive mirror of recipe.v1: every field optional/nullable because the
+   backend passes the stored dict verbatim. `schema` stays a plain string so
+   future recipe.v* versions still render what matches; non-recipe schemas
+   get the honest not-a-recipe state instead (2.2 TASK-004). */
+export interface RecipeStructuredData {
+  schema?: string;
+  yield?: string | null;
+  prep_time?: string | null;
+  cook_time?: string | null;
+  total_time?: string | null;
+  ingredients?: Ingredient[] | null;
+  ingredients_text?: string | null;
+  steps?: Step[] | null;
+  steps_text?: string | null;
+  /** Appended at persist time; absent from the Pydantic model. */
+  warnings?: string[] | null;
+}
+
+export interface KnowledgeItemResponse {
+  knowledge_item: {
+    id: string;
+    document_id: string;
+    item_type: string;
+    title: string;
+    summary: string | null;
+    status: string;
+    source_span_ids: string[];
+    confidence: ItemConfidence | null;
+    structured_data: RecipeStructuredData;
+  };
+  display: { title: string; subtitle: string | null };
+  source_citations: SourceCitation[];
+}
