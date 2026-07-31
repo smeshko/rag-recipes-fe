@@ -18,6 +18,10 @@ lint:
 format:
     pnpm exec biome check --write .
 
+# Run the Vitest + MSW suite once.
+test:
+    pnpm exec vitest run
+
 # Regenerate src/api/schema.d.ts from the running backend's OpenAPI schema.
 typegen:
     @curl -sf -o /dev/null http://localhost:8001/openapi.json || (echo "backend not reachable on :8001 — start it with 'just dev' in ../backend" && exit 1)
