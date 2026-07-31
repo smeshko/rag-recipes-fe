@@ -77,6 +77,11 @@ export interface ShelfStats {
       distinguish a short sum from a complete one — `readyRecipes: undefined`
       alone would conflate "still loading" with "one book failed". */
   partial: boolean;
+  /** The shelf list itself failed terminally (401, exhausted 5xx retries,
+      network). Without this the caller cannot tell a dead request from a slow
+      one — `cookbookCount === undefined` means both — and would sit on a
+      loading message forever. */
+  unavailable: boolean;
 }
 
 /* Module-level combine keeps the reference stable across renders.
@@ -131,5 +136,6 @@ export function useShelfStats(): ShelfStats {
        "not known yet". */
     readyRecipes: documents.data ? readyRecipes : undefined,
     partial,
+    unavailable: documents.isError,
   };
 }

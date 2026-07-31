@@ -14,7 +14,13 @@ function parseMode(raw: string | null): SearchMode {
 }
 
 function ShelfStatsLine() {
-  const { cookbookCount, readyRecipes, partial } = useShelfStats();
+  const { cookbookCount, readyRecipes, partial, unavailable } = useShelfStats();
+  /* Checked before the loading branch: a terminal list failure also leaves
+     cookbookCount undefined, and "warming up the shelf…" would then sit there
+     forever describing a request that is never coming back. */
+  if (unavailable) {
+    return <span className="text-ink-faint">shelf stats unavailable</span>;
+  }
   if (cookbookCount === undefined) {
     return <span className="text-ink-faint">warming up the shelf…</span>;
   }

@@ -134,6 +134,23 @@ describe("SearchPage URL ↔ state", () => {
     );
   });
 
+  it("says stats are unavailable when the shelf list fails terminally", async () => {
+    server.use(
+      http.get("/api/v1/documents", () =>
+        HttpResponse.json(
+          { error: { code: "unauthorized", message: "nope", details: {} } },
+          { status: 401 },
+        ),
+      ),
+    );
+    renderAt("/");
+    /* Never "warming up the shelf…" — that request is not coming back. */
+    expect(
+      await screen.findByText("shelf stats unavailable"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/warming up the shelf/)).toBeNull();
+  });
+
   it("marks the hero total as a floor when a book's counts fail", async () => {
     server.use(
       http.get("/api/v1/documents/doc_baking", () =>
