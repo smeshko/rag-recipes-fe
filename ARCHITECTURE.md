@@ -22,7 +22,7 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 ### Data layer
 
 - **TanStack Query** over a **thin hand-rolled fetch client**. The client knows two things: the error envelope (`{error: {code, message, details}}` — thrown as a typed `ApiError`) and the base path. No client-only global state beyond that — no Redux/Zustand.
-- **Types are generated, not written**: `openapi-typescript` against the backend's `/openapi.json` → `src/api/schema.d.ts`, regenerated via a script when the backend changes. Zero drift with the FastAPI schemas.
+- **Types are generated, not written**: `openapi-typescript` against the backend's `/openapi.json` → `src/api/schema.d.ts`, regenerated via `just typegen` when the backend changes (`just typegen-check` fails on staleness). Zero drift with the FastAPI schemas — but only for **paths, methods, params and request bodies** (`SearchRequestBody`, `AnswerRequestBody` etc. are generated and are to be used directly, never hand-written). It does **not** hold for **response bodies or the error envelope**: the backend declares no FastAPI `response_model`s, so the generated responses are `unknown` and no error type exists at all. Those live hand-written and narrow in `src/api/types.ts` until the backend adds response models (see the phase 1.2 plan's Decisions).
 - **Ingestion polling**: `GET /documents/{id}/status` with TanStack Query `refetchInterval`, stopping when `terminal: true`. Drives the library screen's stage stepper + page progress bar.
 
 ### Search & answer flow
@@ -53,7 +53,7 @@ The four designed screens only: search+answer, recipe detail, library (upload, p
 ### Tooling
 
 - **pnpm** for packages, **Biome** for lint+format — one fast tool each, mirroring the backend's uv+ruff philosophy.
-- `justfile` recipes (this is the frontend repo's own justfile, so no `fe-` prefix): `dev`, `build`, `lint`, `format`; `test` and `typegen` (openapi codegen) arrive with the test harness in phase 1.2.
+- `justfile` recipes (this is the frontend repo's own justfile, so no `fe-` prefix): `dev`, `build`, `lint`, `format`, `test` (Vitest + MSW), `typegen` (openapi codegen into `src/api/schema.d.ts`) and `typegen-check` (same codegen with `--check`, to prove the committed schema is not stale). Both typegen recipes need the backend running on :8001.
 
 ## Project layout (planned)
 
