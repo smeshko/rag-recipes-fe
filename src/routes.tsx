@@ -3,13 +3,31 @@ import { LibraryPage } from "./features/library/LibraryPage";
 import { NotFoundPage } from "./features/notfound/NotFoundPage";
 import { RecipePage } from "./features/recipe/RecipePage";
 import { SearchPage } from "./features/search/SearchPage";
+import { Shell } from "./ui/Shell";
 
 /* Route-object array (not JSX) so createBrowserRouter (app) and
-   createMemoryRouter (tests) share the same table. TASK-002 wraps these in
-   the Shell layout route with per-route handle config. */
+   createMemoryRouter (tests) share the same table. Shell is a single layout
+   route; per-route width/footer ride on each child's handle. */
 export const routes: RouteObject[] = [
-  { path: "/", element: <SearchPage /> },
-  { path: "/recipes/:id", element: <RecipePage /> },
-  { path: "/library", element: <LibraryPage /> },
-  { path: "*", element: <NotFoundPage /> },
+  {
+    element: <Shell />,
+    children: [
+      {
+        path: "/",
+        element: <SearchPage />,
+        handle: { width: "wide", footer: true },
+      },
+      {
+        path: "/recipes/:id",
+        element: <RecipePage />,
+        handle: { width: "narrow" },
+      },
+      {
+        path: "/library",
+        element: <LibraryPage />,
+        handle: { width: "narrow" },
+      },
+      { path: "*", element: <NotFoundPage />, handle: { width: "wide" } },
+    ],
+  },
 ];
