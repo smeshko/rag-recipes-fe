@@ -3,6 +3,8 @@ import { useKnowledgeItem } from "../../api";
 import { Bloom } from "../../ui";
 import { Crumb } from "./Crumb";
 import { FactsRow } from "./FactsRow";
+import { IngredientsPanel } from "./IngredientsPanel";
+import { MethodPanel } from "./MethodPanel";
 import { TitleBlock } from "./TitleBlock";
 
 function TitleSkeleton() {
@@ -33,10 +35,27 @@ export function RecipePage() {
       {item.isLoading ? (
         <TitleSkeleton />
       ) : item.isSuccess ? (
-        <Bloom duration={0.7} delay={0.08} className="pt-8">
-          <TitleBlock item={item.data} />
-          <FactsRow sd={item.data.knowledge_item.structured_data} />
-        </Bloom>
+        <>
+          <Bloom duration={0.7} delay={0.08} className="pt-8">
+            <TitleBlock item={item.data} />
+            <FactsRow sd={item.data.knowledge_item.structured_data} />
+          </Bloom>
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-[26px] max-[880px]:grid-cols-1">
+            <Bloom duration={0.7} delay={0.14}>
+              <IngredientsPanel
+                sd={item.data.knowledge_item.structured_data}
+                status={item.data.knowledge_item.status}
+              />
+            </Bloom>
+            <Bloom duration={0.7} delay={0.18}>
+              <MethodPanel
+                sd={item.data.knowledge_item.structured_data}
+                status={item.data.knowledge_item.status}
+                confidence={item.data.knowledge_item.confidence}
+              />
+            </Bloom>
+          </div>
+        </>
       ) : null}
     </div>
   );

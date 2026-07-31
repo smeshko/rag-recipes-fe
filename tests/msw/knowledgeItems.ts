@@ -166,6 +166,20 @@ export const extractingItemFixture = {
   },
 };
 
+/** Mid-ingest: extracting status with an empty structured_data — the honest
+    copy is "Still being extracted…", not "none extracted". */
+export const extractingEmptyItemFixture = {
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_extracting_empty",
+    status: "extracting",
+    confidence: null,
+    structured_data: { schema: "recipe.v1" },
+  },
+  display: { title: "Half-read Frittata", subtitle: null },
+  source_citations: [],
+};
+
 /** source_span_ids non-empty but citations silently dropped by the backend. */
 export const zeroCitationItemFixture = {
   ...fullItemFixture,
@@ -208,6 +222,7 @@ const byId: Record<string, unknown> = {
   item_review: needsReviewItemFixture,
   item_superseded: supersededItemFixture,
   item_extracting: extractingItemFixture,
+  item_extracting_empty: extractingEmptyItemFixture,
   item_nocite: zeroCitationItemFixture,
   item_technique: nonRecipeItemFixture,
   item_warned: warningsItemFixture,
