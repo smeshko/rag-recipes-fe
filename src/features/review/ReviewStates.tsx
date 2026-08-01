@@ -41,6 +41,23 @@ export function ReviewError({
   );
 }
 
+export function ReviewEmptyFiltered({ onClear }: { onClear: () => void }) {
+  return (
+    <Panel className="text-center">
+      <p className="font-display text-[18px] font-semibold">
+        Nothing to review for this book.
+      </p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="mt-2 text-[12.5px] font-bold text-apricot hover:underline"
+      >
+        See the whole queue
+      </button>
+    </Panel>
+  );
+}
+
 export function ReviewEmptyAll() {
   return (
     <Panel className="text-center">
