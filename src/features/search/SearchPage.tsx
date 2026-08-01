@@ -322,7 +322,11 @@ export function SearchPage() {
         />
       ) : null}
 
-      {showAnswerCta ? <AnswerCta onAsk={askShelf} /> : null}
+      {showAnswerCta ? (
+        /* Disabled, not hidden, on an emptied draft: askShelf asks the draft
+           and would silently no-op (review #1.2) — same guard as the bar. */
+        <AnswerCta onAsk={askShelf} disabled={text.trim() === ""} />
+      ) : null}
 
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid

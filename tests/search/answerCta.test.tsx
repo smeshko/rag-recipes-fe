@@ -136,6 +136,19 @@ describe("answer CTA", () => {
     expect(answersCalls).toHaveLength(1);
   });
 
+  it("disables while the draft box is emptied — no dead click", async () => {
+    /* The CTA asks the draft; with the box cleared (uncommitted) a click
+       would silently no-op (review #1.2). Same guard as the bar's Ask. */
+    const user = userEvent.setup();
+    renderAt("/?q=frittata");
+    await settleGrid();
+    await user.clear(searchBox());
+    expect(cta()).toBeInTheDocument();
+    expect(ctaButton()).toBeDisabled();
+    await user.type(searchBox(), "x");
+    expect(ctaButton()).toBeEnabled();
+  });
+
   it("answers the draft: an edited, unsubmitted input is committed and asked", async () => {
     server.use(answersHandler(groundedAnswerFixture));
     const user = userEvent.setup();
