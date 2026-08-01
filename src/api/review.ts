@@ -15,9 +15,9 @@ import type {
   ReviewListResponse,
 } from "./types";
 
-/* Review-queue hooks (phase 4.2). Served by MSW mocks (src/mocks/review.ts)
-   until phase 4.4 wires the live backend — the call sites never change,
-   because `route()` already types the two paths via review-schema.d.ts. */
+/* Review-queue hooks (phase 4.2). The two review routes are typed by the
+   generated schema (backend 21.3); tests keep running on the MSW handlers in
+   src/mocks/review.ts. */
 
 /* Same page-walk contract as the shelf (DECISIONS.md D6): the response
    carries no total, so walk `limit`/`offset` pages until one comes back

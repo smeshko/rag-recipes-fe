@@ -4,8 +4,9 @@ import type { paths } from "./schema";
    imports these, never `schema.d.ts` itself: a misspelled route, a method the
    backend does not serve, a wrong path parameter or an unknown query
    parameter is a compile error rather than a runtime 404/405/422. Response
-   bodies stay hand-written in types.ts — the backend declares no
-   response_models, so the schema types them `unknown`. */
+   bodies are generated too since backend 21.1 (response_model on every
+   route); the review types in types.ts alias them, while the older
+   hand-written response types there are legacy pending a sweep. */
 
 /** The base the client prepends; route templates are carried without it. */
 type Base = "/api/v1";

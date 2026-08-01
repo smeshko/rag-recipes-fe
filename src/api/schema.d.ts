@@ -80,7 +80,24 @@ export interface paths {
         get: operations["get_document_api_v1_documents__document_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Document
+         * @description Delete a document and everything derived from it (Phase 21.2).
+         *
+         *     ``SELECT ... FOR UPDATE`` on the document row serializes this handler
+         *     against ``transition_to`` (same lock) and the reprocess route's guarded
+         *     UPDATE, so a document cannot slip from terminal to ``queued`` between the
+         *     terminal check and the cascade (D3). Non-terminal documents 409 with the
+         *     same ``ingestion_already_running`` envelope the reprocess guard uses.
+         *
+         *     The stored PDF is removed only *after* the commit, best-effort (D6): the
+         *     DB is the source of truth, and a file deleted before a rolled-back commit
+         *     would strand a live document pointing at a missing PDF — strictly worse
+         *     than an orphaned file. On storage failure the key is logged (ERROR) and
+         *     the 204 stands. 204 carries no body (D7), so the per-table deleted-row
+         *     counts are logged at INFO as the operation's only audit trail (D5).
+         */
+        delete: operations["delete_document_api_v1_documents__document_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -96,6 +113,10 @@ export interface paths {
         /**
          * Get Document Status
          * @description Report ingestion progress for a document.
+         *
+         *     Deliberately exempt from Phase 21.3's read-time review derivation (plan
+         *     D3): this endpoint reports pipeline/ingestion truth (progress, terminal,
+         *     failure); the review pill reads list/detail.
          *
          *     For a non-terminal doc the in-flight version is the highest existing span
          *     version (Epic 11.2, DECISIONS #5) — ``max + 1`` work for a new_source_version
@@ -185,10 +206,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/review-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Review Items
+         * @description List pending-review knowledge items, newest first (contract §1, D4).
+         *
+         *     Every ``needs_review`` item of a terminal document — including a
+         *     ``failed`` one (D9 recorded consequence) and every live generation of a
+         *     twice-reviewed document (D9: staleness is handled at decision time, not by
+         *     hiding rows here). Unknown ``document_id`` → naturally 200 + empty list.
+         */
+        get: operations["list_review_items_api_v1_review_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge-items/{item_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Knowledge Item
+         * @description Decide a pending-review item (contract §2, plan D1/D6/D9).
+         *
+         *     Approve flips ``needs_review → indexing`` and enqueues
+         *     ``index_knowledge_item``; reject flips to terminal ``rejected``. The two
+         *     409 guards run first (advisory read-then-act); the atomic guarded UPDATE
+         *     is what actually closes the decide/decide race.
+         *
+         *     The DB commit and the Redis enqueue are *not* one transaction — the
+         *     enqueue-failure revert is best-effort compensation, not atomicity (D1).
+         *     The reachable end states are: decided-and-enqueued; reverted to
+         *     ``needs_review`` (compensating UPDATE, user re-approves); or a stuck
+         *     ``indexing`` row that the item-level sweep returns to ``needs_review``.
+         *     Either way indexing completes or the item returns to the queue.
+         */
+        post: operations["review_knowledge_item_api_v1_knowledge_items__item_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerBody */
+        AnswerBody: {
+            /** Style */
+            style: string;
+            /** Text */
+            text: string;
+            /** Citations */
+            citations: string[];
+        };
+        /** AnswerCitation */
+        AnswerCitation: {
+            /** Citation Id */
+            citation_id: string;
+            /** Knowledge Item Id */
+            knowledge_item_id: string;
+            /** Source Span Id */
+            source_span_id: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * AnswerDebugInfo
+         * @description Dev-only answer diagnostics (doc 8 § 11), gated like the search debug payload.
+         */
+        AnswerDebugInfo: {
+            /** Retrieval Mode */
+            retrieval_mode: string;
+            /** Model */
+            model: string;
+            /** Prompt Version */
+            prompt_version: string;
+            /** Context Item Count */
+            context_item_count: number;
+            /** Citation Count */
+            citation_count: number;
+            retrieval_debug?: components["schemas"]["RetrievalDebugInfo"] | null;
+        };
         /** AnswerOptions */
         AnswerOptions: {
             /**
@@ -241,6 +356,33 @@ export interface components {
              */
             answer: components["schemas"]["AnswerOptions"];
         };
+        /** AnswerResponse */
+        AnswerResponse: {
+            /** Query */
+            query: string;
+            answer: components["schemas"]["AnswerBody"];
+            /**
+             * Recommendations
+             * @default []
+             */
+            recommendations: components["schemas"]["Recommendation"][];
+            /**
+             * Citations
+             * @default []
+             */
+            citations: components["schemas"]["AnswerCitation"][];
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["KnowledgeItemResult"][];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+            debug?: components["schemas"]["AnswerDebugInfo"] | null;
+        };
         /** AnswerRetrievalOptions */
         AnswerRetrievalOptions: {
             /**
@@ -250,6 +392,48 @@ export interface components {
             mode: string;
             /** Limit */
             limit?: number | null;
+        };
+        /**
+         * BatchUploadErrorCode
+         * @description Machine-readable code on ``error`` items (Epic 21.1, D2).
+         *
+         *     Mirrors the ``ErrorCode`` values actually raisable by the per-file upload
+         *     helper; anything unexpected maps to ``internal_error``.
+         * @enum {string}
+         */
+        BatchUploadErrorCode: "invalid_request" | "unsupported_file_type" | "internal_error";
+        /**
+         * BatchUploadItemResult
+         * @description Per-file outcome in a batch cohort upload (Epic 19.2).
+         */
+        BatchUploadItemResult: {
+            /** Filename */
+            filename: string;
+            status: components["schemas"]["BatchUploadItemStatus"];
+            /** Document Id */
+            document_id?: string | null;
+            /** Error */
+            error?: string | null;
+            error_code?: components["schemas"]["BatchUploadErrorCode"] | null;
+        };
+        /**
+         * BatchUploadItemStatus
+         * @description Per-file outcome of a batch cohort upload — closed set (Epic 21.1).
+         * @enum {string}
+         */
+        BatchUploadItemStatus: "created" | "duplicate" | "error";
+        /** BatchUploadResponse */
+        BatchUploadResponse: {
+            /** Items */
+            items: components["schemas"]["BatchUploadItemResult"][];
+            /** Total */
+            total: number;
+            /** Created */
+            created: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Errors */
+            errors: number;
         };
         /** Body_upload_document_api_v1_documents_post */
         Body_upload_document_api_v1_documents_post: {
@@ -283,10 +467,243 @@ export interface components {
             /** Language */
             language?: string | null;
         };
+        /** DisplayProjection */
+        DisplayProjection: {
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string | null;
+            /** Snippet */
+            snippet: string | null;
+            /** Badges */
+            badges: string[];
+        };
+        /** DocumentCounts */
+        DocumentCounts: {
+            /** Source Spans */
+            source_spans: number;
+            /** Knowledge Items */
+            knowledge_items: number;
+            /** Ready Items */
+            ready_items: number;
+            /** Needs Review Items */
+            needs_review_items: number;
+            /** Chunks */
+            chunks: number;
+        };
+        /** DocumentDetailResponse */
+        DocumentDetailResponse: {
+            document: components["schemas"]["DocumentResponse"];
+            counts: components["schemas"]["DocumentCounts"];
+        };
+        /**
+         * DocumentListItem
+         * @description The doc §3 list item — smaller than ``DocumentResponse`` (no
+         *     ``asset_id``/``language``/timestamps).
+         */
+        DocumentListItem: {
+            /** Id */
+            id: string;
+            /** Category */
+            category: string;
+            /** Subcategory */
+            subcategory: string | null;
+            /** Title */
+            title: string;
+            /** Author */
+            author: string;
+            /** Source Type */
+            source_type: string;
+            /** Status */
+            status: string;
+            /** Active Source Version */
+            active_source_version: number | null;
+        };
+        /** DocumentListResponse */
+        DocumentListResponse: {
+            /** Documents */
+            documents: components["schemas"]["DocumentListItem"][];
+        };
+        /** DocumentResponse */
+        DocumentResponse: {
+            /** Id */
+            id: string;
+            /** Asset Id */
+            asset_id: string;
+            /** Category */
+            category: string;
+            /** Subcategory */
+            subcategory: string | null;
+            /** Title */
+            title: string;
+            /** Author */
+            author: string;
+            /** Source Type */
+            source_type: string;
+            /** Language */
+            language: string | null;
+            /** Active Source Version */
+            active_source_version: number | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthResponse */
+        HealthResponse: {
+            /** Status */
+            status: string;
+        };
+        /**
+         * IngestionFailureInfo
+         * @description Latest ingestion failure for a FAILED document (doc 6 § 5; Epic 21 D1).
+         *
+         *     ``stage`` is the status the document failed *from*
+         *     (``IngestionFailure.last_status``), not its current status.
+         *     ``error_message`` is deliberately excluded — ``reason`` is the stable,
+         *     FE-presentable code.
+         */
+        IngestionFailureInfo: {
+            /** Reason */
+            reason: string;
+            /** Stage */
+            stage: string;
+            /**
+             * Failed At
+             * Format: date-time
+             */
+            failed_at: string;
+        };
+        /** IngestionProgress */
+        IngestionProgress: {
+            /** Stage */
+            stage: string;
+            /** Message */
+            message: string | null;
+            /** Pages Total */
+            pages_total: number | null;
+            /** Pages Processed */
+            pages_processed: number | null;
+        };
+        /** IngestionStatusResponse */
+        IngestionStatusResponse: {
+            /** Document Id */
+            document_id: string;
+            /** Status */
+            status: string;
+            /** Active Source Version */
+            active_source_version: number | null;
+            /** Current Source Version */
+            current_source_version: number | null;
+            progress: components["schemas"]["IngestionProgress"];
+            /** Terminal */
+            terminal: boolean;
+            failure?: components["schemas"]["IngestionFailureInfo"] | null;
+        };
+        /** KnowledgeItemDetail */
+        KnowledgeItemDetail: {
+            /** Id */
+            id: string;
+            /** Document Id */
+            document_id: string;
+            /** Item Type */
+            item_type: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Status */
+            status: string;
+            /** Source Span Ids */
+            source_span_ids: string[];
+            /** Confidence */
+            confidence: {
+                [key: string]: unknown;
+            } | null;
+            /** Structured Data */
+            structured_data: {
+                [key: string]: unknown;
+            };
+            /**
+             * Review Reasons
+             * @default []
+             */
+            review_reasons: components["schemas"]["ReviewReason"][];
+        };
+        /** KnowledgeItemDisplay */
+        KnowledgeItemDisplay: {
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string | null;
+        };
+        /** KnowledgeItemResponse */
+        KnowledgeItemResponse: {
+            knowledge_item: components["schemas"]["KnowledgeItemDetail"];
+            display: components["schemas"]["KnowledgeItemDisplay"];
+            /** Source Citations */
+            source_citations: components["schemas"]["KnowledgeItemSourceCitation"][];
+        };
+        /** KnowledgeItemResult */
+        KnowledgeItemResult: {
+            /**
+             * Type
+             * @default knowledge_item_result
+             * @constant
+             */
+            type: "knowledge_item_result";
+            item: components["schemas"]["ResultItem"];
+            display: components["schemas"]["DisplayProjection"];
+            structured_preview: components["schemas"]["StructuredPreview"];
+            document: components["schemas"]["ResultDocument"];
+            /** Matched Chunks */
+            matched_chunks: components["schemas"]["MatchedChunk"][];
+            /** Source Citations */
+            source_citations: components["schemas"]["SourceCitation"][];
+        };
+        /** KnowledgeItemSourceCitation */
+        KnowledgeItemSourceCitation: {
+            /** Source Span Id */
+            source_span_id: string;
+            /** Label */
+            label: string;
+            /** Locator */
+            locator: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** MatchedChunk */
+        MatchedChunk: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Chunk Type */
+            chunk_type: string;
+            /** Score */
+            score: number;
+        };
+        /** Recommendation */
+        Recommendation: {
+            /** Knowledge Item Id */
+            knowledge_item_id: string;
+            /** Title */
+            title: string;
+            /** Reason */
+            reason: string;
+            /** Citation Ids */
+            citation_ids: string[];
         };
         /** ReprocessRequest */
         ReprocessRequest: {
@@ -294,6 +711,164 @@ export interface components {
             mode: string;
             /** Reason */
             reason?: string | null;
+        };
+        /** ReprocessResponse */
+        ReprocessResponse: {
+            /** Document Id */
+            document_id: string;
+            /** Status */
+            status: string;
+            /** Previous Active Source Version */
+            previous_active_source_version: number | null;
+            /** Current Source Version */
+            current_source_version: number | null;
+        };
+        /** ResultDocument */
+        ResultDocument: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Author */
+            author: string;
+        };
+        /** ResultItem */
+        ResultItem: {
+            /** Id */
+            id: string;
+            /** Item Type */
+            item_type: string;
+            /** Schema */
+            schema: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Status */
+            status: string;
+            /** Confidence */
+            confidence: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * RetrievalDebugInfo
+         * @description Loose projection of the Epic 12 debug payload (doc 7 § 12).
+         *
+         *     Modeled permissively so doc-7 evolution does not break the schema.
+         */
+        RetrievalDebugInfo: {
+            /** Retrieval Mode */
+            retrieval_mode: string;
+            /** Normalized Query */
+            normalized_query: string;
+            /** Embedding Model */
+            embedding_model?: string | null;
+            /** Keyword Top K */
+            keyword_top_k?: number | null;
+            /** Vector Top K */
+            vector_top_k?: number | null;
+            /** Keyword Candidates */
+            keyword_candidates?: number | null;
+            /** Vector Candidates */
+            vector_candidates?: number | null;
+            /** Merged Candidates */
+            merged_candidates?: number | null;
+            /** Grouped Items */
+            grouped_items?: number | null;
+            /** Rerank Applied */
+            rerank_applied?: boolean | null;
+        };
+        /**
+         * ReviewDecision
+         * @enum {string}
+         */
+        ReviewDecision: "approved" | "rejected";
+        /** ReviewItem */
+        ReviewItem: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Item Type */
+            item_type: string;
+            document: components["schemas"]["ReviewItemDocument"];
+            source_pages: components["schemas"]["ReviewItemSourcePages"];
+            extraction: components["schemas"]["ReviewItemExtraction"];
+            /** Flags */
+            flags: components["schemas"]["ReviewReason"][];
+        };
+        /** ReviewItemDocument */
+        ReviewItemDocument: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** ReviewItemExtraction */
+        ReviewItemExtraction: {
+            /** Schema */
+            schema: string;
+            /** Yield */
+            yield: string | null;
+            /** Top Ingredients */
+            top_ingredients: string[];
+            /** Confidence Overall */
+            confidence_overall: number | null;
+        };
+        /** ReviewItemListResponse */
+        ReviewItemListResponse: {
+            /** Review Items */
+            review_items: components["schemas"]["ReviewItem"][];
+        };
+        /**
+         * ReviewItemSourcePages
+         * @description Min/max page bounds resolved from the item's own source spans.
+         *
+         *     ``needs_review`` items have no chunks, so these come straight from
+         *     ``KnowledgeItem.source_span_ids`` locators; both ``None`` when nothing
+         *     resolves.
+         */
+        ReviewItemSourcePages: {
+            /** Page Start */
+            page_start: number | null;
+            /** Page End */
+            page_end: number | null;
+        };
+        /**
+         * ReviewReason
+         * @description One reason an item needs review (Epic 21.1, D3).
+         *
+         *     ``code`` is a stable machine code (a ``validate_soft`` warning code, or
+         *     the ``llm_warning`` envelope for non-canonical strings); ``message`` is a
+         *     presentation-layer human label.
+         */
+        ReviewReason: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ReviewRequest */
+        ReviewRequest: {
+            decision: components["schemas"]["ReviewDecision"];
+        };
+        /** ReviewResponse */
+        ReviewResponse: {
+            knowledge_item: components["schemas"]["ReviewedKnowledgeItem"];
+            /** Decision */
+            decision: string;
+        };
+        /** ReviewedKnowledgeItem */
+        ReviewedKnowledgeItem: {
+            /** Id */
+            id: string;
+            /** Document Id */
+            document_id: string;
+            /** Status */
+            status: string;
         };
         /** SearchFilters */
         SearchFilters: {
@@ -345,6 +920,44 @@ export interface components {
              */
             mode: string;
         };
+        /** SearchResponse */
+        SearchResponse: {
+            /** Query */
+            query: string;
+            /** Results */
+            results: components["schemas"]["KnowledgeItemResult"][];
+            debug?: components["schemas"]["RetrievalDebugInfo"] | null;
+        };
+        /** SourceCitation */
+        SourceCitation: {
+            /** Source Span Id */
+            source_span_id: string;
+            /** Label */
+            label: string;
+            /** Locator */
+            locator: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** StructuredPreview */
+        StructuredPreview: {
+            /** Schema */
+            schema: string;
+            /** Yield */
+            yield: string | null;
+            /** Top Ingredients */
+            top_ingredients: string[];
+        };
+        /** UploadIngestion */
+        UploadIngestion: {
+            /** Status */
+            status: string;
+        };
+        /** UploadResponse */
+        UploadResponse: {
+            document: components["schemas"]["DocumentResponse"];
+            ingestion: components["schemas"]["UploadIngestion"];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -382,9 +995,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["HealthResponse"];
                 };
             };
         };
@@ -410,7 +1021,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -443,7 +1054,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["UploadResponse"];
                 };
             };
             /** @description Validation Error */
@@ -476,7 +1087,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["BatchUploadResponse"];
                 };
             };
             /** @description Validation Error */
@@ -507,8 +1118,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DocumentDetailResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_v1_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -538,7 +1178,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["IngestionStatusResponse"];
                 };
             };
             /** @description Validation Error */
@@ -573,7 +1213,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ReprocessResponse"];
                 };
             };
             /** @description Validation Error */
@@ -606,7 +1246,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -639,7 +1279,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["AnswerResponse"];
                 };
             };
             /** @description Validation Error */
@@ -670,7 +1310,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_review_items_api_v1_review_items_get: {
+        parameters: {
+            query?: {
+                document_id?: string | null;
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_knowledge_item_api_v1_knowledge_items__item_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponse"];
                 };
             };
             /** @description Validation Error */
