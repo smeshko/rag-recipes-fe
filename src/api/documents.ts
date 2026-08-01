@@ -18,6 +18,7 @@ import type {
   IngestionStatusResponse,
   ReprocessResponse,
 } from "./types";
+import { TERMINAL_STATUSES } from "./types";
 
 /* The backend pages this endpoint (default 50 rows, max 200) and returns no
    total, so a single unparameterised call silently truncates the shelf — and
@@ -275,6 +276,10 @@ function invalidateOnTerminal(queryClient: QueryClient, id: string): void {
     the backend's stuck-job sweep (`creating_source_spans`). Everywhere
     else the signals are legitimately frozen — `extracting_items` holds
     both status and span count still for the whole extraction. */
+function isTerminalStatus(status: DocumentStatus): boolean {
+  return (TERMINAL_STATUSES as readonly string[]).includes(status);
+}
+
 function stallGuardArmed(status: DocumentStatus): boolean {
   return status === "queued" || status === "creating_source_spans";
 }
@@ -369,6 +374,7 @@ export function useIngestionStatus(
   const processedDataAtRef = useRef(0);
   const processedErrorAtRef = useRef(0);
   const prevEnabledRef = useRef(enabled);
+  const prevListStatusRef = useRef(listStatus);
 
   const query = useQuery({
     ...ingestionStatusQueryOptions(id),
@@ -412,18 +418,47 @@ export function useIngestionStatus(
   const { data, error, isPending, dataUpdatedAt, errorUpdatedAt, refetch } =
     query;
 
-  /* Reset on the non-terminal ENTRY (enabled false→true), never at mount:
-     a shelf left open through one long ingest would otherwise hand the
-     next reprocess a spent budget that trips on its first render. */
+  /* Reset on the non-terminal ENTRY, never at mount: a shelf left open
+     through one long ingest would otherwise hand the next reprocess a
+     spent budget that trips on its first render.
+
+     `enabled` going false→true is one entry, but NOT the only one. A
+     `failed` row is already enabled (TASK-002 fetches it once), so when
+     the list refreshes that row to `queued` — someone reprocessing from
+     another tab, or the curl-only reuse/new-version modes this plan
+     deliberately keeps out of the UI — `enabled` never moves. Nothing
+     would then dislodge the previous run's cached `failed` payload:
+     `staleTime` 0 only refetches on mount and this row never unmounted,
+     so `refetchInterval` keeps reading `terminal: true` and returns
+     false. The row renders a dead stepper, with `stopReason: 'terminal'`
+     so not even "check again" appears. Detect the new run from the list
+     status crossing terminal→non-terminal and refetch explicitly. */
   useEffect(() => {
-    if (!prevEnabledRef.current && enabled) {
-      setStallCount(0);
-      setFailedRounds(0);
-      setStopReason(null);
-      lastSampleRef.current = null;
-    }
+    const enteredEnabled = !prevEnabledRef.current && enabled;
+    const prevList = prevListStatusRef.current;
+    const newRun =
+      prevList !== undefined &&
+      listStatus !== undefined &&
+      isTerminalStatus(prevList) &&
+      !isTerminalStatus(listStatus);
     prevEnabledRef.current = enabled;
-  }, [enabled]);
+    prevListStatusRef.current = listStatus;
+    if (!enteredEnabled && !newRun) {
+      return;
+    }
+    setStallCount(0);
+    setFailedRounds(0);
+    setStopReason(null);
+    lastSampleRef.current = null;
+    if (newRun) {
+      /* Discard the finished run's history too — the next terminal payload
+         belongs to a different run and must be judged on its own. */
+      prevTerminalRef.current = undefined;
+      void queryClient.invalidateQueries({
+        queryKey: ["document", id, "status"],
+      });
+    }
+  }, [enabled, listStatus, queryClient, id]);
 
   /* Count once per COMPLETED fetch, keyed on dataUpdatedAt — never inside
      refetchInterval (fires per render) and never keyed on `data` alone

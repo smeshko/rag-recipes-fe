@@ -137,22 +137,27 @@ describe("useIngestionStatus", () => {
     const rounds = at.length;
     expect(rounds).toBe(4);
 
-    /* Widening cadence, not a fixed one — asserted as LOWER bounds against
-       the nominal 40 / 80 / 160ms (interval × 2^round), never as an
-       ordering over measured gaps.
+    /* Backoff happening for real, asserted as LOWER bounds only — never as
+       an ordering over measured gaps. `setTimeout` cannot fire early, so a
+       scheduler pause can only push a gap up and no pause can fail a lower
+       bound; the natural-looking `gaps[2] > gaps[0]` has the opposite
+       property, and one pause inside the first gap flakes it.
 
-       `setTimeout` cannot fire early, so a scheduler pause can only push a
-       gap up and no pause can fail a lower bound. The natural-looking
-       `gaps[2] > gaps[0]` has the opposite property: one pause inside the
-       first gap inverts it and the test flakes for a reason that has
-       nothing to do with the code under test.
+       The bounds are the WORST case, not the nominal 40/80/160. The
+       interval is recomputed when the fetch settles, which can be one
+       render before the effect has incremented `failedRounds` — so each
+       gap is legitimately either intervalMs × 2^n or × 2^(n-1), and a
+       nominal-valued bound is itself a flake (observed: a 26ms first gap
+       against a 30ms bound). Benign in production: at worst one retry
+       comes an interval early, and the 4-round budget is unaffected.
 
-       These still fail loudly on the realistic regression — dropping the
-       backoff leaves every gap at the flat 20ms interval. */
+       Exactness lives in the pollBackoffMs test above, where it costs
+       nothing; what this test uniquely proves is that the real scheduler
+       widens at all rather than holding the flat 20ms cadence. */
     const gaps = at.slice(1).map((t, i) => t - at[i]);
-    expect(gaps[0]).toBeGreaterThanOrEqual(30);
-    expect(gaps[1]).toBeGreaterThanOrEqual(60);
-    expect(gaps[2]).toBeGreaterThanOrEqual(120);
+    expect(gaps[0]).toBeGreaterThanOrEqual(15);
+    expect(gaps[1]).toBeGreaterThanOrEqual(30);
+    expect(gaps[2]).toBeGreaterThanOrEqual(60);
 
     await sleep(SETTLE);
     expect(at.length).toBe(rounds);
@@ -294,6 +299,56 @@ describe("useIngestionStatus", () => {
        counters were actually reset, not resumed mid-budget. */
     await waitFor(() => expect(result.current.stopReason).toBe("stalled"));
     expect(calls).toBe(stoppedAt + 3);
+  });
+
+  it("restarts polling when the list flips failed → queued with no local reprocess", async () => {
+    /* A failed row is ALREADY enabled, so a reprocess started elsewhere —
+       another tab, or the curl-only reuse/new-version modes this plan
+       keeps out of the UI — moves nothing the enabled edge can see. The
+       cached payload is still the old run's terminal `failed`, and
+       staleTime 0 only refetches on mount, so without a listStatus-driven
+       restart the row renders a dead stepper forever, with stopReason
+       'terminal' so not even "check again" appears. */
+    let calls = 0;
+    server.use(
+      statusQueueHandler(
+        DOC,
+        [
+          ingestionStatus(DOC, "failed"),
+          ingestionStatus(DOC, "extracting_items", { pages_processed: 3 }),
+          ingestionStatus(DOC, "extracting_items", { pages_processed: 7 }),
+          ingestionStatus(DOC, "ready"),
+        ],
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result, rerender } = renderHook(
+      ({ listStatus }: { listStatus: DocumentStatus }) =>
+        useIngestionStatus(DOC, {
+          enabled: true,
+          intervalMs: INTERVAL,
+          listStatus,
+        }),
+      { wrapper, initialProps: { listStatus: "failed" as DocumentStatus } },
+    );
+
+    await waitFor(() => expect(result.current.stopReason).toBe("terminal"));
+    const afterFailedRun = calls;
+
+    rerender({ listStatus: "queued" as DocumentStatus });
+
+    /* Genuinely polling again — more than the single restart fetch... */
+    await waitFor(() => expect(calls).toBeGreaterThan(afterFailedRun + 1));
+    /* ...and the new run is followed all the way to its own terminal. */
+    await waitFor(() => expect(result.current.data?.status).toBe("ready"));
+    expect(result.current.stopReason).toBe("terminal");
   });
 
   it("issues zero requests while disabled", async () => {
