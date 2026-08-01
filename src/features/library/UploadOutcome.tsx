@@ -1,13 +1,15 @@
 import {
   classifyFailure,
+  isUnconfirmedFailure,
   type UploadOutcomeItem,
   type UploadSummary,
 } from "../../api";
 
 /* Inline results under the dropzone — a deliberate design extension: the
-   mockup has no results area, so tone rules come from the plan. Duplicates
-   are NEVER an error: calm role="status" text. Only true failures get
-   role="alert" danger styling. */
+   mockup has no results area, so tone rules come from the plan. Duplicates are
+   NEVER an error: calm role="status" text. Neither is an upload we cannot
+   prove failed. role="alert" and danger styling are reserved for a positively
+   identified refusal. */
 
 export interface UploadOutcomeProps {
   summary: UploadSummary | null;
@@ -15,64 +17,79 @@ export interface UploadOutcomeProps {
   error: Error | null;
 }
 
-/* The sequential path carries the ApiError code; the batch path carries only
-   the backend's message string — render that verbatim rather than fragile
-   reverse-mapping of message text to codes. */
 /* A lost response is not a refusal: the book may already be on the shelf
    (which the mutation re-fetches on exactly this outcome), so the copy must
    not claim it failed outright. */
 const INDETERMINATE_COPY =
   "The shelf never answered — if the book was added it will appear below.";
 
+/*
+ * The sequential path carries the ApiError code and so can key on it. The
+ * batch path carries only the backend's message string — rendered verbatim,
+ * because PLAN.md rules out reverse-mapping message text to codes (it would
+ * break on any backend copy edit). That string stays even for an `opaque`
+ * item: "Failed to commit the uploaded document." is more use to the reader
+ * than a generic hedge, and the count beside it already says unconfirmed.
+ */
 function errorCopy(item: UploadOutcomeItem): string {
   if (item.code === "unsupported_file_type") {
     return "Only PDFs can join the shelf";
   }
-  /* Only `unproven` gets the softened copy. A batch item is `opaque` — it
-     still carries the backend's own message, which is more informative than
-     a generic hedge for the dominant unsupported-type case. */
   if (item.certainty === "unproven") {
     return INDETERMINATE_COPY;
   }
   return item.error ?? "The upload failed.";
 }
 
+function CalmLine({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="status" className="mt-3 text-[13.5px] text-ink-soft">
+      {children}
+    </p>
+  );
+}
+
 function SingleOutcome({ item }: { item: UploadOutcomeItem }) {
   if (item.status === "duplicate") {
     return (
-      <p role="status" className="mt-3 text-[13.5px] text-ink-soft">
+      <CalmLine>
         <em className="not-italic font-semibold">
           {item.title ?? item.filename}
         </em>{" "}
         is already on the shelf — nothing was added.
-      </p>
+      </CalmLine>
     );
   }
   if (item.status === "error") {
-    return (
+    /* Unconfirmed is not failed: the shelf is being re-read as this renders,
+       so shouting in danger red would contradict a row that may appear. */
+    return isUnconfirmedFailure(item) ? (
+      <CalmLine>{errorCopy(item)}</CalmLine>
+    ) : (
       <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
         {errorCopy(item)}
       </p>
     );
   }
   return (
-    <p role="status" className="mt-3 text-[13.5px] text-ink-soft">
+    <CalmLine>
       <em className="not-italic font-semibold">
         {item.title ?? item.filename}
       </em>{" "}
       joined the shelf — it will appear queued below.
-    </p>
+    </CalmLine>
   );
 }
 
 export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   if (error) {
-    return (
+    const refused = classifyFailure(error) === "refused";
+    return refused ? (
       <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
-        {classifyFailure(error) === "refused"
-          ? error.message
-          : INDETERMINATE_COPY}
+        {error.message}
       </p>
+    ) : (
+      <CalmLine>{INDETERMINATE_COPY}</CalmLine>
     );
   }
   if (!summary || summary.items.length === 0) {
@@ -82,34 +99,44 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
     return <SingleOutcome item={summary.items[0]} />;
   }
 
-  /* Index-qualified key: one drop may legitimately contain two files of the
+  /* Index-qualified keys: one drop may legitimately contain two files of the
      same name (the cohort classifier is built for exactly that), and if both
      fail the bare filename collides. Position is stable — items follow the
      input order and the list never reorders. */
-  const failed = summary.items
+  const errored = summary.items
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.status === "error");
-  /* An `unproven` item must not be counted as failed: the headline would
-     read "1 failed" directly above copy saying the book may still appear
-     (review #6). `opaque` batch items stay in the failed count — they carry
-     the backend's own refusal message, so "failed" is the honest reading. */
-  const unconfirmed = summary.items.filter(
-    (item) => item.certainty === "unproven",
-  ).length;
+  /* "Failed" means the server positively refused the file. Everything else it
+     could not answer for — a lost response (`unproven`) or a batch item whose
+     wire shape carries no code at all (`opaque`, and the backend's own commit
+     path is documented as commit-ambiguous) — is reported as unconfirmed.
+     Counting those as failed would contradict the shelf refresh happening
+     underneath and invite a pointless retry (review #6, #8). */
+  const unconfirmed = errored.filter(({ item }) => isUnconfirmedFailure(item));
+  const refused = errored.filter(({ item }) => !isUnconfirmedFailure(item));
   return (
     <div className="mt-3 text-[13.5px]">
       <p role="status" className="text-ink-soft">
         {summary.created} added · {summary.duplicates} already on the shelf ·{" "}
-        {summary.errors - unconfirmed} failed
-        {unconfirmed > 0 && ` · ${unconfirmed} unconfirmed`}
+        {refused.length} failed
+        {unconfirmed.length > 0 && ` · ${unconfirmed.length} unconfirmed`}
       </p>
-      {failed.length > 0 && (
+      {refused.length > 0 && (
         <ul role="alert" className="mt-1 list-none">
-          {failed.map(({ item, index }) => (
+          {refused.map(({ item, index }) => (
             <li
               key={`${index}-${item.filename}`}
               className="font-semibold text-danger"
             >
+              {item.filename} — {errorCopy(item)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {unconfirmed.length > 0 && (
+        <ul className="mt-1 list-none text-ink-soft">
+          {unconfirmed.map(({ item, index }) => (
+            <li key={`${index}-${item.filename}`}>
               {item.filename} — {errorCopy(item)}
             </li>
           ))}

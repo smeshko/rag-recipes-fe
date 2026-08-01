@@ -149,7 +149,7 @@ describe("library dropzone", () => {
     expect(screen.getAllByRole("article")).toHaveLength(5);
   });
 
-  it("a lost response reads as indeterminate, not as a flat failure (review #1)", async () => {
+  it("a lost response reads as unconfirmed, not as a flat failure (review #1, #8)", async () => {
     server.use(
       documentsListHandler(libraryBookList),
       ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
@@ -160,12 +160,17 @@ describe("library dropzone", () => {
 
     dropFiles([pdfFile("lost.pdf")]);
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(
+    /* Calm role=status, never role=alert: the shelf is being re-read as this
+       renders, so danger styling would contradict a row that may appear. */
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(
       "The shelf never answered — if the book was added it will appear below.",
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     /* Never the raw client string, which asserts a definitive failure. */
-    expect(alert).not.toHaveTextContent("The request never reached the shelf.");
+    expect(notice).not.toHaveTextContent(
+      "The request never reached the shelf.",
+    );
   });
 
   it("multi-file drop renders the per-file summary with failed files listed", async () => {
@@ -209,10 +214,14 @@ describe("library dropzone", () => {
       pdfFile("three.txt"),
     ]);
 
+    /* A batch error item carries no code and the backend's own commit path is
+       documented commit-ambiguous, so it counts as unconfirmed rather than
+       failed (review #8) — while still showing the backend's message. */
     expect(
-      await screen.findByText("1 added · 1 already on the shelf · 1 failed"),
+      await screen.findByText(
+        "1 added · 1 already on the shelf · 0 failed · 1 unconfirmed",
+      ),
     ).toBeInTheDocument();
-    /* Batch error items render the backend's message string verbatim. */
     expect(
       screen.getByText(/three\.txt.*Only PDF uploads are supported\./),
     ).toBeInTheDocument();
