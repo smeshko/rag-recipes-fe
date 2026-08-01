@@ -93,8 +93,8 @@ describe("route", () => {
     ).toThrow("must not be empty or a dot segment");
   });
 
-  /* Review routes (4.2) — declared by the hand-authored augmentation in
-     src/api/review-schema.d.ts until `just typegen` emits them in 4.4. */
+  /* Review routes (4.2) — typed by the generated schema since 4.4 replaced
+     the hand-authored review-schema.d.ts augmentation with `just typegen`. */
   it("serializes the review-items query parameters", () => {
     const endpoint = route("/review-items", "get", {
       query: { document_id: "doc_baking", limit: "200", offset: "0" },
