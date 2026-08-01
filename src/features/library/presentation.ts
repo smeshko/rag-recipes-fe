@@ -1,24 +1,26 @@
 import type { DocumentStatus } from "../../api";
 import type { PillTone } from "../../ui";
 
-/**
- * The review link-out URL contract: it arms the search screen's
- * needs-review filter (filters.exclude_needs_review: false) — it carries
- * no `q` because POST /search rejects an empty query. The user's first
- * search from that landing is what returns review items.
- */
-export const REVIEW_QUEUE_SEARCH_URL = "/?review=included";
-
 const REVIEW_PARAM = "review";
 const REVIEW_INCLUDED = "included";
 
 /**
- * The reader half of the same contract. It lives here, beside the URL the
- * link emits, so the two ends cannot drift — the search screen imports it
- * rather than re-parsing the param with its own spelling of "included".
+ * Reader of the search screen's arming param (`/?review=included`, which
+ * sets filters.exclude_needs_review: false). The library link that emitted
+ * it is retired — BookRow points at `/review?document=<id>` now — so the
+ * reader serves hand-typed/legacy URLs only (`SearchPage.tsx` imports it).
  */
 export function isReviewIncluded(params: URLSearchParams): boolean {
   return params.get(REVIEW_PARAM) === REVIEW_INCLUDED;
+}
+
+/**
+ * The writer half, kept beside the reader so the param's spelling still
+ * lives once: `lastSearchUrl` re-arms a remembered armed landing with it
+ * when building the Cook pill's URL.
+ */
+export function setReviewIncluded(params: URLSearchParams): void {
+  params.set(REVIEW_PARAM, REVIEW_INCLUDED);
 }
 
 /** Books that show a counts row: processing is done enough to have items. */

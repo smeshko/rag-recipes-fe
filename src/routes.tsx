@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { NotFoundPage } from "./features/notfound/NotFoundPage";
 import { RecipePage } from "./features/recipe/RecipePage";
+import { ReviewPage } from "./features/review/ReviewPage";
 import { SearchPage } from "./features/search/SearchPage";
 import { Shell, type ShellHandle } from "./ui/Shell";
 
@@ -30,6 +31,11 @@ export const routes: RouteObject[] = [
       {
         path: "/library",
         element: <LibraryPage />,
+        handle: { width: "narrow" } satisfies ShellHandle,
+      },
+      {
+        path: "/review",
+        element: <ReviewPage />,
         handle: { width: "narrow" } satisfies ShellHandle,
       },
       {

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { REVIEW_QUEUE_SEARCH_URL } from "../../../src/features/library/presentation";
+import { reviewItemsFixture, reviewScenario } from "../../../src/mocks/review";
 import { routes } from "../../../src/routes";
 import { groundedAnswerFixture } from "../../msw/answers";
 import { libraryShelfHandlers, searchFixture } from "../../msw/handlers";
@@ -32,6 +32,23 @@ const bookRow = async (title: string) => {
 
 const LINK_NAME = /open review queue/i;
 
+/* 4.2's review fixtures key their items to `doc_baking`-style ids while the
+   shelf's books use `book-*` ids — separate data sets. Remapping the fixture
+   items onto the shelf ids is what makes the landed pre-filtered queue
+   non-empty in the navigation test below. */
+const SHELF_ID_BY_FIXTURE_DOC: Record<string, string> = {
+  doc_baking: "book-baking-less-sugar",
+  doc_onepan: "book-one-pan",
+  doc_paleo: "book-eat-drink-paleo",
+};
+const shelfKeyedReviewItems = reviewItemsFixture.map((item) => ({
+  ...item,
+  document: {
+    ...item.document,
+    id: SHELF_ID_BY_FIXTURE_DOC[item.document.id] ?? item.document.id,
+  },
+}));
+
 describe("review queue link-out", () => {
   beforeEach(() => server.use(...libraryShelfHandlers()));
 
@@ -39,14 +56,13 @@ describe("review queue link-out", () => {
     renderAt("/library");
 
     /* The needs_review book (14 items) AND the ready book with 1 item. */
-    for (const title of [
-      "Baking with Less Sugar",
-      "One Pan to Rule Them All",
+    for (const [title, href] of [
+      ["Baking with Less Sugar", "/review?document=book-baking-less-sugar"],
+      ["One Pan to Rule Them All", "/review?document=book-one-pan"],
     ]) {
       const row = await bookRow(title);
       const link = await row.findByRole("link", { name: LINK_NAME });
-      expect(link).toHaveAttribute("href", REVIEW_QUEUE_SEARCH_URL);
-      expect(REVIEW_QUEUE_SEARCH_URL).toBe("/?review=included");
+      expect(link).toHaveAttribute("href", href);
     }
   });
 
@@ -65,17 +81,29 @@ describe("review queue link-out", () => {
     }
   });
 
-  it("navigates in-app to the search landing with the filter armed", async () => {
+  it("navigates in-app to the review queue pre-filtered to that book", async () => {
     const user = userEvent.setup();
+    server.use(...reviewScenario(shelfKeyedReviewItems));
     const router = renderAt("/library");
 
     const baking = await bookRow("Baking with Less Sugar");
     await user.click(baking.getByRole("link", { name: LINK_NAME }));
 
-    expect(router.state.location.pathname).toBe("/");
-    expect(router.state.location.search).toBe("?review=included");
-    /* The search screen renders — armed, not searching (no q). */
-    expect(screen.getByTestId("search-page")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/review");
+    expect(router.state.location.search).toBe(
+      "?document=book-baking-less-sugar",
+    );
+    /* The landed queue lists that book's items only… */
+    expect(
+      await screen.findByRole("heading", { name: "Maple Cutout Cookies" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Stovetop Skillet Granola" }),
+    ).not.toBeInTheDocument();
+    /* …and the chip names the book via the shared detail cache. */
+    expect(
+      await screen.findByText("filtering: Baking with Less Sugar"),
+    ).toBeInTheDocument();
   });
 
   it("keeps review=included in the URL across a search submit", async () => {

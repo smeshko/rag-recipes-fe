@@ -77,8 +77,9 @@ function searchQueryOptions(
 }
 
 /**
- * @param reviewIncluded arms `filters.exclude_needs_review: false` — set from
- * the `review=included` URL param the library's review link-out carries.
+ * @param reviewIncluded arms `filters.exclude_needs_review: false` — set
+ * from the search landing's review URL param (`isReviewIncluded` in the
+ * library's presentation module).
  */
 export function useSearch(q: string, mode: SearchMode, reviewIncluded = false) {
   const options = searchQueryOptions(q, mode, reviewIncluded);

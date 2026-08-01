@@ -1,5 +1,5 @@
 import type { SearchMode } from "../../api/search";
-import { REVIEW_QUEUE_SEARCH_URL } from "../library/presentation";
+import { setReviewIncluded } from "../library/presentation";
 
 /**
  * The last committed search, remembered so the Cook pill can restore it after
@@ -40,10 +40,10 @@ export function clearLastSearch(): void {
 }
 
 /**
- * Where the Cook pill should point: `/?q=…[&mode=…][&review=included]`
+ * Where the Cook pill should point: `/?q=…[&mode=…][&review param]`
  * mirroring `writeParams`' URL rules (hybrid stays out of the URL), or bare
- * `/` when nothing is stored. The review param is copied verbatim from
- * `REVIEW_QUEUE_SEARCH_URL` so its spelling lives once, beside its reader
+ * `/` when nothing is stored. An armed landing is re-armed via
+ * `setReviewIncluded` so the param's spelling lives once, beside its reader
  * (`isReviewIncluded`) in the library's presentation module.
  */
 export function lastSearchUrl(): string {
@@ -62,11 +62,7 @@ export function lastSearchUrl(): string {
       params.set("mode", stored.mode);
     }
     if (stored.reviewIncluded === true) {
-      for (const [key, value] of new URLSearchParams(
-        REVIEW_QUEUE_SEARCH_URL.split("?")[1],
-      )) {
-        params.set(key, value);
-      }
+      setReviewIncluded(params);
     }
     return `/?${params.toString()}`;
   } catch {
