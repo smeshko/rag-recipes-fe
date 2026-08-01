@@ -6,6 +6,7 @@ import {
 import { ApiError, request } from "./client";
 import { documentsQueryOptions } from "./documents";
 import { route } from "./routes";
+import type { components } from "./schema";
 import type {
   BatchUploadItemResult,
   BatchUploadResponse,
@@ -14,17 +15,56 @@ import type {
   UploadResponse,
 } from "./types";
 
+type SingleUploadBody =
+  components["schemas"]["Body_upload_document_api_v1_documents_post"];
+type BatchUploadBody =
+  components["schemas"]["Body_upload_documents_batch_api_v1_documents_batch_post"];
+
+/** The keys a body schema declares as required (no `?` modifier). */
+type RequiredKeys<T> = {
+  [K in keyof T]-?: object extends Pick<T, K> ? never : K;
+}[keyof T];
+
 /*
- * Multipart upload of one PDF. Fields per the generated
- * `Body_upload_document_api_v1_documents_post`: `file` plus the default
- * `category=recipes` — no title, the backend derives it from the filename.
+ * ARCHITECTURE.md: request bodies are generated and used directly, never
+ * hand-written. FormData part names are plain strings, so bind them to the
+ * generated schema here — the `satisfies` both pins each name to a real body
+ * key (a backend rename stops compiling) and, because the Record key type is
+ * the schema's REQUIRED set, fails to compile if the backend adds a required
+ * field this form does not send. Without it a rename or a new required field
+ * type-checks fine and 422s at runtime.
+ *
+ * `file` is optional in the schema (FastAPI types it `str | None`) but is the
+ * whole point of the call, so it is named explicitly alongside the required
+ * set. No title is sent — the backend derives it from the filename.
+ */
+const singleUploadFields = {
+  file: "file",
+  category: "category",
+} as const satisfies Record<
+  RequiredKeys<SingleUploadBody> | "file",
+  keyof SingleUploadBody
+>;
+
+const batchUploadFields = {
+  files: "files",
+  category: "category",
+} as const satisfies Record<
+  RequiredKeys<BatchUploadBody>,
+  keyof BatchUploadBody
+>;
+
+const DEFAULT_CATEGORY = "recipes";
+
+/*
+ * Multipart upload of one PDF: the file plus the default `category=recipes`.
  * The client sets no Content-Type, so the fetch implementation writes the
  * multipart boundary itself.
  */
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const form = new FormData();
-  form.append("file", file);
-  form.append("category", "recipes");
+  form.append(singleUploadFields.file, file);
+  form.append(singleUploadFields.category, DEFAULT_CATEGORY);
   return request<UploadResponse>(route("/documents", "post"), { body: form });
 }
 
@@ -50,9 +90,9 @@ export async function uploadDocumentsBatch(
 ): Promise<BatchUploadResponse> {
   const form = new FormData();
   for (const file of files) {
-    form.append("files", file);
+    form.append(batchUploadFields.files, file);
   }
-  form.append("category", "recipes");
+  form.append(batchUploadFields.category, DEFAULT_CATEGORY);
   return request<BatchUploadResponse>(route("/documents/batch", "post"), {
     body: form,
   });
