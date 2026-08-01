@@ -49,6 +49,7 @@ export { TERMINAL_STATUSES } from "./types";
 export type { UploadOutcomeItem, UploadSummary } from "./uploads";
 export {
   classifyUpload,
+  isIndeterminateFailure,
   summarizeOutcomes,
   uploadDocument,
   uploadDocumentsBatch,

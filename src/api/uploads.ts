@@ -69,6 +69,19 @@ export async function uploadDocumentsBatch(
 export interface UploadOutcomeItem extends BatchUploadItemResult {
   code?: string | null;
   title?: string | null;
+  /** See `isIndeterminateFailure` — the failure may still have committed. */
+  indeterminate?: boolean;
+}
+
+/*
+ * A failure the client must NOT report as definitive: the connection died or
+ * the server broke *after* it may already have committed the document, so the
+ * book can exist on the shelf while this upload reads as an error. Definitive
+ * 4xx rejections (415 magic-byte, 400 missing file) commit nothing and are
+ * deliberately excluded — they must stay a flat, quiet failure.
+ */
+export function isIndeterminateFailure(err: unknown): boolean {
+  return err instanceof ApiError && (err.status === null || err.status >= 500);
 }
 
 export interface UploadSummary extends Omit<BatchUploadResponse, "items"> {
@@ -165,6 +178,7 @@ async function uploadSequentially(
         error: err instanceof Error ? err.message : String(err),
         code: err instanceof ApiError ? err.code : null,
         title: null,
+        indeterminate: isIndeterminateFailure(err),
       });
     }
   }
@@ -197,8 +211,23 @@ export function useUploadBooks() {
     },
     onSuccess: (summary) => {
       /* Batch duplicates are authoritative and can name a document the
-         cache has never seen; on the single path this is a cheap no-op. */
-      if (summary.created > 0 || summary.duplicates > 0) {
+         cache has never seen; on the single path this is a cheap no-op.
+         An indeterminate failure invalidates too: the response was lost,
+         not the document, so the shelf is the only way to find out whether
+         the book landed. Definitive 4xx items deliberately do not. */
+      if (
+        summary.created > 0 ||
+        summary.duplicates > 0 ||
+        summary.items.some((item) => item.indeterminate)
+      ) {
+        void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      }
+    },
+    onError: (err) => {
+      /* The batch call rejected as a whole, so there are no per-file items
+         to inspect — a 5xx or a dead connection may still have committed
+         part of the cohort. Reconcile rather than assert nothing happened. */
+      if (isIndeterminateFailure(err)) {
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
     },

@@ -422,6 +422,67 @@ describe("useUploadBooks", () => {
     expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(false);
   });
 
+  /* A response lost AFTER the server committed the document (review #1).
+     The client cannot distinguish "never arrived" from "never happened", so
+     both paths must reconcile the shelf instead of asserting failure. */
+  it("single path: a lost response marks the item indeterminate and reconciles the shelf", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      http.post("/api/v1/documents", () => HttpResponse.error()),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([pdfFile("lost.pdf")]);
+
+    expect(summary).toMatchObject({ created: 0, duplicates: 0, errors: 1 });
+    expect(summary.items[0].indeterminate).toBe(true);
+    expect(summary.items[0].code).toBe("network_error");
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("single path: a 5xx is indeterminate, a definitive 4xx is not", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadErrorHandler(500, internalErrorEnvelope),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([pdfFile("boom.pdf")]);
+
+    expect(summary.items[0].indeterminate).toBe(true);
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("batch path: a rejected cohort still reconciles the shelf", async () => {
+    const stats = emptyStats();
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchErrorHandler(500, internalErrorEnvelope),
+      sequencedSingleUploadHandler([], stats),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    await result.current
+      .mutateAsync([pdfFile("a.pdf"), pdfFile("b.pdf")])
+      .catch(() => undefined);
+
+    /* No fallback — but the cohort may have partly committed before the 500. */
+    expect(stats.calls).toBe(0);
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
   it("degrades to the cached snapshot when the pre-upload list refresh fails", async () => {
     server.use(
       http.get("/api/v1/documents", () =>

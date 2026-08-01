@@ -1,4 +1,8 @@
-import type { UploadOutcomeItem, UploadSummary } from "../../api";
+import {
+  isIndeterminateFailure,
+  type UploadOutcomeItem,
+  type UploadSummary,
+} from "../../api";
 
 /* Inline results under the dropzone — a deliberate design extension: the
    mockup has no results area, so tone rules come from the plan. Duplicates
@@ -14,9 +18,18 @@ export interface UploadOutcomeProps {
 /* The sequential path carries the ApiError code; the batch path carries only
    the backend's message string — render that verbatim rather than fragile
    reverse-mapping of message text to codes. */
+/* A lost response is not a refusal: the book may already be on the shelf
+   (which the mutation re-fetches on exactly this outcome), so the copy must
+   not claim it failed outright. */
+const INDETERMINATE_COPY =
+  "The shelf never answered — if the book was added it will appear below.";
+
 function errorCopy(item: UploadOutcomeItem): string {
   if (item.code === "unsupported_file_type") {
     return "Only PDFs can join the shelf";
+  }
+  if (item.indeterminate) {
+    return INDETERMINATE_COPY;
   }
   return item.error ?? "The upload failed.";
 }
@@ -53,7 +66,7 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   if (error) {
     return (
       <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
-        {error.message}
+        {isIndeterminateFailure(error) ? INDETERMINATE_COPY : error.message}
       </p>
     );
   }

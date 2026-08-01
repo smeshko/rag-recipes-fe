@@ -147,6 +147,25 @@ describe("library dropzone", () => {
     expect(screen.getAllByRole("article")).toHaveLength(5);
   });
 
+  it("a lost response reads as indeterminate, not as a flat failure (review #1)", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
+      http.post("/api/v1/documents", () => HttpResponse.error()),
+    );
+    renderLibrary();
+    await screen.findByRole("heading", { name: "One Pan to Rule Them All" });
+
+    dropFiles([pdfFile("lost.pdf")]);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "The shelf never answered — if the book was added it will appear below.",
+    );
+    /* Never the raw client string, which asserts a definitive failure. */
+    expect(alert).not.toHaveTextContent("The request never reached the shelf.");
+  });
+
   it("multi-file drop renders the per-file summary with failed files listed", async () => {
     const batchResponse: BatchUploadResponse = {
       items: [
