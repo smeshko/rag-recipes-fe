@@ -149,7 +149,13 @@ export function SearchPage() {
     }
   }, [answer.isPending]);
 
-  const runAnswer = (vars: { query: string; mode: SearchMode }) => {
+  const runAnswer = (vars: {
+    query: string;
+    mode: SearchMode;
+    /* Optional so the retry path can hand back `answer.variables` verbatim,
+       preserving the armed state the original ask was made under. */
+    reviewIncluded?: boolean;
+  }) => {
     if (inFlight.current) {
       return;
     }
@@ -176,7 +182,7 @@ export function SearchPage() {
     }
     askedFor.current = asked;
     writeParams(asked, mode);
-    runAnswer({ query: asked, mode });
+    runAnswer({ query: asked, mode, reviewIncluded });
   };
 
   const rephrase = () => {
@@ -203,7 +209,12 @@ export function SearchPage() {
     isFallback(answer.data)
       ? answer.data
       : null;
-  const answerMatchesSearch = answer.variables?.mode === mode;
+  /* Provenance includes the armed state: an answer retrieved under a
+     different needs-review filter describes a different corpus, so its
+     fallback grid must not stand in for the current one. */
+  const answerMatchesSearch =
+    answer.variables?.mode === mode &&
+    (answer.variables?.reviewIncluded ?? false) === reviewIncluded;
   const showFallbackGrid =
     fallbackData !== null &&
     fallbackData.results.length > 0 &&

@@ -6,6 +6,7 @@ import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { REVIEW_QUEUE_SEARCH_URL } from "../../../src/features/library/presentation";
 import { routes } from "../../../src/routes";
+import { groundedAnswerFixture } from "../../msw/answers";
 import { libraryShelfHandlers, searchFixture } from "../../msw/handlers";
 import { server } from "../../msw/server";
 
@@ -146,6 +147,52 @@ describe("review=included search request body", () => {
     await waitFor(() => expect(bodies).toHaveLength(1));
     /* No `filters` key at all — the server default (exclude = true) stands. */
     expect(bodies[0]).toEqual({ query: "scones", mode: "hybrid" });
+  });
+
+  /* /answers runs its own retrieval under the same SearchFilters default, and
+     its fallback results are rendered as a browse grid — so an unarmed answer
+     on an armed landing can silently swap in a filtered result set. */
+  it("arms the same filter on the /answers request", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post("/api/v1/answers", async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(groundedAnswerFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    renderAt("/?review=included");
+
+    await user.type(screen.getByRole("textbox"), "scones");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({
+      query: "scones",
+      filters: {
+        item_type: "recipe",
+        document_ids: [],
+        exclude_needs_review: false,
+      },
+    });
+  });
+
+  it("leaves the /answers body untouched without the param", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post("/api/v1/answers", async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json(groundedAnswerFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    renderAt("/");
+
+    await user.type(screen.getByRole("textbox"), "scones");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).not.toHaveProperty("filters");
   });
 
   it("keeps the filter armed after a mode-chip click", async () => {

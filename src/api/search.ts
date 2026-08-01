@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { request } from "./client";
+import { REVIEW_INCLUDED_FILTERS } from "./filters";
 import { route } from "./routes";
 import type { components } from "./schema";
 import type { SearchMode, SearchResponse } from "./types";
@@ -13,23 +14,13 @@ const searchEndpoint = route("/search", "post");
    supplies every other default server-side.
 
    `filters` is optional here and sent ONLY when the needs-review filter is
-   armed: `SearchFilters` has no partial form (all three members are required
-   by the generated type), so arming it means sending `item_type` and
-   `document_ids` too. Both are set to the server's own defaults, making the
-   armed body a superset of the default one rather than a behaviour change —
-   and the unarmed body stays exactly `{query, mode}`. */
+   armed (see REVIEW_INCLUDED_FILTERS); the unarmed body stays exactly
+   `{query, mode}`. */
 type SearchPayload = Pick<
   components["schemas"]["SearchRequestBody"],
   "query" | "mode"
 > &
   Partial<Pick<components["schemas"]["SearchRequestBody"], "filters">>;
-
-/** Server defaults, restated so the armed body type-checks (see above). */
-const REVIEW_INCLUDED_FILTERS: components["schemas"]["SearchFilters"] = {
-  item_type: "recipe",
-  document_ids: [],
-  exclude_needs_review: false,
-};
 
 /* Cached alongside the response: the mode that actually produced it. The two
    can disagree — D7's placeholder deliberately keeps the previous mode's
