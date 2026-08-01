@@ -196,7 +196,6 @@ export function useUploadBooks() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (files: File[]): Promise<UploadSummary> => {
-      const knownIds = await shelfSnapshot(queryClient);
       if (files.length > 1 && !batchRefused(queryClient)) {
         try {
           return await uploadDocumentsBatch(files);
@@ -207,7 +206,12 @@ export function useUploadBooks() {
           memoizeBatchRefusal(queryClient);
         }
       }
-      return uploadSequentially(files, knownIds);
+      /* Snapshot only where it is consumed. Batch items carry an
+         authoritative `status`, so on the batch path the walk (up to 26
+         paginated requests) would be fetched and thrown away, delaying every
+         multi-file drop. Taking it after a 409 loses no accuracy: the batch
+         guard runs before the handler, so the refusal commits nothing. */
+      return uploadSequentially(files, await shelfSnapshot(queryClient));
     },
     onSuccess: (summary) => {
       /* Batch duplicates are authoritative and can name a document the

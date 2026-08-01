@@ -197,15 +197,23 @@ describe("useUploadBooks", () => {
       errors: 1,
     };
     let batchCalls = 0;
+    let listCalls = 0;
     let observed: ObservedUpload | null = null;
     server.use(
-      documentsListHandler(libraryBookList),
+      http.get("/api/v1/documents", () => {
+        listCalls += 1;
+        return HttpResponse.json({ documents: libraryBookList });
+      }),
       uploadBatchHandler(batchResponse, (o) => {
         batchCalls += 1;
         observed = o;
       }),
     );
     const { queryClient, result } = renderUploadBooks();
+    /* The shelf is always on screen in the app (3.1's useDocuments); the
+       hook-only harness has no observer, so seed the entry the mutation
+       invalidates. */
+    queryClient.setQueryData(["documents"], { documents: libraryBookList });
 
     const summary = await result.current.mutateAsync([
       pdfFile("one.pdf"),
@@ -219,6 +227,9 @@ describe("useUploadBooks", () => {
     expect(seen.filesPartCount).toBe(3);
     expect(seen.fieldNames).toContain("files");
     expect(seen.category).toBe("recipes");
+    /* Batch items carry an authoritative status, so the id snapshot is never
+       consumed here and its paginated walk must not be paid for (review #2). */
+    expect(listCalls).toBe(0);
     /* created or duplicate present → shelf invalidated. */
     await waitFor(() =>
       expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
@@ -469,6 +480,7 @@ describe("useUploadBooks", () => {
       sequencedSingleUploadHandler([], stats),
     );
     const { queryClient, result } = renderUploadBooks();
+    queryClient.setQueryData(["documents"], { documents: libraryBookList });
 
     await result.current
       .mutateAsync([pdfFile("a.pdf"), pdfFile("b.pdf")])
