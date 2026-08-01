@@ -284,6 +284,12 @@ export interface UseIngestionStatusOptions {
   enabled: boolean;
   intervalMs?: number;
   stallLimit?: number;
+  /** Whether the CALLER's list row already considers this document terminal.
+      The hook cannot know it — `['documents']` is the row's source of truth
+      for whether it renders as processing — and without it a payload that is
+      terminal on the very first fetch is indistinguishable from a `failed`
+      row being fetched once. See the terminal-handoff effect. */
+  listTerminal?: boolean;
 }
 
 export interface UseIngestionStatusResult {
@@ -310,6 +316,7 @@ export function useIngestionStatus(
     enabled,
     intervalMs = POLL_INTERVAL_MS,
     stallLimit = POLL_STALL_LIMIT,
+    listTerminal = false,
   }: UseIngestionStatusOptions,
 ): UseIngestionStatusResult {
   const queryClient = useQueryClient();
@@ -327,6 +334,7 @@ export function useIngestionStatus(
     pages: number | null;
   } | null>(null);
   const prevTerminalRef = useRef<boolean | undefined>(undefined);
+  const invalidatedAtRef = useRef(0);
   const processedDataAtRef = useRef(0);
   const processedErrorAtRef = useRef(0);
   const prevEnabledRef = useRef(enabled);
@@ -445,18 +453,43 @@ export function useIngestionStatus(
     }
   }, [errorUpdatedAt, error, failedRounds]);
 
-  /* Terminal handoff. The predicate is prev === false && next === true —
-     `prev !== next` would treat undefined → terminal as a transition and
-     fire on mount for every failed row TASK-002 fetches once. v5 removed
-     onSuccess from useQuery, so an effect is the only legal home. */
+  /* Terminal handoff — two ways to learn the run is over, and BOTH are
+     needed. v5 removed onSuccess from useQuery, so an effect is the only
+     legal home.
+
+     1. We watched the flip ourselves: prev === false → true.
+     2. The FIRST payload we see is already terminal while the caller's list
+        still calls the document non-terminal (`listTerminal: false`).
+
+     Arm 2 is not belt-and-braces. A bare `prev === false` predicate misses
+     every ingest that finishes inside the gap between the list response and
+     the first status poll — and after a reprocess, `prev` is the PREVIOUS
+     run's `true`, so a fast second run reads `true → true`. In both cases
+     polling then stops on the terminal payload while `['documents']` still
+     says processing; with `refetchOnWindowFocus: false` and no interval
+     left, nothing ever refreshes the list and the row is parked in the
+     progress variant until a full page reload.
+
+     What arm 2 must NOT do is fire for a `failed` row, which TASK-002
+     fetches once precisely because it is terminal — that was the whole
+     reason the predicate is not `prev !== next`. Such a row passes
+     `listTerminal: true` and stays suppressed. The invalidation is a
+     disagreement between payload and list, not a mount artefact.
+
+     Keyed on dataUpdatedAt so the re-render where the refreshed list flips
+     `listTerminal` cannot refire it against the same fetch. */
   useEffect(() => {
     const terminal = data?.terminal;
     const prev = prevTerminalRef.current;
     prevTerminalRef.current = terminal;
-    if (prev === false && terminal === true) {
+    if (terminal !== true || invalidatedAtRef.current === dataUpdatedAt) {
+      return;
+    }
+    if (prev === false || !listTerminal) {
+      invalidatedAtRef.current = dataUpdatedAt;
       invalidateOnTerminal(queryClient, id);
     }
-  }, [data, queryClient, id]);
+  }, [data, dataUpdatedAt, listTerminal, queryClient, id]);
 
   const checkAgain = useCallback(() => {
     setStallCount(0);

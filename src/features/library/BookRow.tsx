@@ -129,6 +129,10 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
      would be unreachable from the app. */
   const ingest = useIngestionStatus(doc.id, {
     enabled: !isTerminal(doc.status) || doc.status === "failed",
+    /* The list's own verdict. A terminal payload only means "the shelf is
+       stale, refresh it" when the list disagrees — a failed row is fetched
+       once BECAUSE it is terminal and must not invalidate on mount. */
+    listTerminal: isTerminal(doc.status),
     ...pollOptions,
   });
 

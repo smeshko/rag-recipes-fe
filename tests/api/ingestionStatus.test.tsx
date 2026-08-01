@@ -28,7 +28,12 @@ const DOC = "doc-under-ingest";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function renderStatusHook(
-  options: { enabled?: boolean; intervalMs?: number; stallLimit?: number } = {},
+  options: {
+    enabled?: boolean;
+    intervalMs?: number;
+    stallLimit?: number;
+    listTerminal?: boolean;
+  } = {},
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -41,6 +46,7 @@ function renderStatusHook(
         enabled: options.enabled ?? true,
         intervalMs: options.intervalMs ?? INTERVAL,
         stallLimit: options.stallLimit,
+        listTerminal: options.listTerminal,
       }),
     { wrapper },
   );
@@ -260,13 +266,45 @@ describe("useIngestionStatus", () => {
     expect(spy.mock.calls.length).toBe(2);
   });
 
-  it("does not invalidate when the first payload is already terminal (failed row mounting)", async () => {
+  it("does not invalidate when the first payload is already terminal AND the list agrees (failed row mounting)", async () => {
     server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "failed")]));
-    const { client, result } = renderStatusHook();
+    /* listTerminal: true is what a failed row passes — the list already
+       says `failed`, so the payload confirms it rather than contradicting
+       it, and there is nothing to refresh. */
+    const { client, result } = renderStatusHook({ listTerminal: true });
     const spy = vi.spyOn(client, "invalidateQueries");
 
     await waitFor(() => expect(result.current.data?.terminal).toBe(true));
     await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 150);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("invalidates when the FIRST payload is already terminal but the list still says processing", async () => {
+    /* The race the `prev === false` predicate alone misses: the ingest
+       finishes between the list response and the first status poll, so the
+       hook never observes a non-terminal payload. Polling then stops and
+       refetchOnWindowFocus is false — without this invalidation the row is
+       parked in the progress variant until a page reload. */
+    server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "ready")]));
+    const { client, result } = renderStatusHook({ listTerminal: false });
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 100);
+
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
+    expect(
+      keys.filter((k) => k[0] === "document" && k[1] === DOC && k.length === 2),
+    ).toHaveLength(1);
+
+    /* Exactly once — a later re-render (in the app, the one where the
+       refreshed list flips listTerminal) must not refire it. */
+    await sleep(SETTLE);
+    expect(spy.mock.calls.length).toBe(2);
   });
 });
