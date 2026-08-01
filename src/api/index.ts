@@ -1,13 +1,24 @@
 export { isFallback, useAnswer } from "./answers";
 export { ApiError, request } from "./client";
+export type {
+  IngestionStopReason,
+  UseIngestionStatusOptions,
+  UseIngestionStatusResult,
+} from "./documents";
 export {
   documentDetailQueryOptions,
   documentsQueryOptions,
   fetchAllDocuments,
+  ingestionStatusQueryOptions,
   PaginationCapError,
+  POLL_INTERVAL_MS,
+  POLL_STALL_LIMIT,
+  SHELF_INVALIDATION_DEBOUNCE_MS,
   useDocument,
   useDocumentDetails,
   useDocuments,
+  useIngestionStatus,
+  useReprocess,
   useShelfStats,
 } from "./documents";
 export { useKnowledgeItem } from "./knowledgeItems";
@@ -36,11 +47,13 @@ export type {
   DocumentStatus,
   ErrorEnvelope,
   HealthResponse,
+  IngestionStatusResponse,
   Ingredient,
   ItemConfidence,
   KnowledgeItemResponse,
   RecipeStructuredData,
   Recommendation,
+  ReprocessResponse,
   Step,
   TerminalStatus,
   UploadResponse,

@@ -1,0 +1,458 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import type { DocumentStatus } from "../../src/api";
+import {
+  POLL_INTERVAL_MS,
+  pollBackoffMs,
+  SHELF_INVALIDATION_DEBOUNCE_MS,
+  useIngestionStatus,
+} from "../../src/api/documents";
+import {
+  documentNotFoundEnvelope,
+  ingestionStatus,
+  internalErrorEnvelope,
+  statusErrorHandler,
+  statusParkedHandler,
+  statusQueueHandler,
+} from "../msw/handlers";
+import { server } from "../msw/server";
+
+/* Real (short) intervals, never fake timers — fake timers fight TanStack's
+   scheduler and MSW's async responses. 20ms polls; the negative assertions
+   settle ~300ms (≥15 intervals), because a 3-interval window at these
+   speeds fits inside one slow macrotask and proves nothing. */
+
+const INTERVAL = 20;
+const SETTLE = 300;
+
+const DOC = "doc-under-ingest";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function renderStatusHook(
+  options: {
+    enabled?: boolean;
+    intervalMs?: number;
+    stallLimit?: number;
+    listStatus?: DocumentStatus;
+    /** Pre-seed the status cache, as a finished run leaves it. */
+    seed?: unknown;
+  } = {},
+) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  if (options.seed !== undefined) {
+    client.setQueryData(["document", DOC, "status"], options.seed);
+  }
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client }, children);
+  const hook = renderHook(
+    () =>
+      useIngestionStatus(DOC, {
+        enabled: options.enabled ?? true,
+        intervalMs: options.intervalMs ?? INTERVAL,
+        stallLimit: options.stallLimit,
+        listStatus: options.listStatus,
+      }),
+    { wrapper },
+  );
+  return { client, ...hook };
+}
+
+describe("useIngestionStatus", () => {
+  it("polls until the terminal payload, then the call count freezes", async () => {
+    let calls = 0;
+    server.use(
+      statusQueueHandler(
+        DOC,
+        [
+          ingestionStatus(DOC, "extracting_items", { pages_processed: 12 }),
+          ingestionStatus(DOC, "embedding_chunks", {
+            pages_processed: 212,
+            pages_total: 312,
+          }),
+          ingestionStatus(DOC, "ready"),
+        ],
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const { result } = renderStatusHook();
+
+    /* Growth first: polling is demonstrably happening... */
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(3));
+    /* stopReason lands one effect pass after the data render — waitFor it. */
+    await waitFor(() => expect(result.current.stopReason).toBe("terminal"));
+
+    /* ...then a real settle window with zero further requests. An
+       exhausted queue answers 500, so a stray poll would also flip the
+       hook into an error state — assert both stay clean. */
+    const frozen = calls;
+    await sleep(SETTLE);
+    expect(calls).toBe(frozen);
+    expect(result.current.stopReason).toBe("terminal");
+    expect(result.current.data?.status).toBe("ready");
+  });
+
+  it("exposes the full typed payload for the progress UI", async () => {
+    server.use(
+      statusParkedHandler(
+        DOC,
+        ingestionStatus(DOC, "embedding_chunks", {
+          pages_processed: 212,
+          pages_total: 312,
+        }),
+      ),
+    );
+    const { result } = renderStatusHook();
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data).toMatchObject({
+      document_id: DOC,
+      status: "embedding_chunks",
+      progress: {
+        stage: "embedding_chunks",
+        message: null,
+        pages_total: 312,
+        pages_processed: 212,
+      },
+      terminal: false,
+    });
+  });
+
+  it("backs off with widening gaps on 5xx and gives up after 4 failed rounds", async () => {
+    const at: number[] = [];
+    server.use(
+      statusErrorHandler(DOC, 500, internalErrorEnvelope, () => {
+        at.push(Date.now());
+      }),
+    );
+    const { result } = renderStatusHook();
+
+    await waitFor(() => expect(result.current.stopReason).toBe("error"), {
+      timeout: 4000,
+    });
+    const rounds = at.length;
+    expect(rounds).toBe(4);
+
+    /* Backoff happening for real, asserted as LOWER bounds only — never as
+       an ordering over measured gaps. `setTimeout` cannot fire early, so a
+       scheduler pause can only push a gap up and no pause can fail a lower
+       bound; the natural-looking `gaps[2] > gaps[0]` has the opposite
+       property, and one pause inside the first gap flakes it.
+
+       The bounds are the WORST case, not the nominal 40/80/160. The
+       interval is recomputed when the fetch settles, which can be one
+       render before the effect has incremented `failedRounds` — so each
+       gap is legitimately either intervalMs × 2^n or × 2^(n-1), and a
+       nominal-valued bound is itself a flake (observed: a 26ms first gap
+       against a 30ms bound). Benign in production: at worst one retry
+       comes an interval early, and the 4-round budget is unaffected.
+
+       Exactness lives in the pollBackoffMs test above, where it costs
+       nothing; what this test uniquely proves is that the real scheduler
+       widens at all rather than holding the flat 20ms cadence. */
+    const gaps = at.slice(1).map((t, i) => t - at[i]);
+    expect(gaps[0]).toBeGreaterThanOrEqual(15);
+    expect(gaps[1]).toBeGreaterThanOrEqual(30);
+    expect(gaps[2]).toBeGreaterThanOrEqual(60);
+
+    await sleep(SETTLE);
+    expect(at.length).toBe(rounds);
+  });
+
+  it("widens the backoff geometrically and gives up after the 4th round", () => {
+    /* The EXACT sequence, asserted where it is deterministic. The
+       real-interval test above can only prove lower bounds: distinguishing
+       a widening cadence from a fixed long one needs an upper bound, and
+       upper bounds over wall-clock gaps flake on any scheduler pause. The
+       pure function has neither problem. */
+    expect([0, 1, 2, 3, 4].map((n) => pollBackoffMs(20, n))).toEqual([
+      20,
+      40,
+      80,
+      160,
+      false,
+    ]);
+    /* Production cadence: 2.5s -> 5s -> 10s -> 20s, then stop. */
+    expect(
+      [0, 1, 2, 3, 4].map((n) => pollBackoffMs(POLL_INTERVAL_MS, n)),
+    ).toEqual([2500, 5000, 10000, 20000, false]);
+  });
+
+  it("backs off on a 5xx even when the cache still holds the last run's terminal payload", async () => {
+    /* The reprocess shape: a finished run leaves `terminal: true` in the
+       cache, and a failed refetch does not clear it. If the interval
+       callback reads that stale payload before the fresh error it stops
+       after ONE round — below the give-up threshold, so no stopReason and
+       no "check again" ever render, and the row freezes mid-stepper. */
+    let calls = 0;
+    server.use(
+      statusErrorHandler(DOC, 500, internalErrorEnvelope, () => {
+        calls += 1;
+      }),
+    );
+    const { result } = renderStatusHook({
+      seed: ingestionStatus(DOC, "ready"),
+      listStatus: "ready",
+    });
+
+    await waitFor(() => expect(result.current.stopReason).toBe("error"), {
+      timeout: 4000,
+    });
+    expect(calls).toBe(4);
+  });
+
+  it("hard-stops on a 404 without retrying", async () => {
+    let calls = 0;
+    server.use(
+      statusErrorHandler(DOC, 404, documentNotFoundEnvelope(DOC), () => {
+        calls += 1;
+      }),
+    );
+    const { client, result } = renderStatusHook();
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.stopReason).toBe("error"));
+    await sleep(SETTLE);
+    expect(calls).toBe(1);
+
+    /* The stop is only half the cure. A 404 means the shelf is listing a
+       row the API no longer serves, and polling has just ended — without
+       refreshing the list the row renders as processing until a reload. */
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
+  });
+
+  it("stops a document parked in creating_source_spans after stallLimit unchanged polls", async () => {
+    let calls = 0;
+    server.use(
+      statusParkedHandler(
+        DOC,
+        ingestionStatus(DOC, "creating_source_spans", { pages_processed: 0 }),
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const { result } = renderStatusHook({ stallLimit: 3 });
+
+    await waitFor(() => expect(result.current.stopReason).toBe("stalled"));
+    /* Entry poll + 3 unchanged rounds, then silence. */
+    const frozen = calls;
+    expect(frozen).toBe(4);
+    await sleep(SETTLE);
+    expect(calls).toBe(frozen);
+  });
+
+  it("keeps polling a document parked in extracting_items — the guard is never armed there", async () => {
+    let calls = 0;
+    server.use(
+      statusParkedHandler(
+        DOC,
+        ingestionStatus(DOC, "extracting_items", { pages_processed: 40 }),
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const { result } = renderStatusHook({ stallLimit: 3 });
+
+    /* Far beyond the stall budget and still going: a healthy long
+       extraction is never abandoned. */
+    await waitFor(() => expect(calls).toBeGreaterThanOrEqual(10), {
+      timeout: 4000,
+    });
+    expect(result.current.stopReason).toBeNull();
+  });
+
+  it("checkAgain() resets the counters and resumes a stalled row", async () => {
+    let calls = 0;
+    server.use(
+      statusParkedHandler(
+        DOC,
+        ingestionStatus(DOC, "creating_source_spans", { pages_processed: 0 }),
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const { result } = renderStatusHook({ stallLimit: 2 });
+
+    await waitFor(() => expect(result.current.stopReason).toBe("stalled"));
+    const stoppedAt = calls;
+    await sleep(150);
+    expect(calls).toBe(stoppedAt);
+
+    result.current.checkAgain();
+
+    /* Polling is genuinely back: the count grows past the stop... */
+    await waitFor(() => expect(calls).toBeGreaterThan(stoppedAt + 1));
+    /* ...and the still-parked doc takes a FULL fresh budget to re-stall
+       (entry refetch + stallLimit unchanged polls) — proving both
+       counters were actually reset, not resumed mid-budget. */
+    await waitFor(() => expect(result.current.stopReason).toBe("stalled"));
+    expect(calls).toBe(stoppedAt + 3);
+  });
+
+  it("restarts polling when the list flips failed → queued with no local reprocess", async () => {
+    /* A failed row is ALREADY enabled, so a reprocess started elsewhere —
+       another tab, or the curl-only reuse/new-version modes this plan
+       keeps out of the UI — moves nothing the enabled edge can see. The
+       cached payload is still the old run's terminal `failed`, and
+       staleTime 0 only refetches on mount, so without a listStatus-driven
+       restart the row renders a dead stepper forever, with stopReason
+       'terminal' so not even "check again" appears. */
+    let calls = 0;
+    server.use(
+      statusQueueHandler(
+        DOC,
+        [
+          ingestionStatus(DOC, "failed"),
+          ingestionStatus(DOC, "extracting_items", { pages_processed: 3 }),
+          ingestionStatus(DOC, "extracting_items", { pages_processed: 7 }),
+          ingestionStatus(DOC, "ready"),
+        ],
+        () => {
+          calls += 1;
+        },
+      ),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+    const { result, rerender } = renderHook(
+      ({ listStatus }: { listStatus: DocumentStatus }) =>
+        useIngestionStatus(DOC, {
+          enabled: true,
+          intervalMs: INTERVAL,
+          listStatus,
+        }),
+      { wrapper, initialProps: { listStatus: "failed" as DocumentStatus } },
+    );
+
+    await waitFor(() => expect(result.current.stopReason).toBe("terminal"));
+    const afterFailedRun = calls;
+
+    rerender({ listStatus: "queued" as DocumentStatus });
+
+    /* Genuinely polling again — more than the single restart fetch... */
+    await waitFor(() => expect(calls).toBeGreaterThan(afterFailedRun + 1));
+    /* ...and the new run is followed all the way to its own terminal. */
+    await waitFor(() => expect(result.current.data?.status).toBe("ready"));
+    expect(result.current.stopReason).toBe("terminal");
+  });
+
+  it("issues zero requests while disabled", async () => {
+    let calls = 0;
+    server.use(
+      statusParkedHandler(DOC, ingestionStatus(DOC, "queued"), () => {
+        calls += 1;
+      }),
+    );
+    renderStatusHook({ enabled: false });
+    await sleep(200);
+    expect(calls).toBe(0);
+  });
+
+  it("invalidates ['documents'] and ['document', id] exactly once on the non-terminal → terminal transition", async () => {
+    server.use(
+      statusQueueHandler(DOC, [
+        ingestionStatus(DOC, "indexing", {
+          pages_processed: 300,
+          pages_total: 312,
+        }),
+        ingestionStatus(DOC, "ready"),
+      ]),
+    );
+    const { client, result } = renderStatusHook();
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    /* The shelf invalidation is debounced to blunt batch fan-in. */
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 100);
+
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
+    expect(
+      keys.filter((k) => k[0] === "document" && k[1] === DOC && k.length === 2),
+    ).toHaveLength(1);
+
+    await sleep(SETTLE);
+    expect(spy.mock.calls.length).toBe(2);
+  });
+
+  it("does not invalidate when the first payload is already terminal AND the list agrees (failed row mounting)", async () => {
+    server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "failed")]));
+    /* listTerminal: true is what a failed row passes — the list already
+       says `failed`, so the payload confirms it rather than contradicting
+       it, and there is nothing to refresh. */
+    const { client, result } = renderStatusHook({ listStatus: "failed" });
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 150);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("invalidates when list and payload are BOTH terminal but disagree (failed row someone else reprocessed)", async () => {
+    /* Terminality alone cannot see this: the list says `failed`, the
+       payload says `ready`, both terminal. A `listTerminal` boolean would
+       suppress the invalidation and leave the shelf falsely failed with no
+       poll left to correct it. */
+    server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "ready")]));
+    const { client, result } = renderStatusHook({ listStatus: "failed" });
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 100);
+
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates when the FIRST payload is already terminal but the list still says processing", async () => {
+    /* The race the `prev === false` predicate alone misses: the ingest
+       finishes between the list response and the first status poll, so the
+       hook never observes a non-terminal payload. Polling then stops and
+       refetchOnWindowFocus is false — without this invalidation the row is
+       parked in the progress variant until a page reload. */
+    server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "ready")]));
+    const { client, result } = renderStatusHook({ listStatus: "queued" });
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 100);
+
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
+    expect(
+      keys.filter((k) => k[0] === "document" && k[1] === DOC && k.length === 2),
+    ).toHaveLength(1);
+
+    /* Exactly once — a later re-render (in the app, the one where the
+       refreshed list flips listTerminal) must not refire it. */
+    await sleep(SETTLE);
+    expect(spy.mock.calls.length).toBe(2);
+  });
+});

@@ -153,6 +153,35 @@ export interface BatchUploadResponse {
   errors: number;
 }
 
+/* GET /documents/{id}/status. `progress.stage` mirrors `status` verbatim and
+   `progress.message` is hardcoded null today (verified backend source) —
+   typed honestly, but no client logic keys on `stage`. `pages_processed`
+   counts existing source spans; `pages_total` is null until spans exist —
+   and a reuse-mode reprocess reports (0, null) for its entire run by design.
+   `terminal` is computed server-side for ready/needs_review/failed. */
+export interface IngestionStatusResponse {
+  document_id: string;
+  status: DocumentStatus;
+  active_source_version: number | null;
+  current_source_version: number | null;
+  progress: {
+    stage: string;
+    message: string | null;
+    pages_total: number | null;
+    pages_processed: number | null;
+  };
+  terminal: boolean;
+}
+
+/* POST /documents/{id}/reprocess — 200 answer; the guarded update yields a
+   409 `ingestion_already_running` envelope for non-terminal documents. */
+export interface ReprocessResponse {
+  document_id: string;
+  status: "queued";
+  previous_active_source_version: number | null;
+  current_source_version: number | null;
+}
+
 export interface DocumentCounts {
   source_spans: number;
   knowledge_items: number;

@@ -4,7 +4,15 @@ import type {
   DocumentDetailResponse,
   DocumentListItem,
 } from "../../api";
+import {
+  ApiError,
+  TERMINAL_STATUSES,
+  useIngestionStatus,
+  useReprocess,
+} from "../../api";
 import { Bloom, Pill } from "../../ui";
+import { CalmNotice } from "./CalmNotice";
+import { IngestionProgress } from "./IngestionProgress";
 import {
   isReadyIsh,
   REVIEW_QUEUE_SEARCH_URL,
@@ -24,6 +32,12 @@ export interface BookRowProps {
   doc: DocumentListItem;
   detail: DetailState;
   index: number;
+  /** Test-only polling knobs (intervalMs/stallLimit); production omits it. */
+  pollOptions?: { intervalMs?: number; stallLimit?: number };
+}
+
+function isTerminal(status: DocumentListItem["status"]): boolean {
+  return (TERMINAL_STATUSES as readonly string[]).includes(status);
 }
 
 function subtitleFor(doc: DocumentListItem, detail: DetailState): string {
@@ -103,9 +117,35 @@ function CountsRow({
   );
 }
 
-export function BookRow({ doc, detail, index }: BookRowProps) {
+export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
   const counts = detail.status === "success" ? detail.detail.counts : undefined;
   const pill = statusPill(doc.status, counts?.needs_review_items);
+
+  /* Called unconditionally at the top level — moving it inside the
+     non-terminal branch would break the rules of hooks on the very
+     transition this phase exists to handle. `failed` is terminal but still
+     fetches ONCE (the interval sees terminal and never starts): without
+     that fetch the note's "prefer progress.message when non-null" rule
+     would be unreachable from the app. */
+  const ingest = useIngestionStatus(doc.id, {
+    enabled: !isTerminal(doc.status) || doc.status === "failed",
+    /* The list's own verdict. A terminal payload only means "the shelf is
+       stale, refresh it" when it disagrees with this — a failed row is
+       fetched once BECAUSE it is terminal and must not invalidate on mount,
+       but a row the list still calls `failed` after someone else reprocessed
+       it to `ready` must. */
+    listStatus: doc.status,
+    ...pollOptions,
+  });
+
+  const reprocess = useReprocess(doc.id);
+  const reprocessError =
+    reprocess.error instanceof ApiError ? reprocess.error : null;
+  const alreadyRunning = reprocessError?.code === "ingestion_already_running";
+  /* A 404 refreshes the stale row away — surfacing it would alarm over a
+     row that is about to disappear. */
+  const quietError =
+    alreadyRunning || reprocessError?.code === "document_not_found";
 
   return (
     <Bloom index={index} base={0.18} step={0.04} className="mb-4">
@@ -124,10 +164,21 @@ export function BookRow({ doc, detail, index }: BookRowProps) {
         </div>
         {isReadyIsh(doc.status) ? (
           <CountsRow state={detail.status} counts={counts} />
+        ) : doc.status === "failed" ? (
+          /* Honest failure copy: names NO cause — status is only "failed"
+             and progress.message is null today; prefer it if it ever lands. */
+          <div className="py-5 text-[13px] text-ink-soft max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
+            <b className="text-danger">Ingestion failed.</b>{" "}
+            {ingest.data?.progress.message ??
+              "The API doesn't expose the reason yet."}
+          </div>
         ) : (
-          /* Failed/processing extras (progress, failure note) are phase 3.3 —
-             keep the middle column an empty cell so the pill stays in col 4. */
-          <div aria-hidden="true" className="max-[880px]:hidden" />
+          <IngestionProgress
+            fallbackStatus={doc.status}
+            data={ingest.data}
+            stopReason={ingest.stopReason}
+            checkAgain={ingest.checkAgain}
+          />
         )}
         <div className="py-5 pr-6 text-right max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5 max-[880px]:pr-0 max-[880px]:text-left">
           <Pill size="md" tone={pill.tone}>
@@ -140,6 +191,29 @@ export function BookRow({ doc, detail, index }: BookRowProps) {
             >
               Open review queue →
             </Link>
+          )}
+          {isTerminal(doc.status) && (
+            <button
+              type="button"
+              disabled={reprocess.isPending}
+              onClick={() => reprocess.mutate()}
+              className="mt-2 block w-full text-right text-[12.5px] font-bold text-apricot hover:underline disabled:opacity-50 max-[880px]:text-left"
+            >
+              {doc.status === "failed" ? "Retry ↻" : "Reprocess ↻"}
+            </button>
+          )}
+          {alreadyRunning && (
+            <CalmNotice>Already processing — hang tight.</CalmNotice>
+          )}
+          {reprocess.isError && !quietError && (
+            <span
+              role="alert"
+              className="mt-2 block text-[12.5px] font-semibold text-danger"
+            >
+              {reprocess.error instanceof Error
+                ? reprocess.error.message
+                : "Reprocess failed."}
+            </span>
           )}
         </div>
       </article>
