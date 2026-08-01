@@ -23,6 +23,13 @@ export {
 } from "./documents";
 export { useKnowledgeItem } from "./knowledgeItems";
 export { createQueryClient, shouldRetry } from "./queryClient";
+export type { UseReviewDecisionOptions } from "./review";
+export {
+  fetchAllReviewItems,
+  reviewItemsQueryOptions,
+  useReviewDecision,
+  useReviewItems,
+} from "./review";
 export type {
   ApiMethod,
   ApiRoute,
