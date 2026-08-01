@@ -1,5 +1,5 @@
 import {
-  isIndeterminateFailure,
+  classifyFailure,
   type UploadOutcomeItem,
   type UploadSummary,
 } from "../../api";
@@ -28,7 +28,10 @@ function errorCopy(item: UploadOutcomeItem): string {
   if (item.code === "unsupported_file_type") {
     return "Only PDFs can join the shelf";
   }
-  if (item.indeterminate) {
+  /* Only `unproven` gets the softened copy. A batch item is `opaque` — it
+     still carries the backend's own message, which is more informative than
+     a generic hedge for the dominant unsupported-type case. */
+  if (item.certainty === "unproven") {
     return INDETERMINATE_COPY;
   }
   return item.error ?? "The upload failed.";
@@ -66,7 +69,9 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   if (error) {
     return (
       <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
-        {isIndeterminateFailure(error) ? INDETERMINATE_COPY : error.message}
+        {classifyFailure(error) === "refused"
+          ? error.message
+          : INDETERMINATE_COPY}
       </p>
     );
   }

@@ -221,7 +221,16 @@ describe("useUploadBooks", () => {
       pdfFile("three.txt"),
     ]);
 
-    expect(summary).toEqual(batchResponse);
+    /* Structural pass-through, except that error items are marked `opaque`
+       so they still reconcile the shelf (review #4). */
+    expect(summary).toEqual({
+      ...batchResponse,
+      items: [
+        batchResponse.items[0],
+        batchResponse.items[1],
+        { ...batchResponse.items[2], certainty: "opaque" },
+      ],
+    });
     expect(batchCalls).toBe(1);
     const seen = observed as unknown as ObservedUpload;
     expect(seen.filesPartCount).toBe(3);
@@ -446,7 +455,7 @@ describe("useUploadBooks", () => {
     const summary = await result.current.mutateAsync([pdfFile("lost.pdf")]);
 
     expect(summary).toMatchObject({ created: 0, duplicates: 0, errors: 1 });
-    expect(summary.items[0].indeterminate).toBe(true);
+    expect(summary.items[0].certainty).toBe("unproven");
     expect(summary.items[0].code).toBe("network_error");
     await waitFor(() =>
       expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
@@ -464,7 +473,96 @@ describe("useUploadBooks", () => {
 
     const summary = await result.current.mutateAsync([pdfFile("boom.pdf")]);
 
-    expect(summary.items[0].indeterminate).toBe(true);
+    expect(summary.items[0].certainty).toBe("unproven");
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  /* review #5: `request()` parses a successful body with an unguarded
+     response.json(). A truncated 201 throws a raw SyntaxError — not an
+     ApiError — after the server has already committed the document, which is
+     the most likely-committed failure of all. */
+  it("single path: a 201 whose body never parses is unproven, not a refusal", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      http.post(
+        "/api/v1/documents",
+        () =>
+          new HttpResponse('{"document":', {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([pdfFile("cut-off.pdf")]);
+
+    expect(summary.items[0].status).toBe("error");
+    expect(summary.items[0].certainty).toBe("unproven");
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      ),
+    );
+  });
+
+  it("a definitive 4xx stays a refusal — no reconciliation", async () => {
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadErrorHandler(415, unsupportedFileTypeEnvelope),
+    );
+    const { queryClient, result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([pdfFile("notes.txt")]);
+
+    expect(summary.items[0].certainty).toBe("refused");
+    expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(false);
+  });
+
+  /* review #4: the backend folds a per-file failure into an overall 201 with
+     only a message string, so an all-error cohort cannot be shown to have
+     committed nothing. Reconcile rather than assert. */
+  it("batch path: an all-error cohort still reconciles the shelf", async () => {
+    const allErrors: BatchUploadResponse = {
+      items: [
+        {
+          filename: "a.pdf",
+          status: "error",
+          document_id: null,
+          error: "Extraction failed after the document was stored.",
+        },
+        {
+          filename: "b.pdf",
+          status: "error",
+          document_id: null,
+          error: "Only PDF uploads are supported.",
+        },
+      ],
+      total: 2,
+      created: 0,
+      duplicates: 0,
+      errors: 2,
+    };
+    server.use(
+      documentsListHandler(libraryBookList),
+      uploadBatchHandler(allErrors),
+    );
+    const { queryClient, result } = renderUploadBooks();
+    queryClient.setQueryData(["documents"], { documents: libraryBookList });
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("a.pdf"),
+      pdfFile("b.pdf"),
+    ]);
+
+    expect(summary.items.map((i) => i.certainty)).toEqual(["opaque", "opaque"]);
+    /* The backend's own message survives the marking — `opaque` changes
+       reconciliation, never the copy. */
+    expect(summary.items[1].error).toBe("Only PDF uploads are supported.");
     await waitFor(() =>
       expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
         true,

@@ -66,26 +66,86 @@ export async function uploadDocumentsBatch(
  * content (batch duplicate detection is authoritative; the single path
  * infers from the id snapshot and can miss).
  */
+/**
+ * How sure the client is that a failed file did NOT reach the shelf. Absent
+ * on non-error items.
+ *
+ * - `refused`   — the server answered a definitive 4xx (415 magic-byte, 400
+ *                 missing file). Nothing was committed; report it flatly.
+ * - `unproven`  — the failure could have followed a commit: a 5xx, a dead
+ *                 connection, or a 201 whose body never parsed. Reconcile the
+ *                 shelf and say the book may still appear.
+ * - `opaque`    — a batch item. The wire shape carries only the backend's
+ *                 message string — no code, no status — so nothing can be
+ *                 proven either way. Reconcile conservatively, but keep the
+ *                 backend's message, which is the accurate reading for the
+ *                 dominant unsupported-type case.
+ */
+export type FailureCertainty = "refused" | "unproven" | "opaque";
+
+/*
+ * Client-side outcome item: the wire `BatchUploadItemResult` plus what the
+ * sequential path can additionally know — the ApiError code (batch errors
+ * carry only the backend's message string) and the document title. Batch
+ * responses pass through structurally unchanged apart from `certainty`: same
+ * shape, not the same content (batch duplicate detection is authoritative;
+ * the single path infers from the id snapshot and can miss).
+ */
 export interface UploadOutcomeItem extends BatchUploadItemResult {
   code?: string | null;
   title?: string | null;
-  /** See `isIndeterminateFailure` — the failure may still have committed. */
-  indeterminate?: boolean;
+  certainty?: FailureCertainty;
 }
 
 /*
- * A failure the client must NOT report as definitive: the connection died or
- * the server broke *after* it may already have committed the document, so the
- * book can exist on the shelf while this upload reads as an error. Definitive
- * 4xx rejections (415 magic-byte, 400 missing file) commit nothing and are
- * deliberately excluded — they must stay a flat, quiet failure.
+ * Only an envelope-carrying 4xx proves the server refused the file before
+ * committing anything. Everything else may have committed and then lost the
+ * answer: a 5xx, a dead connection, and — because `request()` parses a
+ * successful body with an unguarded `response.json()` — a raw SyntaxError
+ * from a truncated 201, which is the MOST likely-committed case of all and
+ * is not an ApiError at all. Default to "may have committed": the cost of
+ * being wrong is one wasted list refetch, against a book that silently
+ * never appears.
  */
-export function isIndeterminateFailure(err: unknown): boolean {
-  return err instanceof ApiError && (err.status === null || err.status >= 500);
+export function classifyFailure(err: unknown): FailureCertainty {
+  const refused =
+    err instanceof ApiError &&
+    err.status !== null &&
+    err.status >= 400 &&
+    err.status < 500;
+  return refused ? "refused" : "unproven";
+}
+
+/** True when the shelf must be re-read because the file may have landed. */
+export function isUnconfirmedFailure(
+  item: Pick<UploadOutcomeItem, "certainty">,
+): boolean {
+  return item.certainty === "unproven" || item.certainty === "opaque";
 }
 
 export interface UploadSummary extends Omit<BatchUploadResponse, "items"> {
   items: UploadOutcomeItem[];
+}
+
+/*
+ * Batch responses arrive already summarized, so this is a pass-through — with
+ * one addition. The backend turns a per-file failure into an `error` ITEM
+ * inside an overall 201, including failures that may have committed the
+ * document first, and the item carries no code or status to tell them apart.
+ * Marking every batch error `opaque` makes an all-error cohort reconcile the
+ * shelf instead of asserting that nothing happened.
+ */
+export function normalizeBatchResponse(
+  response: BatchUploadResponse,
+): UploadSummary {
+  return {
+    ...response,
+    items: response.items.map((item) =>
+      item.status === "error"
+        ? { ...item, certainty: "opaque" as const }
+        : item,
+    ),
+  };
 }
 
 /** Pure aggregator: per-file items → the batch-shaped summary. */
@@ -178,7 +238,7 @@ async function uploadSequentially(
         error: err instanceof Error ? err.message : String(err),
         code: err instanceof ApiError ? err.code : null,
         title: null,
-        indeterminate: isIndeterminateFailure(err),
+        certainty: classifyFailure(err),
       });
     }
   }
@@ -198,7 +258,7 @@ export function useUploadBooks() {
     mutationFn: async (files: File[]): Promise<UploadSummary> => {
       if (files.length > 1 && !batchRefused(queryClient)) {
         try {
-          return await uploadDocumentsBatch(files);
+          return normalizeBatchResponse(await uploadDocumentsBatch(files));
         } catch (err) {
           if (!(err instanceof ApiError) || err.status !== 409) {
             throw err;
@@ -216,13 +276,14 @@ export function useUploadBooks() {
     onSuccess: (summary) => {
       /* Batch duplicates are authoritative and can name a document the
          cache has never seen; on the single path this is a cheap no-op.
-         An indeterminate failure invalidates too: the response was lost,
-         not the document, so the shelf is the only way to find out whether
-         the book landed. Definitive 4xx items deliberately do not. */
+         A failure we cannot prove was a refusal invalidates too: the answer
+         was lost, not necessarily the document, so the shelf is the only way
+         to find out whether the book landed. Definitive 4xx items are the
+         one case that deliberately stays quiet. */
       if (
         summary.created > 0 ||
         summary.duplicates > 0 ||
-        summary.items.some((item) => item.indeterminate)
+        summary.items.some(isUnconfirmedFailure)
       ) {
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
@@ -231,7 +292,7 @@ export function useUploadBooks() {
       /* The batch call rejected as a whole, so there are no per-file items
          to inspect — a 5xx or a dead connection may still have committed
          part of the cohort. Reconcile rather than assert nothing happened. */
-      if (isIndeterminateFailure(err)) {
+      if (classifyFailure(err) !== "refused") {
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
       }
     },

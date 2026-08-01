@@ -46,10 +46,16 @@ export type {
   UploadResponse,
 } from "./types";
 export { TERMINAL_STATUSES } from "./types";
-export type { UploadOutcomeItem, UploadSummary } from "./uploads";
+export type {
+  FailureCertainty,
+  UploadOutcomeItem,
+  UploadSummary,
+} from "./uploads";
 export {
+  classifyFailure,
   classifyUpload,
-  isIndeterminateFailure,
+  isUnconfirmedFailure,
+  normalizeBatchResponse,
   summarizeOutcomes,
   uploadDocument,
   uploadDocumentsBatch,
