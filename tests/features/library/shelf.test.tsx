@@ -133,6 +133,31 @@ describe("library shelf", () => {
     expect(baking.getByText("recipes")).toBeInTheDocument();
   });
 
+  it("never reports a confident zero when the list query fails", async () => {
+    /* An outage is not an empty shelf: with no docs and no details the
+       all-settled check is vacuously true, which used to resolve the line to
+       an exact "0 books ready · 0 recipes · 0 waiting for review" right above
+       the error panel. */
+    server.use(
+      http.get("/api/v1/documents", () =>
+        HttpResponse.json(
+          { error: { code: "internal_error", message: "boom" } },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderLibrary();
+
+    expect(
+      await screen.findByText(/the shelf could not be reached/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("— books ready · — recipes · — waiting for review"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/0 books ready/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/counts unavailable/)).not.toBeInTheDocument();
+  });
+
   it("renders the themed empty state when the shelf is bare", async () => {
     server.use(documentsListHandler([]));
     renderLibrary();

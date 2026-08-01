@@ -33,10 +33,17 @@ export function LibraryPage() {
   const booksReady = docs.filter(
     (d) => d.status === "ready" || d.status === "needs_review",
   ).length;
-  /* Settled includes errored queries — a 4xx is terminal under the retry
-     policy, so waiting on success alone would freeze the stats forever. */
+  /* Settled includes errored DETAIL queries — a 4xx is terminal under the
+     retry policy, so waiting on success alone would freeze the stats forever.
+
+     The LIST query is different, and must be `isSuccess`, not merely
+     "not pending": when it errors there are no docs and no details, so
+     `details.every(...)` is vacuously true and the line would resolve to an
+     exact "0 books ready · 0 recipes · 0 waiting for review" — a confident
+     zero inventory printed directly above the "shelf could not be reached"
+     panel. An outage is not an empty shelf. */
   const settled =
-    !documents.isPending && details.every((query) => !query.isPending);
+    documents.isSuccess && details.every((query) => !query.isPending);
   const unavailable = details.filter((query) => query.isError).length;
   const sumOf = (
     pick: (counts: {
