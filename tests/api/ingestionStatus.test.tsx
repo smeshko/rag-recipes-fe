@@ -129,10 +129,22 @@ describe("useIngestionStatus", () => {
     const rounds = at.length;
     expect(rounds).toBe(4);
 
-    /* Widening cadence, not a fixed one: the gap after the third failure
-       (interval × 2³ = 160ms) dwarfs the one after the first (40ms). */
+    /* Widening cadence, not a fixed one — asserted as LOWER bounds against
+       the nominal 40 / 80 / 160ms (interval × 2^round), never as an
+       ordering over measured gaps.
+
+       `setTimeout` cannot fire early, so a scheduler pause can only push a
+       gap up and no pause can fail a lower bound. The natural-looking
+       `gaps[2] > gaps[0]` has the opposite property: one pause inside the
+       first gap inverts it and the test flakes for a reason that has
+       nothing to do with the code under test.
+
+       These still fail loudly on the realistic regression — dropping the
+       backoff leaves every gap at the flat 20ms interval. */
     const gaps = at.slice(1).map((t, i) => t - at[i]);
-    expect(gaps[2]).toBeGreaterThan(gaps[0]);
+    expect(gaps[0]).toBeGreaterThanOrEqual(30);
+    expect(gaps[1]).toBeGreaterThanOrEqual(60);
+    expect(gaps[2]).toBeGreaterThanOrEqual(120);
 
     await sleep(SETTLE);
     expect(at.length).toBe(rounds);
