@@ -10,6 +10,7 @@ import type {
   BatchUploadItemResult,
   BatchUploadResponse,
   DocumentListItem,
+  DocumentListResponse,
   UploadResponse,
 } from "./types";
 
@@ -119,13 +120,15 @@ function memoizeBatchRefusal(queryClient: QueryClient): void {
 async function shelfSnapshot(queryClient: QueryClient): Promise<Set<string>> {
   let documents: DocumentListItem[];
   try {
-    documents = await queryClient.fetchQuery({
+    const response = await queryClient.fetchQuery({
       ...documentsQueryOptions(),
       staleTime: 0,
     });
+    documents = response.documents;
   } catch {
     documents =
-      queryClient.getQueryData<DocumentListItem[]>(["documents"]) ?? [];
+      queryClient.getQueryData<DocumentListResponse>(["documents"])
+        ?.documents ?? [];
   }
   return new Set(documents.map((doc) => doc.id));
 }

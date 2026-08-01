@@ -431,7 +431,7 @@ describe("useUploadBooks", () => {
     );
     const { queryClient, result } = renderUploadBooks();
     /* A previous shelf visit populated the cache. */
-    queryClient.setQueryData(["documents"], libraryBookList);
+    queryClient.setQueryData(["documents"], { documents: libraryBookList });
 
     const summary = await result.current.mutateAsync([
       pdfFile("one-pan-again.pdf"),
