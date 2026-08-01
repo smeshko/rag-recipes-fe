@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { request } from "./client";
+import { REVIEW_INCLUDED_FILTERS } from "./filters";
 import { route } from "./routes";
 import type { components } from "./schema";
 import type { SearchMode, SearchResponse } from "./types";
@@ -10,11 +11,16 @@ const searchEndpoint = route("/search", "post");
 
 /* Pick<> because openapi-typescript emits defaulted fields as required —
    the full generated body cannot be satisfied by two fields, and the backend
-   supplies every other default server-side. */
+   supplies every other default server-side.
+
+   `filters` is optional here and sent ONLY when the needs-review filter is
+   armed (see REVIEW_INCLUDED_FILTERS); the unarmed body stays exactly
+   `{query, mode}`. */
 type SearchPayload = Pick<
   components["schemas"]["SearchRequestBody"],
   "query" | "mode"
->;
+> &
+  Partial<Pick<components["schemas"]["SearchRequestBody"], "filters">>;
 
 /* Cached alongside the response: the mode that actually produced it. The two
    can disagree — D7's placeholder deliberately keeps the previous mode's
@@ -33,9 +39,17 @@ interface SearchQueryData {
   response: SearchResponse;
 }
 
-function searchQueryOptions(q: string, mode: SearchMode) {
+function searchQueryOptions(
+  q: string,
+  mode: SearchMode,
+  reviewIncluded: boolean,
+) {
   return queryOptions({
-    queryKey: ["search", q, mode],
+    /* reviewIncluded is part of the key: the same q+mode returns a different
+       result set with the filter armed, so the two must not share a cache
+       entry. It sits AFTER mode so the placeholderData probe on index 1
+       (the query string) is unaffected. */
+    queryKey: ["search", q, mode, reviewIncluded],
     enabled: q !== "",
     /* Mode-scoped: a mode toggle on the same query keeps the previous grid
        (dimmed via isPlaceholderData); a new query gets a fresh skeleton. */
@@ -45,6 +59,9 @@ function searchQueryOptions(q: string, mode: SearchMode) {
     ) => (prevQuery?.queryKey[1] === q ? prev : undefined),
     queryFn: async (): Promise<SearchQueryData> => {
       const payload: SearchPayload = { query: q, mode };
+      if (reviewIncluded) {
+        payload.filters = REVIEW_INCLUDED_FILTERS;
+      }
       /* The 1.2 client doesn't serialize — body + Content-Type are ours. */
       const response = await request<SearchResponse>(searchEndpoint, {
         body: JSON.stringify(payload),
@@ -55,8 +72,12 @@ function searchQueryOptions(q: string, mode: SearchMode) {
   });
 }
 
-export function useSearch(q: string, mode: SearchMode) {
-  const options = searchQueryOptions(q, mode);
+/**
+ * @param reviewIncluded arms `filters.exclude_needs_review: false` — set from
+ * the `review=included` URL param the library's review link-out carries.
+ */
+export function useSearch(q: string, mode: SearchMode, reviewIncluded = false) {
+  const options = searchQueryOptions(q, mode, reviewIncluded);
   /* Unwrap with `select`, at the OBSERVER — not by overriding `data` on the
      returned object. `select` is what makes EVERY data-bearing member of the
      result a `SearchResponse`: `data`, `await refetch()`, and `promise`.

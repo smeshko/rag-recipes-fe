@@ -12,14 +12,37 @@ import type {
    both `cookbookCount` and the ready-recipes fan-out treat what comes back as
    the whole of it. Walk pages until one comes back short. */
 const LIST_PAGE_SIZE = 200;
-/** Hard stop at 5000 documents so a mispaging backend cannot spin forever. */
+/** Runaway guard, and deliberately a bound on REQUESTS rather than on
+    documents: at most LIST_MAX_PAGES full-page requests plus the one short
+    page that terminates the loop, so 26 requests worst case.
+
+    It is therefore not an exact 5000-document quota — a shelf of 5001-5199
+    terminates normally on that last short page and is returned in full. That
+    is the intended trade: only a 26th *consecutive full* page proves the
+    server is ignoring `offset`, and throwing on a merely-large-but-honest
+    shelf would misreport a working list as unavailable, which is the failure
+    this module already had once (see the isSuccess gate in LibraryPage). */
 const LIST_MAX_PAGES = 25;
 
-async function fetchAllDocuments(): Promise<DocumentListResponse> {
+/**
+ * Deliberately NOT an ApiError: `shouldRetry` must never rerun the runaway
+ * loop (its 4xx branch would not catch a synthetic error, so without its own
+ * branch this would retry twice with backoff).
+ */
+export class PaginationCapError extends Error {
+  constructor(pages: number) {
+    super(
+      `The documents list did not terminate after ${pages} pages — is the server ignoring 'offset'?`,
+    );
+    this.name = "PaginationCapError";
+  }
+}
+
+export async function fetchAllDocuments(): Promise<DocumentListResponse> {
   const documents: DocumentListItem[] = [];
   const seen = new Set<string>();
 
-  for (let page = 0; page < LIST_MAX_PAGES; page += 1) {
+  for (let page = 0; page <= LIST_MAX_PAGES; page += 1) {
     const batch = await request<DocumentListResponse>(
       route("/documents", "get", {
         query: {
@@ -37,18 +60,24 @@ async function fetchAllDocuments(): Promise<DocumentListResponse> {
       }
     }
     if (batch.documents.length < LIST_PAGE_SIZE) {
-      break;
+      return { documents };
     }
   }
 
-  return { documents };
+  throw new PaginationCapError(LIST_MAX_PAGES + 1);
 }
 
-export function useDocuments() {
-  return useQuery({
+/** The single source of the ['documents'] cache entry — share, never inline.
+    Phase 3.2's duplicate-detection snapshot consumes it so shapes match. */
+export function documentsQueryOptions() {
+  return queryOptions({
     queryKey: ["documents"],
     queryFn: fetchAllDocuments,
   });
+}
+
+export function useDocuments() {
+  return useQuery(documentsQueryOptions());
 }
 
 /* The shared ['document', id] factory — 2.2's useDocument and the shelf
@@ -71,6 +100,13 @@ export function documentDetailQueryOptions(id: string | undefined) {
 /** Detail-screen consumer of the shared factory (dependent query in 2.2). */
 export function useDocument(id: string | undefined) {
   return useQuery(documentDetailQueryOptions(id));
+}
+
+/** N parallel detail fetches, cached per id — no batch endpoint exists. */
+export function useDocumentDetails(ids: string[]) {
+  return useQueries({
+    queries: ids.map((id) => documentDetailQueryOptions(id)),
+  });
 }
 
 export interface ShelfStats {

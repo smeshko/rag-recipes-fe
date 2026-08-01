@@ -9,6 +9,7 @@ import {
 } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
+import { isReviewIncluded } from "../library/presentation";
 import { AnswerCard } from "./AnswerCard";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
@@ -93,6 +94,9 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const mode = parseMode(searchParams.get("mode"));
+  /* Armed by the library's "Open review queue →" link-out; read-only in v1
+     (no toggle UI on this screen — epic 03 owns the contract). */
+  const reviewIncluded = isReviewIncluded(searchParams);
 
   /* The URL is the source of truth; local state only holds the in-progress
      typing. The effect resyncs the box on Back/Forward navigation. */
@@ -119,7 +123,7 @@ export function SearchPage() {
     });
   };
 
-  const search = useSearch(q, mode);
+  const search = useSearch(q, mode, reviewIncluded);
   /* Render what the data says, not what the URL says: during a mode change
      the grid still holds the previous mode's results (D7's placeholder), so
      the header label and every card's router state must use the mode that
@@ -145,7 +149,13 @@ export function SearchPage() {
     }
   }, [answer.isPending]);
 
-  const runAnswer = (vars: { query: string; mode: SearchMode }) => {
+  const runAnswer = (vars: {
+    query: string;
+    mode: SearchMode;
+    /* Optional so the retry path can hand back `answer.variables` verbatim,
+       preserving the armed state the original ask was made under. */
+    reviewIncluded?: boolean;
+  }) => {
     if (inFlight.current) {
       return;
     }
@@ -172,7 +182,7 @@ export function SearchPage() {
     }
     askedFor.current = asked;
     writeParams(asked, mode);
-    runAnswer({ query: asked, mode });
+    runAnswer({ query: asked, mode, reviewIncluded });
   };
 
   const rephrase = () => {
@@ -199,7 +209,12 @@ export function SearchPage() {
     isFallback(answer.data)
       ? answer.data
       : null;
-  const answerMatchesSearch = answer.variables?.mode === mode;
+  /* Provenance includes the armed state: an answer retrieved under a
+     different needs-review filter describes a different corpus, so its
+     fallback grid must not stand in for the current one. */
+  const answerMatchesSearch =
+    answer.variables?.mode === mode &&
+    (answer.variables?.reviewIncluded ?? false) === reviewIncluded;
   const showFallbackGrid =
     fallbackData !== null &&
     fallbackData.results.length > 0 &&
@@ -318,6 +333,16 @@ export function SearchPage() {
           q={q}
           mode={resultsMode}
           dimmed={search.isPlaceholderData}
+          /* The default subline hard-codes "needs-review excluded", which is
+             a lie once the library's link-out has armed the filter. */
+          subline={
+            <>
+              ranked by {resultsMode} score ·{" "}
+              {reviewIncluded
+                ? "needs-review included"
+                : "needs-review excluded"}
+            </>
+          }
         />
       )}
     </div>

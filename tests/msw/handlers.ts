@@ -1,4 +1,5 @@
 import { HttpResponse, http } from "msw";
+import type { DocumentDetailResponse, DocumentListItem } from "../../src/api";
 
 /* Fixtures mirror the live backend's shapes byte-for-byte — the 401 body was
    captured from an unauthenticated GET /api/v1/health, the search/documents
@@ -235,6 +236,165 @@ export const searchInvalidHandler = () =>
       { status: 400 },
     ),
   );
+/* ------------------------------------------------------------------ */
+/* Documents fixtures — the five mockup books (design/sk-library.html). */
+/* Every documents handler below is a per-test `server.use()` override, */
+/* NEVER a base `handlers` entry: the parallel epic-02 branch registers */
+/* its own base GET /api/v1/documents fixture, and MSW resolves in      */
+/* array order — two base handlers on one route silently shadow one.    */
+/* ------------------------------------------------------------------ */
+
+interface LibraryBookFixture {
+  list: DocumentListItem;
+  detail: DocumentDetailResponse;
+}
+
+const book = (
+  id: string,
+  title: string,
+  status: DocumentListItem["status"],
+  counts: DocumentDetailResponse["counts"],
+  options: { subcategory?: string; author?: string; created_at?: string } = {},
+): LibraryBookFixture => {
+  const list: DocumentListItem = {
+    id,
+    category: "recipes",
+    subcategory: options.subcategory ?? null,
+    title,
+    author: options.author ?? "Unknown",
+    source_type: "pdf",
+    status,
+    active_source_version:
+      status === "queued" || status === "failed" ? null : 1,
+  };
+  return {
+    list,
+    detail: {
+      document: {
+        ...list,
+        asset_id: `asset-${id}`,
+        language: "en",
+        created_at: options.created_at ?? "2026-07-30T10:00:00Z",
+        updated_at: options.created_at ?? "2026-07-30T10:00:00Z",
+      },
+      counts,
+    },
+  };
+};
+
+/** The mockup roster: header math is 3 books ready · 269 recipes · 15 waiting. */
+export const libraryBooks: LibraryBookFixture[] = [
+  book(
+    "book-green-roasting-tin",
+    "The Green Roasting Tin",
+    "queued",
+    {
+      source_spans: 0,
+      knowledge_items: 0,
+      ready_items: 0,
+      needs_review_items: 0,
+      chunks: 0,
+    },
+    {
+      subcategory: "one-pan vegetarian",
+      author: "Rukmini Iyer",
+      created_at: "2026-07-31T09:56:00Z",
+    },
+  ),
+  book(
+    "book-one-pan",
+    "One Pan to Rule Them All",
+    "ready",
+    {
+      source_spans: 270,
+      knowledge_items: 108,
+      ready_items: 107,
+      needs_review_items: 1,
+      chunks: 535,
+    },
+    { author: "America's Test Kitchen", created_at: "2026-07-28T18:12:00Z" },
+  ),
+  book(
+    "book-eat-drink-paleo",
+    "Eat Drink Paleo",
+    "ready",
+    {
+      source_spans: 226,
+      knowledge_items: 105,
+      ready_items: 105,
+      needs_review_items: 0,
+      chunks: 520,
+    },
+    { author: "Irena Macri", created_at: "2026-07-25T08:30:00Z" },
+  ),
+  book(
+    "book-baking-less-sugar",
+    "Baking with Less Sugar",
+    "needs_review",
+    {
+      source_spans: 203,
+      knowledge_items: 71,
+      ready_items: 57,
+      needs_review_items: 14,
+      chunks: 285,
+    },
+    { author: "Joanne Chang", created_at: "2026-07-22T15:45:00Z" },
+  ),
+  book(
+    "book-modernist-bread",
+    "modernist-bread-vol2.pdf",
+    "failed",
+    {
+      source_spans: 0,
+      knowledge_items: 0,
+      ready_items: 0,
+      needs_review_items: 0,
+      chunks: 0,
+    },
+    { author: "Nathan Myhrvold", created_at: "2026-07-20T11:00:00Z" },
+  ),
+];
+
+export const libraryBookList: DocumentListItem[] = libraryBooks.map(
+  (b) => b.list,
+);
+
+export const libraryBookDetails: Record<string, DocumentDetailResponse> =
+  Object.fromEntries(libraryBooks.map((b) => [b.list.id, b.detail]));
+
+/**
+ * Per-test paginating list handler: serves `books` in `limit`/`offset`
+ * slices exactly as the backend does. Optional `onRequest` records each
+ * intercepted URL so tests can assert the loop's paging behaviour.
+ */
+export const documentsListHandler = (
+  books: DocumentListItem[],
+  onRequest?: (url: URL) => void,
+) =>
+  http.get("/api/v1/documents", ({ request }) => {
+    const url = new URL(request.url);
+    onRequest?.(url);
+    const limit = Number(url.searchParams.get("limit") ?? "50");
+    const offset = Number(url.searchParams.get("offset") ?? "0");
+    return HttpResponse.json({
+      documents: books.slice(offset, offset + limit),
+    });
+  });
+
+/**
+ * Per-test detail handler for one document id. `server.use()` prepends,
+ * so it outranks the base 404 catch-all below.
+ */
+export const documentDetailHandler = (
+  id: string,
+  detail: DocumentDetailResponse,
+) => http.get(`/api/v1/documents/${id}`, () => HttpResponse.json(detail));
+
+/** Register the whole five-book shelf: list + every detail. */
+export const libraryShelfHandlers = () => [
+  documentsListHandler(libraryBookList),
+  ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
+];
 
 export const handlers = [
   http.get("/api/v1/health", () => HttpResponse.json(healthOk)),

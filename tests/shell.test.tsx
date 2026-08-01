@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../src/routes";
+import { libraryShelfHandlers } from "./msw/handlers";
+import { server } from "./msw/server";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -24,6 +26,9 @@ function currentPill(): string | null {
 }
 
 describe("shell nav active state", () => {
+  /* The library shelf now fetches on mount — feed it whenever it renders. */
+  beforeEach(() => server.use(...libraryShelfHandlers()));
+
   it.each([
     ["/", "Cook"],
     ["/?q=test", "Cook"],
@@ -61,7 +66,9 @@ describe("shell nav active state", () => {
     renderAt("/");
     expect(screen.getByTestId("search-page")).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Library" }));
-    expect(screen.getByTestId("library-page")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "On the shelf" }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("search-page")).not.toBeInTheDocument();
     expect(currentPill()).toBe("Library");
   });
