@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -52,11 +52,18 @@ describe("shell nav active state", () => {
     },
   );
 
-  it("never marks Add books active", () => {
+  /* Scoped with within(): on /library the shelf fixtures legitimately render
+     their own links (e.g. "Open review queue →"), so a document-wide query
+     would overcount. */
+  it("renders exactly the Cook and Library pills in the nav", () => {
     for (const path of ["/", "/library", "/recipes/abc", "/nope"]) {
       const { unmount } = renderAt(path);
-      const addBooks = screen.getByRole("link", { name: "Add books" });
-      expect(addBooks).not.toHaveAttribute("aria-current");
+      const nav = screen.getByRole("navigation");
+      const pills = within(nav).getAllByRole("link");
+      expect(pills.map((pill) => pill.textContent)).toEqual([
+        "Cook",
+        "Library",
+      ]);
       unmount();
     }
   });

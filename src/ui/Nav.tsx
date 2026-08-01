@@ -44,11 +44,6 @@ export function Nav() {
       >
         Library
       </Link>
-      {/* Action affordance, never active — lands on the library dropzone.
-          Identity-based aria-current keeps this pill inert on /library too. */}
-      <Link to="/library#add" className={pillClass(false)}>
-        Add books
-      </Link>
     </nav>
   );
 }
