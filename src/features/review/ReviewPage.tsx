@@ -1,5 +1,6 @@
 import { type ApiError, useReviewItems } from "../../api";
 import { Bloom } from "../../ui";
+import { ReviewItemCard } from "./ReviewItemCard";
 import { ReviewEmptyAll, ReviewError, ReviewSkeleton } from "./ReviewStates";
 
 /* The global review queue (phase 4.3), running on 4.2's hooks. Bloom cadence
@@ -37,11 +38,14 @@ export function ReviewPage() {
         {items.isSuccess && flagged.length === 0 && <ReviewEmptyAll />}
 
         {flagged.map((item, index) => (
-          <Bloom key={item.id} index={index} base={0.18} step={0.04}>
-            {/* Scaffolding rows — TASK-002 replaces them with ReviewItemCard. */}
-            <h3 className="mb-3 font-display text-[18px] font-semibold">
-              {item.title}
-            </h3>
+          <Bloom
+            key={item.id}
+            index={index}
+            base={0.18}
+            step={0.04}
+            className="mb-4"
+          >
+            <ReviewItemCard item={item} />
           </Bloom>
         ))}
       </div>
