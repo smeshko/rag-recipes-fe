@@ -1,5 +1,12 @@
 import { HttpResponse, http } from "msw";
-import type { DocumentDetailResponse, DocumentListItem } from "../../src/api";
+import type {
+  BatchUploadResponse,
+  DocumentDetailResponse,
+  DocumentListItem,
+  DocumentResponse,
+  ErrorEnvelope,
+  UploadResponse,
+} from "../../src/api";
 
 /* Fixtures mirror the live backend's shapes byte-for-byte — the 401 body was
    captured from an unauthenticated GET /api/v1/health, the search/documents
@@ -395,6 +402,143 @@ export const libraryShelfHandlers = () => [
   documentsListHandler(libraryBookList),
   ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
 ];
+
+/* ------------------------------------------------------------------ */
+/* Upload fixtures (phase 3.2). Envelopes below were captured from the */
+/* live backend on 2026-08-01 (curl against :8001) — byte-for-byte.    */
+/*                                                                     */
+/* jsdom/undici multipart limit (verified by spike): field NAMES, part */
+/* COUNTS and SCALAR values survive into a handler's formData(), but   */
+/* the file part's filename and bytes do not. Handlers therefore only  */
+/* record names/counts/scalars, and which envelope a test receives is  */
+/* chosen by registering the fixture — never by inspecting content.    */
+/* ------------------------------------------------------------------ */
+
+export const unsupportedFileTypeEnvelope = {
+  error: {
+    code: "unsupported_file_type",
+    message: "Only PDF uploads are supported.",
+    details: { expected: "application/pdf" },
+  },
+};
+
+export const missingFileEnvelope = {
+  error: {
+    code: "invalid_request",
+    message: "A 'file' multipart field is required.",
+    details: { field: "file" },
+  },
+};
+
+export const internalErrorEnvelope = {
+  error: {
+    code: "internal_error",
+    message: "Something went wrong storing the document.",
+    details: {},
+  },
+};
+
+/** What an upload handler can observe under jsdom — nothing file-content-y. */
+export interface ObservedUpload {
+  contentType: string | null;
+  fieldNames: string[];
+  category: FormDataEntryValue | null;
+  /** Part count under the multi-file field name `files`. */
+  filesPartCount: number;
+}
+
+const observeUpload = async (request: Request): Promise<ObservedUpload> => {
+  const fd = await request.formData();
+  return {
+    contentType: request.headers.get("content-type"),
+    fieldNames: [...fd.keys()],
+    category: fd.get("category"),
+    filesPartCount: fd.getAll("files").length,
+  };
+};
+
+/** A fresh queued document as POST /documents returns it (201, no marker). */
+export const uploadedDocument = (
+  id: string,
+  title: string,
+): DocumentResponse => ({
+  id,
+  asset_id: `asset-${id}`,
+  category: "recipes",
+  subcategory: null,
+  title,
+  author: "Unknown",
+  source_type: "pdf",
+  language: null,
+  active_source_version: null,
+  status: "queued",
+  created_at: "2026-08-01T09:00:00Z",
+  updated_at: "2026-08-01T09:00:00Z",
+});
+
+/**
+ * 201 single-upload handler. The duplicate response is byte-identical in
+ * shape to a create (no flag) — pass an existing fixture document to model
+ * a content-hash hit, a fresh one to model a create.
+ */
+export const uploadDocumentHandler = (
+  document: DocumentResponse,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    const body: UploadResponse = {
+      document,
+      ingestion: { status: document.status },
+    };
+    return HttpResponse.json(body, { status: 201 });
+  });
+
+/** Error-envelope handler for POST /documents (415, 400, 500 …). */
+export const uploadErrorHandler = (
+  status: number,
+  envelope: ErrorEnvelope,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    return HttpResponse.json(envelope, { status });
+  });
+
+/** The batch refusal when the Anthropic path is disabled — 409, generic code. */
+export const batchNotEnabledEnvelope = {
+  error: {
+    code: "invalid_request",
+    message:
+      "Batch upload requires the Anthropic batch path (LLM_PROVIDER=anthropic + ANTHROPIC_API_KEY).",
+    details: {},
+  },
+};
+
+/*
+ * 201 batch handler. The response states its OWN items[].filename values —
+ * never derived from the received parts, which under jsdom would all read
+ * "blob" and enshrine a harness artifact as the contract.
+ */
+export const uploadBatchHandler = (
+  response: BatchUploadResponse,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents/batch", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    return HttpResponse.json(response, { status: 201 });
+  });
+
+/** Error-envelope handler for POST /documents/batch (409 refusal, 500 …). */
+export const uploadBatchErrorHandler = (
+  status: number,
+  envelope: ErrorEnvelope,
+  onUpload?: (observed: ObservedUpload) => void,
+) =>
+  http.post("/api/v1/documents/batch", async ({ request }) => {
+    onUpload?.(await observeUpload(request));
+    return HttpResponse.json(envelope, { status });
+  });
 
 export const handlers = [
   http.get("/api/v1/health", () => HttpResponse.json(healthOk)),

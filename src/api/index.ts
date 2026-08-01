@@ -26,6 +26,8 @@ export { useSearch } from "./search";
 export type {
   AnswerCitation,
   AnswerResponse,
+  BatchUploadItemResult,
+  BatchUploadResponse,
   DocumentCounts,
   DocumentDetailResponse,
   DocumentListItem,
@@ -41,5 +43,21 @@ export type {
   Recommendation,
   Step,
   TerminalStatus,
+  UploadResponse,
 } from "./types";
 export { TERMINAL_STATUSES } from "./types";
+export type {
+  FailureCertainty,
+  UploadOutcomeItem,
+  UploadSummary,
+} from "./uploads";
+export {
+  classifyFailure,
+  classifyUpload,
+  isUnconfirmedFailure,
+  normalizeBatchResponse,
+  summarizeOutcomes,
+  uploadDocument,
+  uploadDocumentsBatch,
+  useUploadBooks,
+} from "./uploads";
