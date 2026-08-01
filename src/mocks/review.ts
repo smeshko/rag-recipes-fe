@@ -8,15 +8,13 @@ import type {
   ReviewListResponse,
 } from "../api";
 
-/* Review-queue mocks (phase 4.2). Src-side by design (DECISIONS.md D4):
-   `tsconfig.app.json` includes only `src`, so the dev browser worker
-   (TASK-004) could not import from `tests/` — one module keeps the test
-   mocks and the dev mocks from drifting. Payloads are transcribed from
-   docs/review-api-contract.md field-for-field; types come from `src/api`
-   so contract drift breaks compilation.
-
-   msw never reaches the production bundle: the only src-side importer is
-   behind the `import.meta.env.DEV` dynamic-import gate (TASK-004).
+/* Review-queue TEST mocks (phase 4.2). The dev browser worker that once
+   shared this module was removed in phase 4.4 (live endpoints); the only
+   remaining importer is the node test server (`tests/msw/server.ts`), so
+   msw never reaches the production bundle. Src-side placement is historical
+   (4.2 DECISIONS.md D4) and kept to avoid churn. Payloads are transcribed
+   from docs/review-api-contract.md field-for-field; types come from
+   `src/api` so contract drift breaks compilation.
 
    Fixture hygiene: synthetic ids only — nothing here may reference the
    stranded dev-DB documents deleted by backend 21.2. Flag `code` values
@@ -241,9 +239,8 @@ export const reviewDecisionHandler = (
  * NEVER register this as a base test handler: base handlers are created once
  * at module load and `server.resetHandlers()` does not reset closure state,
  * so decisions would leak across tests. Use per-test via `server.use(...)` —
- * runtime handlers ARE removed by `resetHandlers()` — or once at dev-worker
- * startup (TASK-004), where suite-lifetime state is exactly what the
- * browsable demo needs.
+ * runtime handlers ARE removed by `resetHandlers()`. (The dev browser worker
+ * that also seeded this scenario was removed in phase 4.4.)
  */
 export const reviewScenario = (items: ReviewItem[]) => {
   /** id → the status the decision produced (for `review_not_pending`). */
