@@ -11,6 +11,7 @@ import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
 import { isReviewIncluded } from "../library/presentation";
 import { AnswerCard } from "./AnswerCard";
+import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
@@ -241,6 +242,20 @@ export function SearchPage() {
     fallbackData.results.length === 0 &&
     answerMatchesSearch;
 
+  /* CTA visibility (round-1 #4): offer the grounded answer only while a live
+     grid is up and the answer slot is idle. Idle means no mutation bound to
+     this query — a stale answer for another q counts, since the slot renders
+     nothing then. Every occupied arm (skeleton, card, error, fallback notice
+     — the notice already owns the "want an answer?" conversation) and every
+     non-grid state (bare /, loading, search error, empty) hides it. */
+  const showAnswerCta =
+    q !== "" &&
+    (!answerIsForCurrentQuery || answer.isIdle) &&
+    !showFallbackGrid &&
+    !search.isLoading &&
+    !search.error &&
+    results.length > 0;
+
   /* Two of the answer slot's four states carry no announcement of their own:
      the skeleton is aria-hidden and the answer card is plain content. A
      screen-reader user would click Ask and hear nothing, then nothing again
@@ -303,6 +318,8 @@ export function SearchPage() {
           }}
         />
       ) : null}
+
+      {showAnswerCta ? <AnswerCta onAsk={askShelf} /> : null}
 
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
