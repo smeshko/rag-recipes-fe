@@ -149,7 +149,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
 
   return (
     <Bloom index={index} base={0.18} step={0.04} className="mb-4">
-      <article className="grid cursor-pointer grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-line bg-card shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_16px_40px_rgba(94,74,44,0.13)] max-[880px]:grid-cols-[6px_1fr]">
+      <article className="grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-line bg-card shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_16px_40px_rgba(94,74,44,0.13)] max-[880px]:grid-cols-[6px_1fr]">
         <span
           aria-hidden="true"
           className={`self-stretch ${spineAccent(doc.status, doc.id)}`}

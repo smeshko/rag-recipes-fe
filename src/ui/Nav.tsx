@@ -1,4 +1,5 @@
 import { Link, matchPath, useLocation } from "react-router";
+import { lastSearchUrl } from "../features/search/lastSearch";
 
 /* Active state is derived once from pathname — NavLink can't express
    "Cook stays active on /recipes/*" (its root match ignores `end`), so these
@@ -30,8 +31,11 @@ export function Nav() {
 
   return (
     <nav className="flex gap-1.5">
+      {/* The Cook pill restores the last committed search (sessionStorage).
+          Nav re-renders on every location change (useLocation above), so the
+          read stays fresh without a subscription. */}
       <Link
-        to="/"
+        to={lastSearchUrl()}
         className={pillClass(active === "cook")}
         aria-current={active === "cook" ? "page" : undefined}
       >
@@ -43,11 +47,6 @@ export function Nav() {
         aria-current={active === "library" ? "page" : undefined}
       >
         Library
-      </Link>
-      {/* Action affordance, never active — lands on the library dropzone.
-          Identity-based aria-current keeps this pill inert on /library too. */}
-      <Link to="/library#add" className={pillClass(false)}>
-        Add books
       </Link>
     </nav>
   );

@@ -51,6 +51,10 @@ function searchQueryOptions(
        (the query string) is unaffected. */
     queryKey: ["search", q, mode, reviewIncluded],
     enabled: q !== "",
+    /* Returning to a search within five minutes (the Cook pill's restore)
+       re-shows the cached results request-free; older results refetch —
+       five-minute-old rankings deserve a refresh (plan 4.1, TASK-003). */
+    staleTime: 5 * 60_000,
     /* Mode-scoped: a mode toggle on the same query keeps the previous grid
        (dimmed via isPlaceholderData); a new query gets a fresh skeleton. */
     placeholderData: (

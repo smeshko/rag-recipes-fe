@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
@@ -259,30 +259,6 @@ describe("library dropzone", () => {
         "1 added · 0 already on the shelf · 0 failed · 1 unconfirmed",
       ),
     ).toBeInTheDocument();
-  });
-
-  it("Add books scrolls to the dropzone and re-fires on a repeat click", async () => {
-    const scrollSpy = vi.fn();
-    window.HTMLElement.prototype.scrollIntoView = scrollSpy;
-    server.use(
-      documentsListHandler(libraryBookList),
-      ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
-    );
-    const user = userEvent.setup();
-    renderLibrary();
-    await screen.findByRole("heading", { name: "One Pan to Rule Them All" });
-
-    const addBooks = screen.getByRole("link", { name: "Add books" });
-    expect(addBooks).toHaveAttribute("href", "/library#add");
-    expect(addBooks).not.toHaveAttribute("aria-current");
-
-    await user.click(addBooks);
-    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
-
-    /* Repeat click from /library#add: useLocation never observes native
-       hashchange, so the effect keys on location.key and must re-fire. */
-    await user.click(addBooks);
-    await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(2));
   });
 
   it("Choose files opens the picker exactly once per click", async () => {

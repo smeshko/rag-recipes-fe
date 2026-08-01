@@ -11,9 +11,11 @@ import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
 import { isReviewIncluded } from "../library/presentation";
 import { AnswerCard } from "./AnswerCard";
+import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
+import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -121,6 +123,19 @@ export function SearchPage() {
       }
       return params;
     });
+    /* Beside the setSearchParams call, not inside its updater — the updater
+       stays pure. writeParams is the single URL-commit choke point, so this
+       one site covers Enter, Ask and the mode chips alike. Emptying a
+       committed query deliberately forgets the remembered search: an emptied
+       box must not resurrect through the Cook pill. Guarded on the previous
+       q: on the bare / (Back to the initial entry, the Crumb's "Back to
+       Cook") a mode-chip click also commits an empty q, and that must not
+       wipe a search the user never had on screen (review #1.1). */
+    if (nextQ) {
+      saveLastSearch(nextQ, nextMode, reviewIncluded);
+    } else if (q !== "") {
+      clearLastSearch();
+    }
   };
 
   const search = useSearch(q, mode, reviewIncluded);
@@ -230,6 +245,20 @@ export function SearchPage() {
     fallbackData.results.length === 0 &&
     answerMatchesSearch;
 
+  /* CTA visibility (round-1 #4): offer the grounded answer only while a live
+     grid is up and the answer slot is idle. Idle means no mutation bound to
+     this query — a stale answer for another q counts, since the slot renders
+     nothing then. Every occupied arm (skeleton, card, error, fallback notice
+     — the notice already owns the "want an answer?" conversation) and every
+     non-grid state (bare /, loading, search error, empty) hides it. */
+  const showAnswerCta =
+    q !== "" &&
+    (!answerIsForCurrentQuery || answer.isIdle) &&
+    !showFallbackGrid &&
+    !search.isLoading &&
+    !search.error &&
+    results.length > 0;
+
   /* Two of the answer slot's four states carry no announcement of their own:
      the skeleton is aria-hidden and the answer card is plain content. A
      screen-reader user would click Ask and hear nothing, then nothing again
@@ -291,6 +320,12 @@ export function SearchPage() {
             }
           }}
         />
+      ) : null}
+
+      {showAnswerCta ? (
+        /* Disabled, not hidden, on an emptied draft: askShelf asks the draft
+           and would silently no-op (review #1.2) — same guard as the bar. */
+        <AnswerCta onAsk={askShelf} disabled={text.trim() === ""} />
       ) : null}
 
       {showFallbackGrid && fallbackData ? (

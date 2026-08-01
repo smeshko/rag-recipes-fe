@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router";
+import { useRef, useState } from "react";
 import { useUploadBooks } from "../../api";
 import { UploadOutcome } from "./UploadOutcome";
 
@@ -11,22 +10,8 @@ import { UploadOutcome } from "./UploadOutcome";
 
 export function Dropzone() {
   const upload = useUploadBooks();
-  const location = useLocation();
-  const zoneRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const [dragDepth, setDragDepth] = useState(0);
-
-  /* The nav's "Add books" lands on /library#add. Keyed on location.key, not
-     hash: useLocation never observes native hashchange, so a repeat click
-     from /library#add would otherwise not re-fire (1.3's finding). */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-fire on every navigation (location.key); reading hash alone would miss repeat clicks
-  useEffect(() => {
-    if (location.hash === "#add") {
-      zoneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      buttonRef.current?.focus();
-    }
-  }, [location.key]);
 
   const addFiles = (list: ArrayLike<File> | null | undefined) => {
     const files = Array.from(list ?? []);
@@ -47,7 +32,6 @@ export function Dropzone() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: the whole zone is a convenience click target; the button inside is the accessible control */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard access goes through the real <button>, which stops propagation */}
       <div
-        ref={zoneRef}
         data-testid="dropzone"
         aria-busy={upload.isPending}
         className={`flex cursor-pointer items-center gap-6 rounded-[20px] border-2 border-dashed p-[34px] transition-colors duration-200 ${zoneLook}`}
@@ -83,7 +67,6 @@ export function Dropzone() {
           </small>
         </div>
         <button
-          ref={buttonRef}
           type="button"
           disabled={upload.isPending}
           className="ml-auto flex-none rounded-pill bg-apricot px-6 py-3 text-sm font-bold text-white transition-colors duration-200 hover:bg-apricot-deep disabled:opacity-60"
