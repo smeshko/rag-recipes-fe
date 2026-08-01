@@ -14,6 +14,7 @@ import { AnswerCard } from "./AnswerCard";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
+import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -121,6 +122,16 @@ export function SearchPage() {
       }
       return params;
     });
+    /* Beside the setSearchParams call, not inside its updater — the updater
+       stays pure. writeParams is the single URL-commit choke point, so this
+       one site covers Enter, Ask and the mode chips alike. Clearing the
+       query deliberately forgets the remembered search: an emptied box must
+       not resurrect through the Cook pill. */
+    if (nextQ) {
+      saveLastSearch(nextQ, nextMode, reviewIncluded);
+    } else {
+      clearLastSearch();
+    }
   };
 
   const search = useSearch(q, mode, reviewIncluded);
