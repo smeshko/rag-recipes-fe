@@ -348,11 +348,21 @@ export function useIngestionStatus(
     refetchInterval: (q) => {
       /* Computed per RENDER, not per poll (setOptions recomputes it every
          render) — it must stay a pure read of state; counting happens in
-         the effects below, once per completed fetch. */
-      if (q.state.data?.terminal) {
-        return false;
-      }
-      if (q.state.error) {
+         the effects below, once per completed fetch.
+
+         The error branch comes FIRST, and which outcome is current is
+         decided by timestamps rather than by `data` being present. A failed
+         refetch does not clear the previous payload, so after a reprocess —
+         where the cache still holds the finished run's `terminal: true` —
+         a leading `data?.terminal` check would hand that stale payload
+         precedence over the error that just happened, return false, and
+         kill polling after a single failed round: no backoff, and no
+         stopReason either (one round is short of MAX_FAILED_ROUNDS), so
+         the row freezes on the stepper with no "check again" to press. */
+      const failing =
+        q.state.error !== null &&
+        q.state.errorUpdatedAt >= q.state.dataUpdatedAt;
+      if (failing) {
         if (is4xx(q.state.error)) {
           return false;
         }
@@ -360,6 +370,9 @@ export function useIngestionStatus(
           return false;
         }
         return intervalMs * 2 ** failedRounds;
+      }
+      if (q.state.data?.terminal) {
+        return false;
       }
       if (stallCount >= stallLimit) {
         return false;

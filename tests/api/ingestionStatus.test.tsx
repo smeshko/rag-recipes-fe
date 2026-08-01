@@ -33,11 +33,16 @@ function renderStatusHook(
     intervalMs?: number;
     stallLimit?: number;
     listTerminal?: boolean;
+    /** Pre-seed the status cache, as a finished run leaves it. */
+    seed?: unknown;
   } = {},
 ) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  if (options.seed !== undefined) {
+    client.setQueryData(["document", DOC, "status"], options.seed);
+  }
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client }, children);
   const hook = renderHook(
@@ -148,6 +153,29 @@ describe("useIngestionStatus", () => {
 
     await sleep(SETTLE);
     expect(at.length).toBe(rounds);
+  });
+
+  it("backs off on a 5xx even when the cache still holds the last run's terminal payload", async () => {
+    /* The reprocess shape: a finished run leaves `terminal: true` in the
+       cache, and a failed refetch does not clear it. If the interval
+       callback reads that stale payload before the fresh error it stops
+       after ONE round — below the give-up threshold, so no stopReason and
+       no "check again" ever render, and the row freezes mid-stepper. */
+    let calls = 0;
+    server.use(
+      statusErrorHandler(DOC, 500, internalErrorEnvelope, () => {
+        calls += 1;
+      }),
+    );
+    const { result } = renderStatusHook({
+      seed: ingestionStatus(DOC, "ready"),
+      listTerminal: true,
+    });
+
+    await waitFor(() => expect(result.current.stopReason).toBe("error"), {
+      timeout: 4000,
+    });
+    expect(calls).toBe(4);
   });
 
   it("hard-stops on a 404 without retrying", async () => {
