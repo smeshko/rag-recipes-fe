@@ -17,6 +17,13 @@ describe("statusPill", () => {
     });
   });
 
+  it("agrees the verb with a count of one", () => {
+    expect(statusPill("needs_review", 1)).toEqual({
+      tone: "warn",
+      label: "1 needs review",
+    });
+  });
+
   it("drops the number, not the pill, while the count is unknown", () => {
     expect(statusPill("needs_review", undefined)).toEqual({
       tone: "warn",

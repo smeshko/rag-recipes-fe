@@ -49,7 +49,9 @@ export function statusPill(
         label:
           needsReviewCount === undefined
             ? "Needs review"
-            : `${needsReviewCount} need review`,
+            : /* The mockup's "14 need review" reads as "1 need review" at a
+                 count of one — a state a real shelf reaches often. */
+              `${needsReviewCount} ${needsReviewCount === 1 ? "needs" : "need"} review`,
       };
     case "failed":
       return { tone: "failed", label: "Failed" };
