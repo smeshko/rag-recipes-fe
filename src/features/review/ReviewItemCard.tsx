@@ -1,5 +1,12 @@
+import { type QueryKey, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router";
-import type { ReviewFlag, ReviewItem } from "../../api";
+import {
+  type ReviewFlag,
+  type ReviewItem,
+  type ReviewListResponse,
+  useReviewDecision,
+} from "../../api";
 
 /* The flagged-item card (phase 4.3, TASK-002). A vertical-list composition of
    primitives — NOT `Card`, which is the 3-col grid shape — on the BookRow
@@ -10,7 +17,19 @@ import type { ReviewFlag, ReviewItem } from "../../api";
    backend-authored copy rendered verbatim — a line, not a `Pill` (Pill is
    non-wrapping inline-flex and cannot hold sentences). The FE keeps no
    code→copy table: `code` is an opaque backend enum used only as a stable
-   key, and the only fallback for an empty `message` is the raw code string. */
+   key, and the only fallback for an empty `message` is the raw code string.
+
+   Decisions (TASK-004) run through 4.2's `useReviewDecision(itemId, options)`
+   seam as a pure consumer: the card supplies ONLY the snapshot / optimistic
+   removal / rollback choreography — every re-sync invalidation is the hook's
+   own composed settle (4.2 D8), so no `onSettled` is passed here.
+
+   The optimistic removal UNMOUNTS this card, so its `useState` cannot carry
+   the failure message across the rollback re-mount — the decision error
+   lives with the PAGE, keyed by item id, and arrives here as props. The
+   reject-confirm state, by contrast, must be per-card `useState` (it
+   survives list reshuffles when another card is removed, with no page-level
+   index keying) — and losing it on this card's own unmount is correct. */
 
 const flagText = (flag: ReviewFlag) => flag.message || flag.code;
 
@@ -26,10 +45,59 @@ const pageSpan = ({
   return `pp. ${page_start}–${page_end}`;
 };
 
-export function ReviewItemCard({ item }: { item: ReviewItem }) {
+/** Every ['review-items', …] entry as snapshotted for rollback — filtered
+    and unfiltered lists can both hold the item. */
+type ListSnapshot = [QueryKey, ReviewListResponse | undefined][];
+
+export function ReviewItemCard({
+  item,
+  decisionError,
+  onDecisionError,
+}: {
+  item: ReviewItem;
+  /** The page-held failure message for THIS item, if its last decision failed. */
+  decisionError?: string;
+  /** Record (or clear, with null) this item's failure message on the page. */
+  onDecisionError: (itemId: string, message: string | null) => void;
+}) {
   /* `flags` is non-empty by contract — an unflagged item is not in the queue. */
   const [lead, ...secondaries] = item.flags;
   const span = pageSpan(item.source_pages);
+
+  const queryClient = useQueryClient();
+  const [confirmingReject, setConfirmingReject] = useState(false);
+
+  const decide = useReviewDecision<ListSnapshot>(item.id, {
+    onMutate: async () => {
+      onDecisionError(item.id, null);
+      /* Cancel in-flight list fetches so a late response cannot clobber the
+         optimistic removal, snapshot EVERY review-items entry, then filter
+         the item out of each. */
+      await queryClient.cancelQueries({ queryKey: ["review-items"] });
+      const snapshot: ListSnapshot =
+        queryClient.getQueriesData<ReviewListResponse>({
+          queryKey: ["review-items"],
+        });
+      queryClient.setQueriesData<ReviewListResponse>(
+        { queryKey: ["review-items"] },
+        (current) =>
+          current && {
+            review_items: current.review_items.filter(
+              (candidate) => candidate.id !== item.id,
+            ),
+          },
+      );
+      return snapshot;
+    },
+    onError: (error, _decision, snapshot) => {
+      /* Restore every snapshotted entry, then surface the message — the
+         hook's composed settle handles the re-sync invalidations. */
+      for (const [queryKey, data] of snapshot ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+      onDecisionError(item.id, error.message);
+    },
+  });
 
   return (
     <article className="rounded-[18px] border border-line bg-card px-6 py-5 shadow-card">
@@ -64,15 +132,67 @@ export function ReviewItemCard({ item }: { item: ReviewItem }) {
         </p>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <Link
           to={`/recipes/${item.id}`}
           className="text-[12.5px] font-bold text-apricot hover:underline"
         >
           View recipe →
         </Link>
-        {/* Actions slot — TASK-004 fills it with approve/reject. */}
+        {confirmingReject ? (
+          /* Reject is terminal — the actions row swaps in place for an
+             inline confirm; no request has been made yet. */
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <p className="text-[12.5px] font-semibold text-danger">
+              Rejecting is permanent — recovery is reprocessing the whole book.
+            </p>
+            <button
+              type="button"
+              disabled={decide.isPending}
+              onClick={() => decide.mutate("rejected")}
+              className="rounded-pill bg-danger px-4 py-[7px] text-[12.5px] font-bold text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+            >
+              Reject item
+            </button>
+            <button
+              type="button"
+              disabled={decide.isPending}
+              onClick={() => setConfirmingReject(false)}
+              className="rounded-pill border border-line bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-ink-soft transition-colors hover:bg-apricot-soft disabled:opacity-50"
+            >
+              Keep
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={decide.isPending}
+              onClick={() => decide.mutate("approved")}
+              className="rounded-pill bg-ok-soft px-4 py-[7px] text-[12.5px] font-bold text-ok transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              disabled={decide.isPending}
+              onClick={() => setConfirmingReject(true)}
+              className="rounded-pill border border-danger-line bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
+            >
+              Reject
+            </button>
+          </div>
+        )}
       </div>
+      {decisionError && (
+        /* BookRow's error idiom — announced, danger-toned, message verbatim. */
+        <p
+          role="alert"
+          className="mt-2 text-[12.5px] font-semibold text-danger"
+        >
+          {decisionError}
+        </p>
+      )}
     </article>
   );
 }

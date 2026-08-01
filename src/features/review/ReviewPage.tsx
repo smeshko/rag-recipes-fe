@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { type ApiError, useReviewItems } from "../../api";
 import { Bloom } from "../../ui";
@@ -22,6 +23,25 @@ export function ReviewPage() {
   const documentId = searchParams.get("document") ?? undefined;
   const items = useReviewItems(documentId);
   const flagged = items.data?.review_items ?? [];
+
+  /* Decision failures, keyed by item id (TASK-004). A failed decision
+     optimistically UNMOUNTS the card and rolls it back, so the message must
+     outlive the card's own state to survive the rollback re-render — it
+     lives here and travels down as props. */
+  const [decisionErrors, setDecisionErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const recordDecisionError = (itemId: string, message: string | null) => {
+    setDecisionErrors((previous) => {
+      if (message === null) {
+        if (!(itemId in previous)) return previous;
+        const next = { ...previous };
+        delete next[itemId];
+        return next;
+      }
+      return { ...previous, [itemId]: message };
+    });
+  };
 
   /* One clear callback, handed to both the chip and the filtered-empty
      state. Functional updater so unknown params survive the delete —
@@ -81,7 +101,11 @@ export function ReviewPage() {
             step={0.04}
             className="mb-4"
           >
-            <ReviewItemCard item={item} />
+            <ReviewItemCard
+              item={item}
+              decisionError={decisionErrors[item.id]}
+              onDecisionError={recordDecisionError}
+            />
           </Bloom>
         ))}
       </div>
