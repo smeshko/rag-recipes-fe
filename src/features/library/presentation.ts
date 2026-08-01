@@ -9,6 +9,18 @@ import type { PillTone } from "../../ui";
  */
 export const REVIEW_QUEUE_SEARCH_URL = "/?review=included";
 
+const REVIEW_PARAM = "review";
+const REVIEW_INCLUDED = "included";
+
+/**
+ * The reader half of the same contract. It lives here, beside the URL the
+ * link emits, so the two ends cannot drift — the search screen imports it
+ * rather than re-parsing the param with its own spelling of "included".
+ */
+export function isReviewIncluded(params: URLSearchParams): boolean {
+  return params.get(REVIEW_PARAM) === REVIEW_INCLUDED;
+}
+
 /** Books that show a counts row: processing is done enough to have items. */
 export function isReadyIsh(status: DocumentStatus): boolean {
   return status === "ready" || status === "needs_review";

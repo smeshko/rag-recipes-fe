@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { REVIEW_QUEUE_SEARCH_URL } from "../../../src/features/library/presentation";
 import { routes } from "../../../src/routes";
-import { libraryShelfHandlers } from "../../msw/handlers";
+import { libraryShelfHandlers, searchFixture } from "../../msw/handlers";
 import { server } from "../../msw/server";
 
 function renderAt(path: string) {
@@ -85,5 +86,81 @@ describe("review queue link-out", () => {
     const params = new URLSearchParams(router.state.location.search);
     expect(params.get("q")).toBe("scones");
     expect(params.get("review")).toBe("included");
+  });
+
+  it("keeps review=included in the URL across a mode-chip click", async () => {
+    const user = userEvent.setup();
+    const router = renderAt("/?q=scones&review=included");
+
+    await user.click(screen.getByRole("button", { name: "Keyword only" }));
+
+    const params = new URLSearchParams(router.state.location.search);
+    expect(params.get("mode")).toBe("keyword");
+    expect(params.get("q")).toBe("scones");
+    expect(params.get("review")).toBe("included");
+  });
+});
+
+/* The half of the contract the URL cannot prove: an armed landing has to
+   reach the backend as `filters.exclude_needs_review: false`, or the link
+   navigates somewhere pretty and changes nothing. */
+describe("review=included search request body", () => {
+  const captureSearchBodies = () => {
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post("/api/v1/search", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        bodies.push(body);
+        return HttpResponse.json(searchFixture(String(body.query)));
+      }),
+    );
+    return bodies;
+  };
+
+  it("arms the needs-review filter when the param is present", async () => {
+    const bodies = captureSearchBodies();
+    const user = userEvent.setup();
+    renderAt("/?review=included");
+
+    await user.type(screen.getByRole("textbox"), "scones{Enter}");
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toEqual({
+      query: "scones",
+      mode: "hybrid",
+      filters: {
+        item_type: "recipe",
+        document_ids: [],
+        exclude_needs_review: false,
+      },
+    });
+  });
+
+  it("sends the untouched default body without the param", async () => {
+    const bodies = captureSearchBodies();
+    const user = userEvent.setup();
+    renderAt("/");
+
+    await user.type(screen.getByRole("textbox"), "scones{Enter}");
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    /* No `filters` key at all — the server default (exclude = true) stands. */
+    expect(bodies[0]).toEqual({ query: "scones", mode: "hybrid" });
+  });
+
+  it("keeps the filter armed after a mode-chip click", async () => {
+    const bodies = captureSearchBodies();
+    const user = userEvent.setup();
+    renderAt("/?q=scones&review=included");
+
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Vector only" }));
+
+    await waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toMatchObject({
+      query: "scones",
+      mode: "vector",
+      filters: { exclude_needs_review: false },
+    });
   });
 });
