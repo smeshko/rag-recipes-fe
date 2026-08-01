@@ -1,4 +1,5 @@
-export { isFallback, useAnswer } from "./answers";
+export type { AnswerAsk } from "./answers";
+export { ANSWER_GC_TIME, isFallback, useAnswer } from "./answers";
 export { ApiError, request } from "./client";
 export type {
   IngestionStopReason,

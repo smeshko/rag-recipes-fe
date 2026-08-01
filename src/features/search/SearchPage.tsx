@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
+  type AnswerAsk,
   type AnswerResponse,
   type ApiError,
   isFallback,
@@ -15,16 +16,12 @@ import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
+import { armedAsk, clearLastAsk, saveLastAsk } from "./lastAsk";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { ModeChips } from "./ModeChips";
+import { parseMode } from "./mode";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
-
-const MODES = ["hybrid", "keyword", "vector"] as const;
-
-function parseMode(raw: string | null): SearchMode {
-  return MODES.includes(raw as SearchMode) ? (raw as SearchMode) : "hybrid";
-}
 
 function ShelfStatsLine() {
   const { cookbookCount, readyRecipes, partial, unavailable } = useShelfStats();
@@ -60,8 +57,9 @@ function AnswerSection({
   onRetry,
 }: {
   answer: {
-    isPending: boolean;
-    isSuccess: boolean;
+    /* isFetching, never isPending: an answer query never fetches on its own,
+       so it reports pending forever whether or not anything was asked. */
+    isFetching: boolean;
     isError: boolean;
     data: AnswerResponse | undefined;
     error: unknown;
@@ -71,13 +69,16 @@ function AnswerSection({
   onRephrase: () => void;
   onRetry: () => void;
 }) {
-  if (answer.isPending) {
+  /* In-flight wins over a cached answer: a retry, or a re-ask of a query that
+     was answered earlier this session, must show the skeleton rather than
+     leave the previous answer standing as if it were the new one. */
+  if (answer.isFetching) {
     return <AnswerSkeleton />;
   }
   if (answer.isError) {
     return <AnswerError error={answer.error as ApiError} onRetry={onRetry} />;
   }
-  if (answer.isSuccess && answer.data) {
+  if (answer.data) {
     if (isFallback(answer.data)) {
       return (
         <FallbackNotice
@@ -105,6 +106,23 @@ export function SearchPage() {
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /* The ask whose answer belongs on this screen — the note that says which
+     cache entry to read, not the answer itself. Seeded from the per-tab record
+     because opening a recipe unmounts SearchPage: an ask held only in
+     component state would be gone by the time the user comes back, and the
+     answer would vanish while the (cached) results reappeared. */
+  const [ask, setAsk] = useState<AnswerAsk | null>(() =>
+    armedAsk(q, reviewIncluded),
+  );
+  /* The record is per-tab while the URL is per-history-entry, so the two can
+     disagree — a Back/Forward step, or the library's armed link-out landing on
+     the same query over a different corpus. The URL decides: an ask that no
+     longer describes the search on screen is not this screen's ask. */
+  const liveAsk =
+    ask !== null && ask.query === q && ask.reviewIncluded === reviewIncluded
+      ? ask
+      : null;
 
   /* Functional updater so unknown params (e.g. epic 03's review=included)
      survive every write; hybrid stays out of the URL (D1). */
@@ -136,6 +154,14 @@ export function SearchPage() {
     } else if (q !== "") {
       clearLastSearch();
     }
+    /* A new query is a new question, and the old answer goes with it. An
+       unchanged q does not disarm: a mode chip must leave the answer standing
+       (/answers ran its own retrieval, so the toggle changes the grid, not the
+       answer), and Ask on the committed query re-arms immediately below. */
+    if (nextQ !== q) {
+      clearLastAsk();
+      setAsk(null);
+    }
   };
 
   const search = useSearch(q, mode, reviewIncluded);
@@ -147,57 +173,25 @@ export function SearchPage() {
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
 
-  const answer = useAnswer();
-  const { reset } = answer;
+  /* Reads the cache for `liveAsk` and never fetches by itself, so a remount —
+     Back from a recipe — restores the answer without a second LLM call, and no
+     navigation can produce one. run() is the single thing that spends. */
+  const answer = useAnswer(liveAsk);
 
-  /* Synchronous in-flight latch. answer.isPending only flips on the *next*
-     render, so two clicks dispatched inside one frame would both pass an
-     isPending check and buy two LLM round-trips. The disabled button is the
-     visible layer; this ref closes the same-frame window behind it.
-     Cleared by observing isPending rather than a per-mutate onSettled: a
-     reset() during flight (a q change mid-answer) detaches the observer and
-     that callback would never fire, latching Ask off forever. */
-  const inFlight = useRef(false);
-  useEffect(() => {
-    if (!answer.isPending) {
-      inFlight.current = false;
-    }
-  }, [answer.isPending]);
-
-  const runAnswer = (vars: {
-    query: string;
-    mode: SearchMode;
-    /* Optional so the retry path can hand back `answer.variables` verbatim,
-       preserving the armed state the original ask was made under. */
-    reviewIncluded?: boolean;
-  }) => {
-    if (inFlight.current) {
-      return;
-    }
-    inFlight.current = true;
-    answer.mutate(vars);
-  };
-
-  /* Reset guard: a q change clears the answer — except when the change was
-     the Ask commit itself. The ref is set by our own code immediately before
-     mutate(), so the guard never depends on mutation-dispatch timing. */
-  const askedFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (askedFor.current !== q) {
-      askedFor.current = null;
-      reset();
-    }
-  }, [q, reset]);
-
-  /* URL commit before mutate — named so the ordering is testable. */
+  /* URL commit, then arm, then fetch — the ordering is what keeps the
+     committed ?q= and the answer describing the same question. No in-flight
+     latch: two clicks in one frame fetch the same key, and TanStack dedupes
+     that into one round-trip. */
   const askShelf = () => {
     const asked = text.trim();
     if (asked === "") {
       return;
     }
-    askedFor.current = asked;
+    const next: AnswerAsk = { query: asked, mode, reviewIncluded };
     writeParams(asked, mode);
-    runAnswer({ query: asked, mode, reviewIncluded });
+    saveLastAsk(next);
+    setAsk(next);
+    answer.run(next);
   };
 
   const rephrase = () => {
@@ -205,31 +199,19 @@ export function SearchPage() {
     inputRef.current?.select();
   };
 
-  /* Synchronous query gate. reset() runs in a passive effect, so the render
-     between a ?q= change and that effect would otherwise show the previous
-     answer under the new query — and hand the new q to its recipe links,
-     which is wrong provenance, not just a cosmetic flash. Deriving liveness
-     from the mutation's own variables makes "an answer never appears for a
-     query it wasn't asked about" true by construction; reset() stays as the
-     cleanup that returns the slot to idle. */
-  const answerIsForCurrentQuery = answer.variables?.query === q;
+  /* "An answer never appears for a query it wasn't asked about" is true by
+     construction now: the ask IS the cache key, so a q the user never asked
+     about has no entry to read and the slot renders nothing. */
 
   /* The fallback grid replaces 2.1's section only while the answer still
      matches the current search — /answers ran its own retrieval at the
      answer-time mode, so after a chip toggle the live grid returns. */
   const fallbackData =
-    answerIsForCurrentQuery &&
-    answer.isSuccess &&
-    answer.data &&
-    isFallback(answer.data)
-      ? answer.data
-      : null;
-  /* Provenance includes the armed state: an answer retrieved under a
-     different needs-review filter describes a different corpus, so its
-     fallback grid must not stand in for the current one. */
-  const answerMatchesSearch =
-    answer.variables?.mode === mode &&
-    (answer.variables?.reviewIncluded ?? false) === reviewIncluded;
+    answer.data && isFallback(answer.data) ? answer.data : null;
+  /* Provenance is the ask's own mode, not the URL's. (The armed state needs no
+     comparison: it is part of the key, so an answer retrieved under a
+     different needs-review filter is simply not readable here.) */
+  const answerMatchesSearch = liveAsk !== null && liveAsk.mode === mode;
   const showFallbackGrid =
     fallbackData !== null &&
     fallbackData.results.length > 0 &&
@@ -245,16 +227,18 @@ export function SearchPage() {
     fallbackData.results.length === 0 &&
     answerMatchesSearch;
 
+  /* Every arm AnswerSection would render, in one predicate. */
+  const answerSlotOccupied =
+    answer.isFetching || answer.isError || answer.data !== undefined;
+
   /* CTA visibility (round-1 #4): offer the grounded answer only while a live
-     grid is up and the answer slot is idle. Idle means no mutation bound to
-     this query — a stale answer for another q counts, since the slot renders
-     nothing then. Every occupied arm (skeleton, card, error, fallback notice
-     — the notice already owns the "want an answer?" conversation) and every
-     non-grid state (bare /, loading, search error, empty) hides it. */
+     grid is up and the answer slot is empty. Every occupied arm (skeleton,
+     card, error, fallback notice — the notice already owns the "want an
+     answer?" conversation) and every non-grid state (bare /, loading, search
+     error, empty) hides it. */
   const showAnswerCta =
     q !== "" &&
-    (!answerIsForCurrentQuery || answer.isIdle) &&
-    !showFallbackGrid &&
+    !answerSlotOccupied &&
     !search.isLoading &&
     !search.error &&
     results.length > 0;
@@ -267,13 +251,11 @@ export function SearchPage() {
      than being read twice. Deliberately no role attribute — role="status"
      would make this a second status node and the notice would stop being
      uniquely addressable. */
-  const answerStatus = !answerIsForCurrentQuery
-    ? ""
-    : answer.isPending
-      ? "Asking the shelf…"
-      : fallbackData === null && answer.isSuccess && answer.data
-        ? "The answer is ready."
-        : "";
+  const answerStatus = answer.isFetching
+    ? "Asking the shelf…"
+    : fallbackData === null && answer.data !== undefined
+      ? "The answer is ready."
+      : "";
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -294,7 +276,7 @@ export function SearchPage() {
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
           onAsk={askShelf}
-          asking={answer.isPending}
+          asking={answer.isFetching}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
@@ -305,22 +287,20 @@ export function SearchPage() {
         {answerStatus}
       </p>
 
-      {/* Answer slot: explicit-action only; fallback is never error UI.
-          Gated on the mutation's own query so no frame can bind it to a
-          different one. */}
-      {answerIsForCurrentQuery ? (
-        <AnswerSection
-          answer={answer}
-          q={q}
-          mode={mode}
-          onRephrase={rephrase}
-          onRetry={() => {
-            if (answer.variables) {
-              runAnswer(answer.variables);
-            }
-          }}
-        />
-      ) : null}
+      {/* Answer slot: explicit-action only; fallback is never error UI. No
+          gate needed — the section reads one cache entry, and only the ask
+          that produced it can address that entry. */}
+      <AnswerSection
+        answer={answer}
+        q={q}
+        mode={mode}
+        onRephrase={rephrase}
+        onRetry={() => {
+          if (liveAsk !== null) {
+            answer.run(liveAsk);
+          }
+        }}
+      />
 
       {showAnswerCta ? (
         /* Disabled, not hidden, on an emptied draft: askShelf asks the draft
@@ -332,7 +312,9 @@ export function SearchPage() {
         <ResultsGrid
           results={fallbackData.results}
           q={q}
-          mode={answer.variables?.mode ?? mode}
+          /* answerMatchesSearch gates this grid, so the ask's mode and the
+             URL's are the same one here. */
+          mode={mode}
           bloomBase={0.24}
           heading={
             <>
@@ -342,8 +324,8 @@ export function SearchPage() {
           subline={
             <>
               {fallbackData.results.length} match
-              {fallbackData.results.length === 1 ? "" : "es"} · ranked by{" "}
-              {answer.variables?.mode ?? mode} score
+              {fallbackData.results.length === 1 ? "" : "es"} · ranked by {mode}{" "}
+              score
             </>
           }
         />
