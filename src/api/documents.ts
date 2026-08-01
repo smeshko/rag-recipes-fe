@@ -228,13 +228,9 @@ const shelfInvalidationTimers = new WeakMap<
   ReturnType<typeof setTimeout>
 >();
 
-function invalidateOnTerminal(queryClient: QueryClient, id: string): void {
-  /* `exact` matters: a bare ['document', id] prefix would also match
-     ['document', id, 'status'] and refire the poll this stop just ended. */
-  void queryClient.invalidateQueries({
-    queryKey: ["document", id],
-    exact: true,
-  });
+/** Every "the shelf is out of date" route goes through here, so the
+    coalescing covers the 4xx stop as well as the terminal handoff. */
+function invalidateShelfDebounced(queryClient: QueryClient): void {
   if (shelfInvalidationTimers.has(queryClient)) {
     return;
   }
@@ -245,6 +241,16 @@ function invalidateOnTerminal(queryClient: QueryClient, id: string): void {
       void queryClient.invalidateQueries({ queryKey: ["documents"] });
     }, SHELF_INVALIDATION_DEBOUNCE_MS),
   );
+}
+
+function invalidateOnTerminal(queryClient: QueryClient, id: string): void {
+  /* `exact` matters: a bare ['document', id] prefix would also match
+     ['document', id, 'status'] and refire the poll this stop just ended. */
+  void queryClient.invalidateQueries({
+    queryKey: ["document", id],
+    exact: true,
+  });
+  invalidateShelfDebounced(queryClient);
 }
 
 /** The two states where a stall is diagnosable from this payload alone:
@@ -465,6 +471,13 @@ export function useIngestionStatus(
     processedErrorAtRef.current = errorUpdatedAt;
     if (is4xx(error)) {
       setStopReason("error");
+      /* PLAN's own words for the 4xx outcome: "the row is simply stale —
+         the fix is invalidating the list, not polling harder". The stop
+         alone leaves a document the API no longer serves rendered as
+         processing forever, because polling has just ended and
+         refetchOnWindowFocus is false, so nothing else refreshes the
+         shelf. "Check again" would only repeat the 404. */
+      invalidateShelfDebounced(queryClient);
       return;
     }
     const next = failedRounds + 1;
@@ -472,7 +485,7 @@ export function useIngestionStatus(
     if (next >= MAX_FAILED_ROUNDS) {
       setStopReason("error");
     }
-  }, [errorUpdatedAt, error, failedRounds]);
+  }, [errorUpdatedAt, error, failedRounds, queryClient]);
 
   /* Terminal handoff — two ways to learn the run is over, and BOTH are
      needed. v5 removed onSuccess from useQuery, so an effect is the only

@@ -186,11 +186,22 @@ describe("useIngestionStatus", () => {
         calls += 1;
       }),
     );
-    const { result } = renderStatusHook();
+    const { client, result } = renderStatusHook();
+    const spy = vi.spyOn(client, "invalidateQueries");
 
     await waitFor(() => expect(result.current.stopReason).toBe("error"));
     await sleep(SETTLE);
     expect(calls).toBe(1);
+
+    /* The stop is only half the cure. A 404 means the shelf is listing a
+       row the API no longer serves, and polling has just ended — without
+       refreshing the list the row renders as processing until a reload. */
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
   });
 
   it("stops a document parked in creating_source_spans after stallLimit unchanged polls", async () => {
