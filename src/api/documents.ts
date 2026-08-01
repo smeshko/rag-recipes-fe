@@ -284,12 +284,20 @@ export interface UseIngestionStatusOptions {
   enabled: boolean;
   intervalMs?: number;
   stallLimit?: number;
-  /** Whether the CALLER's list row already considers this document terminal.
-      The hook cannot know it — `['documents']` is the row's source of truth
-      for whether it renders as processing — and without it a payload that is
+  /** The status the CALLER's list row is currently rendering. The hook
+      cannot know it — `['documents']` is the row's source of truth for
+      whether it shows as processing — and without it a payload that is
       terminal on the very first fetch is indistinguishable from a `failed`
-      row being fetched once. See the terminal-handoff effect. */
-  listTerminal?: boolean;
+      row being fetched once.
+
+      Deliberately the status, not a `listTerminal` boolean: terminality
+      alone cannot see a terminal→terminal disagreement. A list holding
+      `failed` while another tab has already reprocessed the document to
+      `ready` is terminal on both sides, and a boolean would suppress the
+      invalidation and leave the shelf falsely failed indefinitely.
+      Omitted → every terminal payload counts as a disagreement, which is
+      the safe default. See the terminal-handoff effect. */
+  listStatus?: DocumentStatus;
 }
 
 export interface UseIngestionStatusResult {
@@ -316,7 +324,7 @@ export function useIngestionStatus(
     enabled,
     intervalMs = POLL_INTERVAL_MS,
     stallLimit = POLL_STALL_LIMIT,
-    listTerminal = false,
+    listStatus,
   }: UseIngestionStatusOptions,
 ): UseIngestionStatusResult {
   const queryClient = useQueryClient();
@@ -471,8 +479,7 @@ export function useIngestionStatus(
      legal home.
 
      1. We watched the flip ourselves: prev === false → true.
-     2. The FIRST payload we see is already terminal while the caller's list
-        still calls the document non-terminal (`listTerminal: false`).
+     2. The payload DISAGREES with the status the caller's list is showing.
 
      Arm 2 is not belt-and-braces. A bare `prev === false` predicate misses
      every ingest that finishes inside the gap between the list response and
@@ -483,14 +490,17 @@ export function useIngestionStatus(
      left, nothing ever refreshes the list and the row is parked in the
      progress variant until a full page reload.
 
-     What arm 2 must NOT do is fire for a `failed` row, which TASK-002
-     fetches once precisely because it is terminal — that was the whole
-     reason the predicate is not `prev !== next`. Such a row passes
-     `listTerminal: true` and stays suppressed. The invalidation is a
-     disagreement between payload and list, not a mount artefact.
+     Disagreement is a STATUS comparison, not a terminality one. What arm 2
+     must not do is fire for a `failed` row, which TASK-002 fetches once
+     precisely because it is terminal — that was the whole reason the
+     predicate is not `prev !== next`. Such a row reports `failed` on both
+     sides and stays suppressed. But a list holding `failed` while another
+     tab has reprocessed the document to `ready` is terminal on both sides
+     too, and that one MUST invalidate: a boolean cannot tell the two
+     apart, a status can.
 
-     Keyed on dataUpdatedAt so the re-render where the refreshed list flips
-     `listTerminal` cannot refire it against the same fetch. */
+     Keyed on dataUpdatedAt so the re-render where the refreshed list
+     changes `listStatus` cannot refire it against the same fetch. */
   useEffect(() => {
     const terminal = data?.terminal;
     const prev = prevTerminalRef.current;
@@ -498,11 +508,11 @@ export function useIngestionStatus(
     if (terminal !== true || invalidatedAtRef.current === dataUpdatedAt) {
       return;
     }
-    if (prev === false || !listTerminal) {
+    if (prev === false || data?.status !== listStatus) {
       invalidatedAtRef.current = dataUpdatedAt;
       invalidateOnTerminal(queryClient, id);
     }
-  }, [data, dataUpdatedAt, listTerminal, queryClient, id]);
+  }, [data, dataUpdatedAt, listStatus, queryClient, id]);
 
   const checkAgain = useCallback(() => {
     setStallCount(0);

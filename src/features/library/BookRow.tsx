@@ -130,9 +130,11 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
   const ingest = useIngestionStatus(doc.id, {
     enabled: !isTerminal(doc.status) || doc.status === "failed",
     /* The list's own verdict. A terminal payload only means "the shelf is
-       stale, refresh it" when the list disagrees — a failed row is fetched
-       once BECAUSE it is terminal and must not invalidate on mount. */
-    listTerminal: isTerminal(doc.status),
+       stale, refresh it" when it disagrees with this — a failed row is
+       fetched once BECAUSE it is terminal and must not invalidate on mount,
+       but a row the list still calls `failed` after someone else reprocessed
+       it to `ready` must. */
+    listStatus: doc.status,
     ...pollOptions,
   });
 

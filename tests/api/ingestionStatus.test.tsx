@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
+import type { DocumentStatus } from "../../src/api";
 import {
   SHELF_INVALIDATION_DEBOUNCE_MS,
   useIngestionStatus,
@@ -32,7 +33,7 @@ function renderStatusHook(
     enabled?: boolean;
     intervalMs?: number;
     stallLimit?: number;
-    listTerminal?: boolean;
+    listStatus?: DocumentStatus;
     /** Pre-seed the status cache, as a finished run leaves it. */
     seed?: unknown;
   } = {},
@@ -51,7 +52,7 @@ function renderStatusHook(
         enabled: options.enabled ?? true,
         intervalMs: options.intervalMs ?? INTERVAL,
         stallLimit: options.stallLimit,
-        listTerminal: options.listTerminal,
+        listStatus: options.listStatus,
       }),
     { wrapper },
   );
@@ -169,7 +170,7 @@ describe("useIngestionStatus", () => {
     );
     const { result } = renderStatusHook({
       seed: ingestionStatus(DOC, "ready"),
-      listTerminal: true,
+      listStatus: "ready",
     });
 
     await waitFor(() => expect(result.current.stopReason).toBe("error"), {
@@ -311,12 +312,32 @@ describe("useIngestionStatus", () => {
     /* listTerminal: true is what a failed row passes — the list already
        says `failed`, so the payload confirms it rather than contradicting
        it, and there is nothing to refresh. */
-    const { client, result } = renderStatusHook({ listTerminal: true });
+    const { client, result } = renderStatusHook({ listStatus: "failed" });
     const spy = vi.spyOn(client, "invalidateQueries");
 
     await waitFor(() => expect(result.current.data?.terminal).toBe(true));
     await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 150);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("invalidates when list and payload are BOTH terminal but disagree (failed row someone else reprocessed)", async () => {
+    /* Terminality alone cannot see this: the list says `failed`, the
+       payload says `ready`, both terminal. A `listTerminal` boolean would
+       suppress the invalidation and leave the shelf falsely failed with no
+       poll left to correct it. */
+    server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "ready")]));
+    const { client, result } = renderStatusHook({ listStatus: "failed" });
+    const spy = vi.spyOn(client, "invalidateQueries");
+
+    await waitFor(() => expect(result.current.data?.terminal).toBe(true));
+    await sleep(SHELF_INVALIDATION_DEBOUNCE_MS + 100);
+
+    const keys = spy.mock.calls.map(
+      (call) => (call[0] as { queryKey: unknown[] }).queryKey,
+    );
+    expect(
+      keys.filter((k) => k.length === 1 && k[0] === "documents"),
+    ).toHaveLength(1);
   });
 
   it("invalidates when the FIRST payload is already terminal but the list still says processing", async () => {
@@ -326,7 +347,7 @@ describe("useIngestionStatus", () => {
        refetchOnWindowFocus is false — without this invalidation the row is
        parked in the progress variant until a page reload. */
     server.use(statusQueueHandler(DOC, [ingestionStatus(DOC, "ready")]));
-    const { client, result } = renderStatusHook({ listTerminal: false });
+    const { client, result } = renderStatusHook({ listStatus: "queued" });
     const spy = vi.spyOn(client, "invalidateQueries");
 
     await waitFor(() => expect(result.current.data?.terminal).toBe(true));
