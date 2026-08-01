@@ -20,7 +20,11 @@ import {
 
 export function ReviewPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const documentId = searchParams.get("document") ?? undefined;
+  /* `||`, not `??`: a hand-typed `?document=` (empty string) must mean "no
+     filter" end-to-end — otherwise the UI goes unfiltered (no chip, all-empty
+     state) while the request still carries a literal `document_id=` and the
+     cache mints a phantom ["review-items", ""] entry (review #1.1). */
+  const documentId = searchParams.get("document") || undefined;
   const items = useReviewItems(documentId);
   const flagged = items.data?.review_items ?? [];
 

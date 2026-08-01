@@ -137,6 +137,27 @@ describe("review queue ?document= filter", () => {
     expect(router.state.location.search).toBe("?future=param");
   });
 
+  it("treats an empty ?document= as no filter at all (review #1.1)", async () => {
+    const urls: URL[] = [];
+    server.use(reviewItemsHandler(reviewItemsFixture, (url) => urls.push(url)));
+    renderAt("/review?document=");
+
+    /* The full queue renders, chipless — and, unlike `?? undefined`, the
+       normalized read keeps the empty string off the wire entirely (a live
+       backend may 422 on `document_id=`) and off the cache key. */
+    expect(
+      await screen.findByRole("heading", { name: "Stovetop Skillet Granola" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Everyday Paleo Salad Dressing" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear the book filter" }),
+    ).not.toBeInTheDocument();
+    expect(urls).toHaveLength(1);
+    expect(urls[0].searchParams.has("document_id")).toBe(false);
+  });
+
   it("renders the filtered empty state and clears through it", async () => {
     const user = userEvent.setup();
     server.use(...reviewScenario(reviewItemsFixture));
