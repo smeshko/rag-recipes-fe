@@ -138,6 +138,18 @@ describe("Cook pill restore", () => {
     renderAt("/library");
     expect(cookPill()).toHaveAttribute("href", "/");
   });
+
+  /* The degrade contract (review #1.5): unreadable or nonsense storage must
+     never break the nav — it falls back to the blank slate, silently. */
+  it.each([
+    ["corrupt JSON", "{not json"],
+    ["an empty q", JSON.stringify({ q: "", mode: "hybrid" })],
+    ["a non-string q", JSON.stringify({ q: 7, mode: "hybrid" })],
+  ])("degrades to bare / on %s in storage", (_label, raw) => {
+    sessionStorage.setItem(LAST_SEARCH_KEY, raw);
+    renderAt("/library");
+    expect(cookPill()).toHaveAttribute("href", "/");
+  });
 });
 
 describe("return to Cook within staleTime", () => {
