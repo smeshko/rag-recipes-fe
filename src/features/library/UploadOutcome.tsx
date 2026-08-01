@@ -77,7 +77,13 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
     return <SingleOutcome item={summary.items[0]} />;
   }
 
-  const failed = summary.items.filter((item) => item.status === "error");
+  /* Index-qualified key: one drop may legitimately contain two files of the
+     same name (the cohort classifier is built for exactly that), and if both
+     fail the bare filename collides. Position is stable — items follow the
+     input order and the list never reorders. */
+  const failed = summary.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.status === "error");
   return (
     <div className="mt-3 text-[13.5px]">
       <p role="status" className="text-ink-soft">
@@ -86,8 +92,11 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
       </p>
       {failed.length > 0 && (
         <ul role="alert" className="mt-1 list-none">
-          {failed.map((item) => (
-            <li key={item.filename} className="font-semibold text-danger">
+          {failed.map(({ item, index }) => (
+            <li
+              key={`${index}-${item.filename}`}
+              className="font-semibold text-danger"
+            >
               {item.filename} — {errorCopy(item)}
             </li>
           ))}
