@@ -45,6 +45,18 @@ describe("library shelf", () => {
     expect(screen.getAllByRole("article")).toHaveLength(5);
   });
 
+  it("does not advertise a click on the row article itself", async () => {
+    server.use(...libraryShelfHandlers());
+    renderLibrary();
+
+    const heading = await screen.findByRole("heading", {
+      name: "One Pan to Rule Them All",
+    });
+    const article = heading.closest("article");
+    if (!article) throw new Error("no <article> around the row");
+    expect(article.className).not.toContain("cursor-pointer");
+  });
+
   it("maps every status to its pill text", async () => {
     server.use(...libraryShelfHandlers());
     renderLibrary();
