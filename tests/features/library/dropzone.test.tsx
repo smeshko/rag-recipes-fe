@@ -11,12 +11,14 @@ import type {
 } from "../../../src/api";
 import { routes } from "../../../src/routes";
 import {
+  batchNotEnabledEnvelope,
   documentDetailHandler,
   documentsListHandler,
   libraryBookDetails,
   libraryBookList,
   libraryBooks,
   unsupportedFileTypeEnvelope,
+  uploadBatchErrorHandler,
   uploadBatchHandler,
   uploadDocumentHandler,
   uploadErrorHandler,
@@ -213,6 +215,40 @@ describe("library dropzone", () => {
     /* Batch error items render the backend's message string verbatim. */
     expect(
       screen.getByText(/three\.txt.*Only PDF uploads are supported\./),
+    ).toBeInTheDocument();
+  });
+
+  /* review #6: an unproven item must not be counted as failed — the headline
+     would contradict the per-file copy directly beneath it. */
+  it("counts an unproven upload separately from a refusal in the summary", async () => {
+    let calls = 0;
+    server.use(
+      documentsListHandler(libraryBookList),
+      ...libraryBooks.map((b) => documentDetailHandler(b.list.id, b.detail)),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope),
+      http.post("/api/v1/documents", () => {
+        calls += 1;
+        if (calls === 1) {
+          return HttpResponse.json(
+            {
+              document: uploadedDocument("doc-ok", "Landed Fine"),
+              ingestion: { status: "queued" },
+            },
+            { status: 201 },
+          );
+        }
+        return HttpResponse.error();
+      }),
+    );
+    renderLibrary();
+    await screen.findByRole("heading", { name: "One Pan to Rule Them All" });
+
+    dropFiles([pdfFile("ok.pdf"), pdfFile("lost.pdf")]);
+
+    expect(
+      await screen.findByText(
+        "1 added · 0 already on the shelf · 0 failed · 1 unconfirmed",
+      ),
     ).toBeInTheDocument();
   });
 

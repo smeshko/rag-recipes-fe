@@ -89,11 +89,19 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   const failed = summary.items
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => item.status === "error");
+  /* An `unproven` item must not be counted as failed: the headline would
+     read "1 failed" directly above copy saying the book may still appear
+     (review #6). `opaque` batch items stay in the failed count — they carry
+     the backend's own refusal message, so "failed" is the honest reading. */
+  const unconfirmed = summary.items.filter(
+    (item) => item.certainty === "unproven",
+  ).length;
   return (
     <div className="mt-3 text-[13.5px]">
       <p role="status" className="text-ink-soft">
         {summary.created} added · {summary.duplicates} already on the shelf ·{" "}
-        {summary.errors} failed
+        {summary.errors - unconfirmed} failed
+        {unconfirmed > 0 && ` · ${unconfirmed} unconfirmed`}
       </p>
       {failed.length > 0 && (
         <ul role="alert" className="mt-1 list-none">
