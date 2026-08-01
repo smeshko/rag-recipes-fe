@@ -1,3 +1,4 @@
+export { isFallback, useAnswer } from "./answers";
 export { ApiError, request } from "./client";
 export {
   documentDetailQueryOptions,
@@ -19,11 +20,14 @@ export type {
 export { route } from "./routes";
 export { useSearch } from "./search";
 export type {
+  AnswerCitation,
+  AnswerResponse,
   ErrorEnvelope,
   HealthResponse,
   Ingredient,
   ItemConfidence,
   KnowledgeItemResponse,
   RecipeStructuredData,
+  Recommendation,
   Step,
 } from "./types";

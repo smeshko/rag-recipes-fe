@@ -165,3 +165,35 @@ export interface KnowledgeItemResponse {
   display: { title: string; subtitle: string | null };
   source_citations: SourceCitation[];
 }
+
+/* ---------- answers (2.3) ---------- */
+
+export interface AnswerBody {
+  style: string;
+  text: string;
+  citations: string[];
+}
+
+export interface Recommendation {
+  knowledge_item_id: string;
+  title: string;
+  reason: string;
+  citation_ids: string[];
+}
+
+export interface AnswerCitation {
+  citation_id: string;
+  knowledge_item_id: string;
+  source_span_id: string;
+  label: string;
+}
+
+export interface AnswerResponse {
+  query: string;
+  answer: AnswerBody;
+  recommendations: Recommendation[];
+  citations: AnswerCitation[];
+  /** Populated on fallback despite include_results: false. */
+  results: KnowledgeItemResult[];
+  warnings: string[];
+}

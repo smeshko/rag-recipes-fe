@@ -7,20 +7,35 @@ export interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  /* When present, the Ask button becomes the explicit answer trigger
+     (type="button", no argument — the field is controlled, the parent owns
+     the value) and Enter keeps firing onSubmit alone. Disabled on an empty
+     trimmed value: the backend 400s an empty query, and an unguarded Ask
+     would paint a danger notice on a virgin screen. */
+  onAsk?: () => void;
+  /* Ask is in flight. Disables the button so a second click cannot buy a
+     second LLM round-trip. Only meaningful alongside onAsk; the plain
+     submit-button path ignores it. */
+  asking?: boolean;
   placeholder?: string;
   /** Accessible name override. Defaults to the placeholder: the placeholder is
       the field's only visible prompt, and WCAG 2.5.3 (Label in Name) wants the
       announced name to contain the visible text, so a voice-control user can
       say what they see. Overriding it with unrelated wording breaks that. */
   label?: string;
+  /** React 19 ref-as-prop for the inner input (focus/select from outside). */
+  ref?: React.Ref<HTMLInputElement>;
 }
 
 export function SearchInput({
   value,
   onChange,
   onSubmit,
+  onAsk,
+  asking = false,
   placeholder = "What are we cooking?",
   label,
+  ref,
 }: SearchInputProps) {
   return (
     <form
@@ -44,6 +59,7 @@ export function SearchInput({
         <path d="M20 20l-3.5-3.5" />
       </svg>
       <input
+        ref={ref}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label ?? placeholder}
@@ -51,8 +67,11 @@ export function SearchInput({
         className="flex-1 border-none bg-transparent font-display text-[19px] text-ink outline-none"
       />
       <button
-        type="submit"
-        className="rounded-pill bg-apricot px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-white transition-[background-color,transform] duration-[200ms] hover:bg-apricot-deep active:scale-[0.97]"
+        type={onAsk ? "button" : "submit"}
+        onClick={onAsk}
+        disabled={onAsk ? value.trim() === "" || asking : false}
+        aria-busy={onAsk && asking ? true : undefined}
+        className="rounded-pill bg-apricot px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-white transition-[background-color,transform] duration-[200ms] hover:bg-apricot-deep active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Ask
       </button>

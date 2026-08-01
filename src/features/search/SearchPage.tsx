@@ -1,8 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { type ApiError, useShelfStats } from "../../api";
+import {
+  type AnswerResponse,
+  type ApiError,
+  isFallback,
+  useAnswer,
+  useShelfStats,
+} from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
+import { AnswerCard } from "./AnswerCard";
+import { AnswerError } from "./AnswerError";
+import { AnswerSkeleton } from "./AnswerSkeleton";
+import { FallbackNotice } from "./FallbackNotice";
 import { ModeChips } from "./ModeChips";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -38,6 +48,47 @@ function ShelfStatsLine() {
   );
 }
 
+/* The answer slot's four arms in one place so SearchPage stays readable. */
+function AnswerSection({
+  answer,
+  q,
+  mode,
+  onRephrase,
+  onRetry,
+}: {
+  answer: {
+    isPending: boolean;
+    isSuccess: boolean;
+    isError: boolean;
+    data: AnswerResponse | undefined;
+    error: unknown;
+  };
+  q: string;
+  mode: SearchMode;
+  onRephrase: () => void;
+  onRetry: () => void;
+}) {
+  if (answer.isPending) {
+    return <AnswerSkeleton />;
+  }
+  if (answer.isError) {
+    return <AnswerError error={answer.error as ApiError} onRetry={onRetry} />;
+  }
+  if (answer.isSuccess && answer.data) {
+    if (isFallback(answer.data)) {
+      return (
+        <FallbackNotice
+          warnings={answer.data.warnings}
+          hasResults={answer.data.results.length > 0}
+          onRephrase={onRephrase}
+        />
+      );
+    }
+    return <AnswerCard answer={answer.data} q={q} mode={mode} />;
+  }
+  return null;
+}
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
@@ -47,17 +98,25 @@ export function SearchPage() {
      typing. The effect resyncs the box on Back/Forward navigation. */
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  /* Functional updater so unknown params (e.g. epic 03's review=included)
+     survive every write; hybrid stays out of the URL (D1). */
   const writeParams = (nextQ: string, nextMode: SearchMode) => {
-    const params: Record<string, string> = {};
-    if (nextQ) {
-      params.q = nextQ;
-    }
-    /* hybrid is the default — keep it out of the URL (D1). */
-    if (nextMode !== "hybrid") {
-      params.mode = nextMode;
-    }
-    setSearchParams(params);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (nextQ) {
+        params.set("q", nextQ);
+      } else {
+        params.delete("q");
+      }
+      if (nextMode !== "hybrid") {
+        params.set("mode", nextMode);
+      } else {
+        params.delete("mode");
+      }
+      return params;
+    });
   };
 
   const search = useSearch(q, mode);
@@ -68,6 +127,109 @@ export function SearchPage() {
      to describe. */
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
+
+  const answer = useAnswer();
+  const { reset } = answer;
+
+  /* Synchronous in-flight latch. answer.isPending only flips on the *next*
+     render, so two clicks dispatched inside one frame would both pass an
+     isPending check and buy two LLM round-trips. The disabled button is the
+     visible layer; this ref closes the same-frame window behind it.
+     Cleared by observing isPending rather than a per-mutate onSettled: a
+     reset() during flight (a q change mid-answer) detaches the observer and
+     that callback would never fire, latching Ask off forever. */
+  const inFlight = useRef(false);
+  useEffect(() => {
+    if (!answer.isPending) {
+      inFlight.current = false;
+    }
+  }, [answer.isPending]);
+
+  const runAnswer = (vars: { query: string; mode: SearchMode }) => {
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
+    answer.mutate(vars);
+  };
+
+  /* Reset guard: a q change clears the answer — except when the change was
+     the Ask commit itself. The ref is set by our own code immediately before
+     mutate(), so the guard never depends on mutation-dispatch timing. */
+  const askedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (askedFor.current !== q) {
+      askedFor.current = null;
+      reset();
+    }
+  }, [q, reset]);
+
+  /* URL commit before mutate — named so the ordering is testable. */
+  const askShelf = () => {
+    const asked = text.trim();
+    if (asked === "") {
+      return;
+    }
+    askedFor.current = asked;
+    writeParams(asked, mode);
+    runAnswer({ query: asked, mode });
+  };
+
+  const rephrase = () => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  };
+
+  /* Synchronous query gate. reset() runs in a passive effect, so the render
+     between a ?q= change and that effect would otherwise show the previous
+     answer under the new query — and hand the new q to its recipe links,
+     which is wrong provenance, not just a cosmetic flash. Deriving liveness
+     from the mutation's own variables makes "an answer never appears for a
+     query it wasn't asked about" true by construction; reset() stays as the
+     cleanup that returns the slot to idle. */
+  const answerIsForCurrentQuery = answer.variables?.query === q;
+
+  /* The fallback grid replaces 2.1's section only while the answer still
+     matches the current search — /answers ran its own retrieval at the
+     answer-time mode, so after a chip toggle the live grid returns. */
+  const fallbackData =
+    answerIsForCurrentQuery &&
+    answer.isSuccess &&
+    answer.data &&
+    isFallback(answer.data)
+      ? answer.data
+      : null;
+  const answerMatchesSearch = answer.variables?.mode === mode;
+  const showFallbackGrid =
+    fallbackData !== null &&
+    fallbackData.results.length > 0 &&
+    answerMatchesSearch;
+  /* A zero-result fallback already says "nothing found" — don't say it twice.
+     It suppresses *only* SearchEmpty, not the whole ladder (TASK-004): the
+     2.1 section still owns the page, and /answers runs its own retrieval, so
+     a live grid, a loading state or a search error must all still surface.
+     Verified live: the two retrievals genuinely diverge — "xyzzy quantum
+     blockchain tractor" gives /answers 10 results and /search 0. */
+  const zeroResultFallback =
+    fallbackData !== null &&
+    fallbackData.results.length === 0 &&
+    answerMatchesSearch;
+
+  /* Two of the answer slot's four states carry no announcement of their own:
+     the skeleton is aria-hidden and the answer card is plain content. A
+     screen-reader user would click Ask and hear nothing, then nothing again
+     when the answer landed. The fallback notice (role="status") and the
+     error (role="alert") already announce, so they stay blank here rather
+     than being read twice. Deliberately no role attribute — role="status"
+     would make this a second status node and the notice would stop being
+     uniquely addressable. */
+  const answerStatus = !answerIsForCurrentQuery
+    ? ""
+    : answer.isPending
+      ? "Asking the shelf…"
+      : fallbackData === null && answer.isSuccess && answer.data
+        ? "The answer is ready."
+        : "";
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -83,16 +245,63 @@ export function SearchPage() {
 
       <Bloom duration={0.7} delay={0.12} className="mx-auto max-w-[720px]">
         <SearchInput
+          ref={inputRef}
           value={text}
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
+          onAsk={askShelf}
+          asking={answer.isPending}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
 
+      {/* Mounted unconditionally: a live region has to exist before its
+          content changes for the change to be announced reliably. */}
+      <p aria-live="polite" className="sr-only" data-testid="answer-status">
+        {answerStatus}
+      </p>
+
+      {/* Answer slot: explicit-action only; fallback is never error UI.
+          Gated on the mutation's own query so no frame can bind it to a
+          different one. */}
+      {answerIsForCurrentQuery ? (
+        <AnswerSection
+          answer={answer}
+          q={q}
+          mode={mode}
+          onRephrase={rephrase}
+          onRetry={() => {
+            if (answer.variables) {
+              runAnswer(answer.variables);
+            }
+          }}
+        />
+      ) : null}
+
+      {showFallbackGrid && fallbackData ? (
+        <ResultsGrid
+          results={fallbackData.results}
+          q={q}
+          mode={answer.variables?.mode ?? mode}
+          bloomBase={0.24}
+          heading={
+            <>
+              What the shelf <em className="text-apricot italic">does</em> know
+            </>
+          }
+          subline={
+            <>
+              {fallbackData.results.length} match
+              {fallbackData.results.length === 1 ? "" : "es"} · ranked by{" "}
+              {answer.variables?.mode ?? mode} score
+            </>
+          }
+        />
+      ) : null}
+
       {/* Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
-      {q === "" ? null : search.isLoading ? (
+      {showFallbackGrid || q === "" ? null : search.isLoading ? (
         <SearchSkeleton />
       ) : search.error ? (
         <SearchError
@@ -100,7 +309,9 @@ export function SearchPage() {
           onRetry={() => search.refetch()}
         />
       ) : results.length === 0 ? (
-        <SearchEmpty />
+        zeroResultFallback ? null : (
+          <SearchEmpty />
+        )
       ) : (
         <ResultsGrid
           results={results}
