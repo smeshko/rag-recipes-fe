@@ -125,12 +125,15 @@ export function SearchPage() {
     });
     /* Beside the setSearchParams call, not inside its updater — the updater
        stays pure. writeParams is the single URL-commit choke point, so this
-       one site covers Enter, Ask and the mode chips alike. Clearing the
-       query deliberately forgets the remembered search: an emptied box must
-       not resurrect through the Cook pill. */
+       one site covers Enter, Ask and the mode chips alike. Emptying a
+       committed query deliberately forgets the remembered search: an emptied
+       box must not resurrect through the Cook pill. Guarded on the previous
+       q: on the bare / (Back to the initial entry, the Crumb's "Back to
+       Cook") a mode-chip click also commits an empty q, and that must not
+       wipe a search the user never had on screen (review #1.1). */
     if (nextQ) {
       saveLastSearch(nextQ, nextMode, reviewIncluded);
-    } else {
+    } else if (q !== "") {
       clearLastSearch();
     }
   };

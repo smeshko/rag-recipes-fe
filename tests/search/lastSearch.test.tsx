@@ -85,6 +85,25 @@ describe("last-search persistence (storage writes)", () => {
     await user.keyboard("{Enter}");
     await waitFor(() => expect(storedLastSearch()).toBeNull());
   });
+
+  it("a mode-chip click on the bare / leaves the stored search alone", async () => {
+    /* Back to the initial "/" entry (or the Crumb's "Back to Cook") lands
+       here with a search still remembered; toggling a chip commits an empty
+       q and must not wipe it (review #1.1). */
+    sessionStorage.setItem(
+      LAST_SEARCH_KEY,
+      JSON.stringify({ q: "frittata", mode: "hybrid", reviewIncluded: false }),
+    );
+    const user = userEvent.setup();
+    renderAt("/");
+    await user.click(screen.getByRole("button", { name: "Keyword only" }));
+    expect(storedLastSearch()).toEqual({
+      q: "frittata",
+      mode: "hybrid",
+      reviewIncluded: false,
+    });
+    expect(cookPill()).toHaveAttribute("href", "/?q=frittata");
+  });
 });
 
 describe("Cook pill restore", () => {
