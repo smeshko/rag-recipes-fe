@@ -254,10 +254,11 @@ async function shelfSnapshot(queryClient: QueryClient): Promise<Set<string>> {
  */
 async function uploadSequentially(
   files: File[],
-  knownIds: Set<string>,
+  snapshot: () => Promise<Set<string>>,
 ): Promise<UploadSummary> {
   const items: UploadOutcomeItem[] = [];
-  for (const file of files) {
+  let knownIds = await snapshot();
+  for (const [index, file] of files.entries()) {
     try {
       const response = await uploadDocument(file);
       const status = classifyUpload(response, knownIds);
@@ -271,6 +272,7 @@ async function uploadSequentially(
         title: response.document.title,
       });
     } catch (err) {
+      const certainty = classifyFailure(err);
       items.push({
         filename: file.name,
         status: "error",
@@ -278,8 +280,20 @@ async function uploadSequentially(
         error: err instanceof Error ? err.message : String(err),
         code: err instanceof ApiError ? err.code : null,
         title: null,
-        certainty: classifyFailure(err),
+        certainty,
       });
+      /* An unproven failure may have committed a document whose id we never
+         learned — the answer was lost, not the write. If a later file in the
+         cohort has identical content the backend answers with that very
+         document, and a stale set would call the duplicate a creation,
+         reporting two books where one exists. Re-read the shelf so the id is
+         known before the next classification; union, never replace, so ids
+         learned earlier in this run survive a list that lags. Only on the
+         unproven path, and never after the last file: a refused 4xx wrote
+         nothing, so it cannot have taught the shelf anything. */
+      if (certainty === "unproven" && index < files.length - 1) {
+        knownIds = new Set([...knownIds, ...(await snapshot())]);
+      }
     }
   }
   return summarizeOutcomes(items);
@@ -311,7 +325,7 @@ export function useUploadBooks() {
          paginated requests) would be fetched and thrown away, delaying every
          multi-file drop. Taking it after a 409 loses no accuracy: the batch
          guard runs before the handler, so the refusal commits nothing. */
-      return uploadSequentially(files, await shelfSnapshot(queryClient));
+      return uploadSequentially(files, () => shelfSnapshot(queryClient));
     },
     onSuccess: (summary) => {
       /* Batch duplicates are authoritative and can name a document the

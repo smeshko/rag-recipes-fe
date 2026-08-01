@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import { delay, HttpResponse, http } from "msw";
 import { createElement, type ReactNode } from "react";
-import type { BatchUploadResponse } from "../../src/api";
+import type { BatchUploadResponse, DocumentListItem } from "../../src/api";
 import { ApiError } from "../../src/api";
 import {
   classifyUpload,
@@ -408,6 +408,74 @@ describe("useUploadBooks", () => {
       "duplicate",
     ]);
     expect(summary).toMatchObject({ created: 1, duplicates: 1, errors: 0 });
+  });
+
+  /* review #9: a lost response commits a document whose id the client never
+     learns. If the next file in the cohort is the same content, the backend
+     answers with that very document — a stale id set would call it a second
+     creation and report two books where one exists. */
+  it("re-reads the shelf after an unproven failure so a same-content retry is not miscounted", async () => {
+    const committed = uploadedDocument("doc-lost", "Committed But Lost");
+    const shelf: DocumentListItem[] = [...libraryBookList];
+    let listCalls = 0;
+    let posts = 0;
+    server.use(
+      http.get("/api/v1/documents", () => {
+        listCalls += 1;
+        return HttpResponse.json({ documents: shelf });
+      }),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope),
+      http.post("/api/v1/documents", () => {
+        posts += 1;
+        if (posts === 1) {
+          /* Committed server-side, then the answer never arrives. */
+          shelf.unshift({ ...libraryBookList[0], id: committed.id });
+          return HttpResponse.error();
+        }
+        /* Same content: the backend's content hash returns the SAME book. */
+        return HttpResponse.json(
+          { document: committed, ingestion: { status: "queued" } },
+          { status: 201 },
+        );
+      }),
+    );
+    const { result } = renderUploadBooks();
+
+    const summary = await result.current.mutateAsync([
+      pdfFile("same.pdf"),
+      pdfFile("same.pdf"),
+    ]);
+
+    expect(summary.items.map((i) => i.status)).toEqual(["error", "duplicate"]);
+    expect(summary).toMatchObject({ created: 0, duplicates: 1, errors: 1 });
+    expect(summary.items[0].certainty).toBe("unproven");
+    /* Once before the cohort, once more after the unproven failure. */
+    expect(listCalls).toBe(2);
+  });
+
+  it("does not re-read the shelf after a refused file", async () => {
+    const stats = emptyStats();
+    let listCalls = 0;
+    server.use(
+      http.get("/api/v1/documents", () => {
+        listCalls += 1;
+        return HttpResponse.json({ documents: libraryBookList });
+      }),
+      uploadBatchErrorHandler(409, batchNotEnabledEnvelope),
+      sequencedSingleUploadHandler(
+        [
+          { kind: "error", status: 415, envelope: unsupportedFileTypeEnvelope },
+          { kind: "created", document: uploadedDocument("doc-ok", "Fine") },
+        ],
+        stats,
+      ),
+    );
+    const { result } = renderUploadBooks();
+
+    await result.current.mutateAsync([pdfFile("a.txt"), pdfFile("b.pdf")]);
+
+    /* A 415 wrote nothing, so there is nothing new for the shelf to teach. */
+    expect(listCalls).toBe(1);
   });
 
   it("surfaces a batch 500 as ApiError without any fallback attempt", async () => {
