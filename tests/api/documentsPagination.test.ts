@@ -91,6 +91,21 @@ describe("fetchAllDocuments pagination loop", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("returns a shelf of exactly the cap (5000 rows, 26 requests)", async () => {
+    /* The boundary the cap is written for: 25 full pages fill the budget, so
+       the terminating short page at offset 5000 has to still be allowed to
+       run — otherwise a legitimately-full shelf reads as unavailable. */
+    const books = makeBooks(5000);
+    const urls: URL[] = [];
+    server.use(documentsListHandler(books, (url) => urls.push(url)));
+
+    const result = (await fetchAllDocuments()).documents;
+
+    expect(result).toHaveLength(5000);
+    expect(urls).toHaveLength(26);
+    expect(urls[25].searchParams.get("offset")).toBe("5000");
+  });
+
   it("trips the iteration cap on a server that ignores offset", async () => {
     const page = makeBooks(200);
     server.use(

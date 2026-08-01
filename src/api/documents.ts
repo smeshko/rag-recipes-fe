@@ -12,7 +12,11 @@ import type {
    both `cookbookCount` and the ready-recipes fan-out treat what comes back as
    the whole of it. Walk pages until one comes back short. */
 const LIST_PAGE_SIZE = 200;
-/** Hard stop at 5000 documents so a mispaging backend cannot spin forever. */
+/** Hard stop at 5000 documents so a mispaging backend cannot spin forever.
+    This counts FULL pages: a shelf of exactly 5000 needs one more request
+    after them — the short (empty) page at offset 5000 that terminates the
+    loop — so the loop runs LIST_MAX_PAGES + 1 times and only a 26th full
+    page proves the server is actually mispaging. */
 const LIST_MAX_PAGES = 25;
 
 /**
@@ -33,7 +37,7 @@ export async function fetchAllDocuments(): Promise<DocumentListResponse> {
   const documents: DocumentListItem[] = [];
   const seen = new Set<string>();
 
-  for (let page = 0; page < LIST_MAX_PAGES; page += 1) {
+  for (let page = 0; page <= LIST_MAX_PAGES; page += 1) {
     const batch = await request<DocumentListResponse>(
       route("/documents", "get", {
         query: {
