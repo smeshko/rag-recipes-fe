@@ -106,6 +106,22 @@ describe("fetchAllDocuments pagination loop", () => {
     expect(urls[25].searchParams.get("offset")).toBe("5000");
   });
 
+  it("returns an over-cap shelf in full rather than failing it", async () => {
+    /* Characterisation, not an accident: the guard bounds REQUESTS, not
+       documents, so a shelf just past 25 full pages still terminates on its
+       short page and is returned whole. Throwing here would misreport a
+       working list as unavailable — the failure mode the isSuccess gate in
+       LibraryPage exists to prevent. */
+    const books = makeBooks(5100);
+    const urls: URL[] = [];
+    server.use(documentsListHandler(books, (url) => urls.push(url)));
+
+    const result = (await fetchAllDocuments()).documents;
+
+    expect(result).toHaveLength(5100);
+    expect(urls).toHaveLength(26);
+  });
+
   it("trips the iteration cap on a server that ignores offset", async () => {
     const page = makeBooks(200);
     server.use(

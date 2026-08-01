@@ -12,11 +12,16 @@ import type {
    both `cookbookCount` and the ready-recipes fan-out treat what comes back as
    the whole of it. Walk pages until one comes back short. */
 const LIST_PAGE_SIZE = 200;
-/** Hard stop at 5000 documents so a mispaging backend cannot spin forever.
-    This counts FULL pages: a shelf of exactly 5000 needs one more request
-    after them — the short (empty) page at offset 5000 that terminates the
-    loop — so the loop runs LIST_MAX_PAGES + 1 times and only a 26th full
-    page proves the server is actually mispaging. */
+/** Runaway guard, and deliberately a bound on REQUESTS rather than on
+    documents: at most LIST_MAX_PAGES full-page requests plus the one short
+    page that terminates the loop, so 26 requests worst case.
+
+    It is therefore not an exact 5000-document quota — a shelf of 5001-5199
+    terminates normally on that last short page and is returned in full. That
+    is the intended trade: only a 26th *consecutive full* page proves the
+    server is ignoring `offset`, and throwing on a merely-large-but-honest
+    shelf would misreport a working list as unavailable, which is the failure
+    this module already had once (see the isSuccess gate in LibraryPage). */
 const LIST_MAX_PAGES = 25;
 
 /**
@@ -59,7 +64,7 @@ export async function fetchAllDocuments(): Promise<DocumentListResponse> {
     }
   }
 
-  throw new PaginationCapError(LIST_MAX_PAGES);
+  throw new PaginationCapError(LIST_MAX_PAGES + 1);
 }
 
 /** The single source of the ['documents'] cache entry — share, never inline.
