@@ -3,6 +3,8 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import type { DocumentStatus } from "../../src/api";
 import {
+  POLL_INTERVAL_MS,
+  pollBackoffMs,
   SHELF_INVALIDATION_DEBOUNCE_MS,
   useIngestionStatus,
 } from "../../src/api/documents";
@@ -154,6 +156,25 @@ describe("useIngestionStatus", () => {
 
     await sleep(SETTLE);
     expect(at.length).toBe(rounds);
+  });
+
+  it("widens the backoff geometrically and gives up after the 4th round", () => {
+    /* The EXACT sequence, asserted where it is deterministic. The
+       real-interval test above can only prove lower bounds: distinguishing
+       a widening cadence from a fixed long one needs an upper bound, and
+       upper bounds over wall-clock gaps flake on any scheduler pause. The
+       pure function has neither problem. */
+    expect([0, 1, 2, 3, 4].map((n) => pollBackoffMs(20, n))).toEqual([
+      20,
+      40,
+      80,
+      160,
+      false,
+    ]);
+    /* Production cadence: 2.5s -> 5s -> 10s -> 20s, then stop. */
+    expect(
+      [0, 1, 2, 3, 4].map((n) => pollBackoffMs(POLL_INTERVAL_MS, n)),
+    ).toEqual([2500, 5000, 10000, 20000, false]);
   });
 
   it("backs off on a 5xx even when the cache still holds the last run's terminal payload", async () => {

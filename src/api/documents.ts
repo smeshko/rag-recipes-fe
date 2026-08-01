@@ -209,6 +209,23 @@ export const POLL_STALL_LIMIT = 40;
     production allows 2 in-fetch retries, so this is up to 12 requests). */
 const MAX_FAILED_ROUNDS = 4;
 
+/**
+ * Delay before the next poll round after `failedRounds` consecutive failed
+ * rounds — `false` once the budget is spent. Extracted as a pure function
+ * because it is the only place the widening cadence can be asserted
+ * EXACTLY: a real-interval test can measure lower bounds, but proving
+ * "widening rather than a fixed long delay" needs upper bounds, and upper
+ * bounds over wall-clock gaps are precisely what a scheduler pause breaks.
+ */
+export function pollBackoffMs(
+  intervalMs: number,
+  failedRounds: number,
+): number | false {
+  return failedRounds >= MAX_FAILED_ROUNDS
+    ? false
+    : intervalMs * 2 ** failedRounds;
+}
+
 /** Why polling stopped — the UI branches its affordances on this. */
 export type IngestionStopReason = "terminal" | "error" | "stalled" | null;
 
@@ -380,10 +397,7 @@ export function useIngestionStatus(
         if (is4xx(q.state.error)) {
           return false;
         }
-        if (failedRounds >= MAX_FAILED_ROUNDS) {
-          return false;
-        }
-        return intervalMs * 2 ** failedRounds;
+        return pollBackoffMs(intervalMs, failedRounds);
       }
       if (q.state.data?.terminal) {
         return false;
