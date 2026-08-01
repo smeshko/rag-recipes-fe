@@ -92,6 +92,35 @@ describe("route", () => {
       }),
     ).toThrow("must not be empty or a dot segment");
   });
+
+  /* Review routes (4.2) — declared by the hand-authored augmentation in
+     src/api/review-schema.d.ts until `just typegen` emits them in 4.4. */
+  it("serializes the review-items query parameters", () => {
+    const endpoint = route("/review-items", "get", {
+      query: { document_id: "doc_baking", limit: "200", offset: "0" },
+    });
+    expect(endpoint.path).toBe(
+      "/review-items?document_id=doc_baking&limit=200&offset=0",
+    );
+    expect(endpoint.method).toBe("GET");
+  });
+
+  it("yields the bare review-items path when no filter is passed", () => {
+    expect(route("/review-items", "get").path).toBe("/review-items");
+    /* serializeQuery drops undefined — the no-filter call must not send
+       the literal string "undefined". */
+    expect(
+      route("/review-items", "get", { query: { document_id: undefined } }).path,
+    ).toBe("/review-items");
+  });
+
+  it("interpolates the review decision route", () => {
+    const endpoint = route("/knowledge-items/{item_id}/review", "post", {
+      params: { item_id: "item_9f3c" },
+    });
+    expect(endpoint.path).toBe("/knowledge-items/item_9f3c/review");
+    expect(endpoint.method).toBe("POST");
+  });
 });
 
 /* Each body below is declared but never invoked — the compiler is the
@@ -117,6 +146,12 @@ describe("route typing (compile-time)", () => {
       route("/documents", "get", { query: { nope: "1" } });
       // @ts-expect-error — this route declares no query parameters at all
       route("/health", "get", { query: { limit: "1" } });
+      // @ts-expect-error — the augmentation declares no POST on /review-items
+      route("/review-items", "post");
+      // @ts-expect-error — misspelled query key (document_id)
+      route("/review-items", "get", { query: { documentId: "d" } });
+      // @ts-expect-error — the review decision route needs its item_id
+      route("/knowledge-items/{item_id}/review", "post");
     };
     expect(checks).toBeTypeOf("function");
   });

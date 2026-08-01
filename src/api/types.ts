@@ -260,6 +260,60 @@ export interface KnowledgeItemResponse {
   source_citations: SourceCitation[];
 }
 
+/* ---------- review (4.2) ---------- */
+
+/* Wire shapes transcribed from docs/review-api-contract.md (backend epic
+   21.3 — endpoints not live yet, served by MSW mocks until phase 4.4). */
+
+/** `code` is a backend-owned enum treated as an opaque string; `message` is backend-authored copy rendered verbatim. */
+export interface ReviewFlag {
+  code: string;
+  message: string;
+}
+
+export interface ReviewItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  item_type: string;
+  document: { id: string; title: string };
+  source_pages: { page_start: number | null; page_end: number | null };
+  extraction: {
+    schema: string;
+    yield: string | null;
+    top_ingredients: string[];
+    confidence_overall: number | null;
+  };
+  /** Non-empty by definition — an unflagged item is not in this list. */
+  flags: ReviewFlag[];
+}
+
+export interface ReviewListResponse {
+  review_items: ReviewItem[];
+}
+
+export type ReviewDecision = "approved" | "rejected";
+
+/* STOPGAP: request bodies are the generated half (ARCHITECTURE.md) — the
+   generated components["schemas"] entry replaces this type in phase 4.4. */
+export interface ReviewDecisionRequest {
+  decision: ReviewDecision;
+}
+
+export interface ReviewDecisionResponse {
+  knowledge_item: {
+    id: string;
+    document_id: string;
+    /* Plain string, NOT a literal union: approve is async (202-style) and
+       the backend may answer a transitional label (e.g. `indexing`) before
+       settling to `ready`. The FE contract is "any non-`needs_review`
+       status means decided" — a union would enshrine a label the backend
+       explicitly reserves the right to choose. */
+    status: string;
+  };
+  decision: ReviewDecision;
+}
+
 /* ---------- answers (2.3) ---------- */
 
 export interface AnswerBody {
