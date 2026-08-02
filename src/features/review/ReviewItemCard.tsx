@@ -139,9 +139,12 @@ export function ReviewItemCard({
           {flagText(lead)}
         </p>
       )}
+      {/* Code AND message: the backend's `llm_warning` fallback envelope is
+          the code for EVERY unmodelled warning, so two of those on one item
+          collide on `code` alone. Same key rule as `ReviewCallout`. */}
       {secondaries.map((flag) => (
         <p
-          key={flag.code}
+          key={`${flag.code}:${flag.message}`}
           data-testid="review-flag-secondary"
           className="mt-1 text-[12px] font-semibold text-danger/80"
         >

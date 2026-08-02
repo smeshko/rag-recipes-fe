@@ -90,6 +90,39 @@ describe("ReviewCallout", () => {
     ]);
   });
 
+  it("renders two unmodelled warnings without colliding their keys", async () => {
+    /* `llm_warning` is the backend's fallback envelope for EVERY warning it
+       has no modelled copy for, so `code` is not unique and cannot key the
+       list on its own (review #1.2). */
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    serveReviewItem({
+      review_reasons: [
+        { code: "no_steps", message: "No preparation steps were extracted." },
+        { code: "llm_warning", message: "The window ended mid-sentence." },
+        { code: "llm_warning", message: "Two recipes may have been merged." },
+      ],
+    });
+    renderAt("/recipes/item_review");
+
+    expect(await screen.findByTestId("review-callout")).toBeInTheDocument();
+    expect(flagTexts()).toEqual([
+      "No preparation steps were extracted.",
+      "The window ended mid-sentence.",
+      "Two recipes may have been merged.",
+    ]);
+    /* Every argument of every call, joined: React's duplicate-key warning has
+       moved between a format string and a plain one across versions, so match
+       on the text rather than on the call shape. */
+    const logged = consoleError.mock.calls
+      .flat()
+      .map((argument) => String(argument))
+      .join(" ");
+    consoleError.mockRestore();
+    expect(logged).not.toContain("same key");
+  });
+
   it("renders nothing at all for a decided item", async () => {
     renderAt("/recipes/item_full");
 

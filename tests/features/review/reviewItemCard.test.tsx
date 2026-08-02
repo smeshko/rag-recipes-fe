@@ -78,6 +78,21 @@ const repairedItem: ReviewItem = {
   edited_at: "2026-08-02T21:32:31.333104Z",
 };
 
+/* `llm_warning` is the backend's fallback envelope for EVERY warning it has no
+   modelled copy for, so two unmodelled warnings on one item arrive with the
+   same `code` and different messages — which is why `code` alone cannot key
+   the rendered list (review #1.2). */
+const twoFallbackFlagsItem: ReviewItem = {
+  ...reviewItemsFixture[0],
+  id: "ki_two_fallbacks",
+  title: "Twice Unmodelled Item",
+  flags: [
+    { code: "no_steps", message: "No preparation steps were extracted." },
+    { code: "llm_warning", message: "The window ended mid-sentence." },
+    { code: "llm_warning", message: "Two recipes may have been merged." },
+  ],
+};
+
 describe("flagged-item card", () => {
   beforeEach(() =>
     server.use(
@@ -85,9 +100,34 @@ describe("flagged-item card", () => {
         ...reviewItemsFixture,
         emptyMessageItem,
         repairedItem,
+        twoFallbackFlagsItem,
       ]),
     ),
   );
+
+  it("renders two unmodelled warnings without colliding their keys", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    renderReview();
+
+    const { card } = await itemCard("Twice Unmodelled Item");
+    expect(
+      card.getAllByTestId("review-flag-secondary").map((n) => n.textContent),
+    ).toEqual([
+      "The window ended mid-sentence.",
+      "Two recipes may have been merged.",
+    ]);
+    /* Every argument of every call, joined: React's duplicate-key warning has
+       moved between a format string and a plain one across versions, so match
+       on the text rather than on the call shape. */
+    const logged = consoleError.mock.calls
+      .flat()
+      .map((argument) => String(argument))
+      .join(" ");
+    consoleError.mockRestore();
+    expect(logged).not.toContain("same key");
+  });
 
   it("renders an item whose repair cleared every flag, instead of crashing", async () => {
     renderReview();
