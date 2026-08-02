@@ -1,18 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { delay, http } from "msw";
+import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import type {
   KnowledgeItemResponse,
   KnowledgeItemUpdateRequest,
+  ReviewDecisionRequest,
+  ReviewItem,
 } from "../../../../src/api";
 import {
   editableItemsFixture,
   editScenario,
   knowledgeItemErrorHandler,
 } from "../../../../src/mocks/knowledgeItems";
+import { reviewScenario } from "../../../../src/mocks/review";
 import { routes } from "../../../../src/routes";
 import { server } from "../../../msw/server";
 
@@ -149,13 +152,7 @@ async function renderForm(path = EDIT_PATH) {
 }
 
 const saveButton = () => screen.getByTestId("edit-save");
-
-/** The one repair every case makes: name the recipe and give it the
-    ingredients it was flagged for not having. */
-async function repair(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Title"), " (repaired)");
-  await user.type(screen.getByLabelText("Ingredient 1"), NEW_INGREDIENT);
-}
+const approveButton = () => screen.getByTestId("edit-save-approve");
 
 describe("Save", () => {
   it("lands on the read page holding the server's refreshed item", async () => {
@@ -299,3 +296,229 @@ describe("Save", () => {
     expect(saveButton()).toBeEnabled();
   });
 });
+
+/* ---------- Save & approve (TASK-004) ---------- */
+
+const QUEUE_DOCUMENT = "doc_baking";
+const OTHER_QUEUE_TITLE = "Stovetop Skillet Granola";
+
+/** A queue row for a given item id. The shared review fixtures are keyed
+    `ki_*` and none of them is the item this form edits, so "the card left the
+    queue" would be vacuously true against them. */
+const queueRow = (id: string, title: string): ReviewItem => ({
+  id,
+  title,
+  summary: null,
+  item_type: "recipe",
+  document: { id: QUEUE_DOCUMENT, title: "bakingwithlesssugar" },
+  source_pages: { page_start: 41, page_end: 43 },
+  extraction: {
+    schema: "recipe.v1",
+    yield: null,
+    top_ingredients: [],
+    confidence_overall: null,
+  },
+  flags: [
+    { code: "no_ingredients", message: "No ingredients were extracted." },
+  ],
+});
+
+/** The edited item plus one bystander, so the queue that renders after the
+    approve is provably a rendered queue and not an empty state. */
+const QUEUE_ROWS = [
+  queueRow(ITEM_ID, SEEDED_TITLE),
+  queueRow("ki_skillet_granola", OTHER_QUEUE_TITLE),
+];
+
+const PATCH_LINE = `PATCH /api/v1/knowledge-items/${ITEM_ID}`;
+const DECIDE_LINE = `POST /api/v1/knowledge-items/${ITEM_ID}/review`;
+
+/** Every request the suite makes, in order, as `METHOD /path`. The ordering
+    claim ("patch, THEN decide") and the abort claim ("no decision at all")
+    are both statements about the wire, so they are asserted on the wire —
+    a rendered message can be right for the wrong reason. */
+function recordRequests() {
+  const log: string[] = [];
+  server.events.on("request:start", ({ request }) => {
+    log.push(`${request.method} ${new URL(request.url).pathname}`);
+  });
+  return {
+    all: () => log,
+    decisions: () =>
+      log.filter((line) => line === PATCH_LINE || line === DECIDE_LINE),
+  };
+}
+
+afterEach(() => {
+  server.events.removeAllListeners();
+});
+
+/**
+ * `wireEditServer` plus a stateful review queue holding the edited item, and
+ * a pass-through gate that records the decision bodies. Registered AFTER the
+ * scenario because `server.use` prepends: the gate must be reached first, and
+ * it returns `undefined` so the scenario still answers.
+ */
+function wireApproveServer(options: { patchDelay?: number } = {}) {
+  const edit = wireEditServer(options);
+  const decisions: ReviewDecisionRequest[] = [];
+  server.use(...reviewScenario(QUEUE_ROWS));
+  server.use(
+    http.post("/api/v1/knowledge-items/:itemId/review", async ({ request }) => {
+      decisions.push((await request.clone().json()) as ReviewDecisionRequest);
+      return undefined;
+    }),
+  );
+  return { ...edit, decisions };
+}
+
+/** The update mutation's own state, read from the cache rather than inferred
+    from the DOM: "the committed save is still reported as a success" is a
+    claim about `update.status`, and the seam isolation D8 buys is exactly the
+    thing a rendered message would fail to distinguish. */
+function updateStatus(queryClient: QueryClient) {
+  return queryClient
+    .getMutationCache()
+    .getAll()
+    .find(
+      (mutation) => mutation.options.scope?.id === `knowledge-item-${ITEM_ID}`,
+    )?.state.status;
+}
+
+describe("Save & approve", () => {
+  it("patches, then approves, then lands on a queue without the card", async () => {
+    const log = recordRequests();
+    const { decisions } = wireApproveServer();
+    const { user, router } = await renderForm(`${EDIT_PATH}?from=%2Freview`);
+
+    await repair(user);
+    await user.click(approveButton());
+
+    expect(await screen.findByText(OTHER_QUEUE_TITLE)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/review");
+    /* The card the reviewer just repaired has left the queue. */
+    expect(screen.queryByText(SEEDED_TITLE)).not.toBeInTheDocument();
+
+    /* One patch, one decision, in that order. */
+    expect(log.decisions()).toEqual([PATCH_LINE, DECIDE_LINE]);
+    expect(decisions).toEqual([{ decision: "approved" }]);
+
+    /* And no prompt to discard the changes the approve just committed. */
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
+  });
+
+  it("never reaches the decision when the patch fails", async () => {
+    const log = recordRequests();
+    const { decisions } = wireApproveServer();
+    server.use(
+      knowledgeItemErrorHandler(500, {
+        error: {
+          code: "internal_error",
+          message: "The stove hiccuped.",
+          details: {},
+        },
+      }),
+    );
+    const { user, router } = await renderForm(`${EDIT_PATH}?from=%2Freview`);
+
+    await repair(user);
+    await user.click(approveButton());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The stove hiccuped.");
+    expect(router.state.location.pathname).toBe(EDIT_PATH);
+    expect(screen.getByTestId("recipe-edit-page")).toBeInTheDocument();
+
+    /* The whole recorded log, not a filtered view: an approve that leaked
+       through on ANY path would show up here. */
+    expect(log.all()).toEqual([
+      `GET /api/v1/knowledge-items/${ITEM_ID}`,
+      PATCH_LINE,
+    ]);
+    expect(decisions).toEqual([]);
+  });
+
+  it("keeps the committed save when the approval fails", async () => {
+    wireApproveServer();
+    server.use(
+      http.post("/api/v1/knowledge-items/:itemId/review", () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "internal_error",
+              message: "The queue is wedged.",
+              details: {},
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const { user, router, queryClient } = await renderForm(
+      `${EDIT_PATH}?from=%2Freview`,
+    );
+
+    await repair(user);
+    await user.click(approveButton());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Saved — but the approval failed: The queue is wedged.",
+    );
+    expect(router.state.location.pathname).toBe(EDIT_PATH);
+
+    /* The seam-isolation guarantee: the PATCH committed, so the mutation is
+       still a success and nothing on screen calls the save failed. */
+    expect(updateStatus(queryClient)).toBe("success");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(
+      queryClient.getQueryData<KnowledgeItemResponse>([
+        "knowledge-item",
+        ITEM_ID,
+      ])?.knowledge_item.title,
+    ).toBe(CORRECTED_TITLE);
+  });
+
+  it("returns to the filtered queue the reviewer came from", async () => {
+    wireApproveServer();
+    const { user, router } = await renderForm(
+      `${EDIT_PATH}?from=%2Freview%3Fdocument%3D${QUEUE_DOCUMENT}`,
+    );
+
+    await repair(user);
+    await user.click(approveButton());
+
+    expect(await screen.findByText(OTHER_QUEUE_TITLE)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/review");
+    expect(router.state.location.search).toBe(`?document=${QUEUE_DOCUMENT}`);
+  });
+
+  it("raises no conflict banner on a save that worked", async () => {
+    /* The proactive banner's exact precondition: the form is still dirty (D7)
+       and the item has left `needs_review`. The only thing keeping "Someone
+       has already decided this item" off a save that WORKED is that
+       `useReviewDecision`'s settle does not invalidate ['knowledge-item', id]
+       — a property of another module, pinned here. */
+    wireApproveServer();
+    const { user, queryClient } = await renderForm(
+      `${EDIT_PATH}?from=%2Freview`,
+    );
+
+    await repair(user);
+    await user.click(approveButton());
+
+    expect(await screen.findByText(OTHER_QUEUE_TITLE)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      queryClient.getQueryState(["knowledge-item", ITEM_ID])?.isInvalidated,
+    ).toBe(false);
+  });
+});
+
+/** The one repair every case makes: name the recipe and give it the
+    ingredients it was flagged for not having. */
+async function repair(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("Title"), " (repaired)");
+  await user.type(screen.getByLabelText("Ingredient 1"), NEW_INGREDIENT);
+}

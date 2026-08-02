@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   type KnowledgeItemResponse,
+  useReviewDecision,
   useUpdateKnowledgeItem,
 } from "../../../api";
 import {
@@ -20,6 +21,13 @@ import { TitleFields } from "./TitleFields";
 import { UnsavedGuard } from "./UnsavedGuard";
 import { useEditForm } from "./useEditForm";
 
+/** A rejected `mutateAsync` is typed `unknown` at the catch site; every
+    rejection the client produces is an `ApiError`, so this is the narrow that
+    keeps the house rule (render the backend's message verbatim) honest
+    without asserting a type the compiler cannot see. */
+const messageOf = (failure: unknown): string =>
+  failure instanceof Error ? failure.message : String(failure);
+
 /**
  * The form host — the child `RecipeEditPage` mounts on its success rung, and
  * the only file in `edit/` that may call form hooks (D22). `item` is
@@ -29,8 +37,10 @@ import { useEditForm } from "./useEditForm";
  * unconditionally here without any "is there an item yet" narrowing.
  *
  * Save sends `patchBody()` through `useUpdateKnowledgeItem`'s pass-through
- * seam and lands the reviewer on the read-mode recipe page (5.4 D4/D7). The
- * choreography lives here; `src/api/knowledgeItems.ts` is a fixed point.
+ * seam and lands the reviewer on the read-mode recipe page (5.4 D4/D7); Save &
+ * approve chains `useReviewDecision` onto the same seam and returns them to
+ * the queue (D8). The choreography lives here; `src/api/knowledgeItems.ts` and
+ * `src/api/review.ts` are both fixed points.
  */
 export function RecipeEditForm({
   item,
@@ -51,6 +61,10 @@ export function RecipeEditForm({
   /* The failed-save message, rendered verbatim. TASK-007 hands this same field
      to `SaveConflict`, which picks its copy from the envelope's `code`. */
   const [saveError, setSaveError] = useState<Error | null>(null);
+  /* A DOWNSTREAM failure, kept apart from `saveError` on purpose: the patch
+     committed, so this is not a failed save and must never render as one.
+     TASK-007 folds the field into `SaveConflict` unchanged. */
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   /* The discard latch, owned here and read by two consumers that must agree:
      the Cancel handler below raises it, `UnsavedGuard`'s blocker reads it
@@ -74,12 +88,27 @@ export function RecipeEditForm({
   const readHref = target
     ? withReturnTo(`/recipes/${id}`, { pathname: target.to, search: "" })
     : `/recipes/${id}`;
+  /* Where an APPROVE lands: the validated target itself, not a hop through the
+     recipe. A reviewer who arrived from the filtered queue returns to it with
+     `?document=` intact; one who arrived from the library or search returns
+     there; a direct load falls back to the unfiltered queue, which is the only
+     honest guess once the item they just settled is no longer in it. */
+  const queueHref = target?.to ?? "/review";
 
   /* One mutation, one intent, two buttons (D5): Save and TASK-004's Save &
      approve submit the same body and differ only in what follows. A ref, not
      state, for the reason `discardingRef` is one — the click handler writes it
      and `onSettled` reads it with no re-render in between. */
   const intentRef = useRef<"save" | "approve">("save");
+
+  /* No options (D8). The hook's own composed settle already invalidates
+     ['review-items'], ['documents'] and the exact ['document', id]; there is
+     no card here to optimistically remove, so inventing an `onMutate` would
+     only duplicate 4.3's rollback logic for nothing. Note what it does NOT
+     invalidate: ['knowledge-item', id] — which is why approving does not
+     refetch a now-decided item under this still-dirty form and provoke the
+     conflict banner on a save that worked (D11). */
+  const decide = useReviewDecision(id);
 
   const update = useUpdateKnowledgeItem(id, {
     onError: (error) => setSaveError(error),
@@ -90,20 +119,34 @@ export function RecipeEditForm({
        what TASK-004's chained approve depends on. Per-call callbacks also go
        unrun once this observer has no listeners (query-core's
        MutationObserver#notify) — and this component unmounts on navigate. */
-    onSettled: (data, error) => {
+    onSettled: async (data, error) => {
       /* A failed patch is `onError`'s to report; there is nothing to leave
-         for. */
+         for — and, structurally rather than by ordering care, no decision is
+         ever fired on an item whose repair did not commit. */
       if (error !== null || data === undefined) {
         return;
       }
-      if (intentRef.current === "save") {
-        /* The latch, mandatory rather than defensive: a successful save does
-           NOT make `useEditForm` clean — it compares against the seed
-           snapshot, which the save never moves — so without this the guard
-           would ask to discard the changes we just committed (D7). */
-        discardingRef.current = true;
-        navigate(readHref);
+      if (intentRef.current === "approve") {
+        /* try/catch INSIDE the callback, never around it (D8). The seam
+           catches and logs an escaping rejection, so letting one out would
+           lose the navigation AND the message; and a rejection reaching
+           query-core's own await would re-run this callback with
+           `(undefined, error)` and report a committed patch as a failed save
+           (knowledgeItems.ts:119-142). `mutateAsync`, not `mutate`, because
+           where to go next depends on whether the approve worked. */
+        try {
+          await decide.mutateAsync("approved");
+        } catch (failure) {
+          setApproveError(messageOf(failure));
+          return;
+        }
       }
+      /* The latch, mandatory rather than defensive: a successful save does
+         NOT make `useEditForm` clean — it compares against the seed snapshot,
+         which the save never moves — so without this the guard would ask to
+         discard the changes we just committed (D7). */
+      discardingRef.current = true;
+      navigate(intentRef.current === "approve" ? queueHref : readHref);
     },
   });
 
@@ -112,11 +155,19 @@ export function RecipeEditForm({
     navigate(readHref);
   };
 
-  const onSave = () => {
-    intentRef.current = "save";
+  /* One body, one mutation, two buttons (D5) — only the intent differs. */
+  const submit = (intent: "save" | "approve") => () => {
+    intentRef.current = intent;
     setSaveError(null);
+    setApproveError(null);
     update.mutate(patchBody());
   };
+
+  /* Both buttons: an empty patch is a 400 `invalid_request`, and approving an
+     unedited item is the queue card's job. `decide.isPending` joins the rule
+     so a second click cannot start a second patch mid-approve. */
+  const submitDisabled =
+    !isDirty || !isValid || update.isPending || decide.isPending;
 
   /* Keyed by item id, not a bare boolean: navigating from one dirty edit form
      straight to another item's would otherwise leave the flag set for an id
@@ -181,15 +232,31 @@ export function RecipeEditForm({
         <button
           type="button"
           data-testid="edit-save"
-          onClick={onSave}
-          disabled={!isDirty || !isValid || update.isPending}
+          onClick={submit("save")}
+          disabled={submitDisabled}
           /* accent-strong, not accent — the fifth solid-accent surface carrying
              `fg-on-accent`, and one 5.6's D12 enumeration missed: white on light
              `accent` measures 3.61:1, on `accent-strong` 4.63:1. Theme-agnostic
              like its four siblings; see SearchInput's Ask button. */
           className="rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold text-fg-on-accent pointer-coarse:min-h-11 disabled:opacity-40"
         >
-          {update.isPending ? "Saving…" : "Save changes"}
+          {/* `&& !decide.isPending`: query-core holds the patch mutation
+              `pending` until this seam's callback resolves, so during the
+              chained approve the patch is technically still in flight — but
+              "Saving…" alongside "Approving…" names one act twice. */}
+          {update.isPending && !decide.isPending ? "Saving…" : "Save changes"}
+        </button>
+        <button
+          type="button"
+          data-testid="edit-save-approve"
+          onClick={submit("approve")}
+          disabled={submitDisabled}
+          /* Approve's own vocabulary, verbatim from `ReviewItemCard` (D13):
+             the two surfaces name the same verb the same way, so a reviewer
+             reads one control, not two. */
+          className="rounded-pill bg-success-fill px-5 py-2 text-[13px] font-bold text-success pointer-coarse:min-h-11 disabled:opacity-40"
+        >
+          {decide.isPending ? "Approving…" : "Save & approve"}
         </button>
       </Bloom>
       {saveError && (
@@ -200,6 +267,17 @@ export function RecipeEditForm({
           className="mt-3 text-[12.5px] font-semibold text-danger"
         >
           {saveError.message}
+        </p>
+      )}
+      {approveError && (
+        /* Warning, not danger, and it leads with the reassurance: the edit is
+           on the server. The reviewer's next move is to approve from the
+           queue, not to type it all again. */
+        <p
+          role="alert"
+          className="mt-3 text-[12.5px] font-semibold text-warning"
+        >
+          Saved — but the approval failed: {approveError}
         </p>
       )}
     </div>
