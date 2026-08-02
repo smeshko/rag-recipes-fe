@@ -206,6 +206,33 @@ describe("asked=1 is the ask", () => {
     expect(answersCalls).toBe(1);
   });
 
+  it("a repeat Ask on the same question adds no history entry", async () => {
+    /* The answer landing re-enables the button, so a second Ask is one click
+       away — and it commits an identical URL. Pushed as its own entry it
+       would cost the user a Back press that visibly does nothing, which is
+       the opposite of "Back across the ask empties the slot" above
+       (review #1.1). */
+    server.use(answersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
+    const router = renderAt("/?q=breakfast");
+    await settleGrid();
+    await user.click(askButton());
+    await screen.findByText(/Grounded in your books/);
+    expect(router.state.location.search).toBe("?q=breakfast&asked=1");
+
+    await user.click(askButton());
+    await waitFor(() => expect(askButton()).toBeEnabled());
+    expect(router.state.location.search).toBe("?q=breakfast&asked=1");
+
+    /* One Back, not two, and the pre-Ask entry is the one it lands on. */
+    await act(async () => {
+      await router.navigate(-1);
+    });
+    await waitFor(() =>
+      expect(router.state.location.search).toBe("?q=breakfast"),
+    );
+  });
+
   it("a cold load of ?asked=1 shows no answer and fires no /answers", async () => {
     /* No answers handler registered: the unhandled-request guard is the second
        backstop behind the spy. The cache does not survive a reload either, and

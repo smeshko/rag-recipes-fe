@@ -130,7 +130,19 @@ export function SearchPage() {
       mode: nextMode,
       asked: options?.asked === true,
     };
-    setSearchParams((prev) => nextSearchParams(prev, commit));
+    /* A commit that changes nothing is not a commit (review #1.1). A second
+       Ask on the question already on screen — the button is enabled again the
+       moment the answer lands — recomputes an identical param string, and
+       setSearchParams would push it as a fresh history entry regardless. The
+       user then has to press Back twice to leave the answered entry, which is
+       exactly what "Back/Forward across an ask lands on the right answer
+       state" says must not happen. Compared as strings because that is what
+       the entry records; the canonical order nextSearchParams imposes means a
+       hand-typed ?mode=vector&q=x still commits, and normalises. */
+    const committed = nextSearchParams(searchParams, commit);
+    if (committed.toString() !== searchParams.toString()) {
+      setSearchParams((prev) => nextSearchParams(prev, commit));
+    }
     /* Beside the setSearchParams call, not inside its updater — the updater
        stays pure and React may invoke it more than once. This one site covers
        Enter, Ask and the mode chips alike. Emptying a committed query
@@ -140,7 +152,7 @@ export function SearchPage() {
        click also commits an empty q, and that must not wipe a search the user
        never had on screen (review #1.1). */
     if (nextQ) {
-      saveLastSearch(searchUrl(nextSearchParams(searchParams, commit)));
+      saveLastSearch(searchUrl(committed));
     } else if (q !== "") {
       clearLastSearch();
     }
