@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { reviewItemsFixture, reviewScenario } from "../src/mocks/review";
 import { routes } from "../src/routes";
 import { libraryShelfHandlers } from "./msw/handlers";
 import { server } from "./msw/server";
@@ -26,8 +27,14 @@ function currentPill(): string | null {
 }
 
 describe("shell nav active state", () => {
-  /* The library shelf now fetches on mount — feed it whenever it renders. */
-  beforeEach(() => server.use(...libraryShelfHandlers()));
+  /* The library shelf and the review queue both fetch on mount — feed them
+     whenever they render. */
+  beforeEach(() =>
+    server.use(
+      ...libraryShelfHandlers(),
+      ...reviewScenario(reviewItemsFixture),
+    ),
+  );
 
   it.each([
     ["/", "Cook"],
@@ -36,6 +43,16 @@ describe("shell nav active state", () => {
     ["/library", "Library"],
     // The router ignores a trailing slash when matching; Nav must too.
     ["/library/", "Library"],
+    /* The queue belongs to the shelf — it lights Library, filter or not. */
+    ["/review", "Library"],
+    ["/review?document=d1", "Library"],
+    /* The recipe leaf is shared by every section, so its pill comes from the
+       return target rather than being pinned to Cook. */
+    ["/recipes/abc?from=%2Freview%3Fdocument%3Dd1", "Library"],
+    ["/recipes/abc?from=%2Flibrary", "Library"],
+    ["/recipes/abc?from=%2F%3Fq%3Dscones", "Cook"],
+    /* A rejected target degrades to exactly the no-target pill. */
+    ["/recipes/abc?from=%2Fnope", "Cook"],
   ])("%s marks %s active", (path, pill) => {
     renderAt(path);
     expect(currentPill()).toBe(pill);
@@ -56,7 +73,7 @@ describe("shell nav active state", () => {
      their own links (e.g. "Open review queue →"), so a document-wide query
      would overcount. */
   it("renders exactly the Cook and Library pills in the nav", () => {
-    for (const path of ["/", "/library", "/recipes/abc", "/nope"]) {
+    for (const path of ["/", "/library", "/review", "/recipes/abc", "/nope"]) {
       const { unmount } = renderAt(path);
       const nav = screen.getByRole("navigation");
       const pills = within(nav).getAllByRole("link");
