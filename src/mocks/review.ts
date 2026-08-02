@@ -113,7 +113,12 @@ export const reviewItemsFixture: ReviewItem[] = [
     ],
   },
   {
+    /* The one already-corrected row: a reviewer has edited it and the flags
+       have not cleared, so the queue has an `edited_at` marker to render
+       (5.4 D9). Stamp is fixed, never `new Date()` — a fixture that moves
+       with the clock cannot be asserted verbatim. */
     id: "ki_paleo_dressing",
+    edited_at: "2026-03-04T09:15:00.482913Z",
     title: "Everyday Paleo Salad Dressing",
     summary: "A sharp mustard-and-olive-oil dressing for weekday salads.",
     item_type: "recipe",

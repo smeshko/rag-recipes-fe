@@ -1,23 +1,48 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import type { ReviewItem } from "../../../src/api";
 import { reviewItemsFixture, reviewScenario } from "../../../src/mocks/review";
 import { routes } from "../../../src/routes";
+import { needsReviewItemFixture } from "../../msw/knowledgeItems";
 import { server } from "../../msw/server";
 
-function renderReview() {
+function renderAt(path: string) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const router = createMemoryRouter(routes, { initialEntries: ["/review"] });
-  return render(
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const utils = render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return { ...utils, router };
 }
+
+const renderReview = () => renderAt("/review");
+
+const url = (router: {
+  state: { location: { pathname: string; search: string } };
+}) => router.state.location.pathname + router.state.location.search;
+
+/** Serve every knowledge-item id as a flagged, recipe-shaped item, so the
+    editor the queue links to reaches its form rung rather than NotEditable —
+    the queue's synthetic `ki_*` ids are not in the detail fixtures
+    (routing.test.tsx's `anyRecipeHandler`, re-pitched to `needs_review`). */
+const anyReviewRecipeHandler = () =>
+  http.get("/api/v1/knowledge-items/:itemId", ({ params }) =>
+    HttpResponse.json({
+      ...needsReviewItemFixture,
+      knowledge_item: {
+        ...needsReviewItemFixture.knowledge_item,
+        id: String(params.itemId),
+      },
+    }),
+  );
 
 /* Scope every query to the item's own <article> — the fixtures deliberately
    reuse flag messages across items (reviewLink.test.tsx's bookRow idiom). */
@@ -139,6 +164,78 @@ describe("flagged-item card", () => {
         `/recipes/${item.id}?from=%2Freview`,
       );
     }
+  });
+
+  it("offers Edit on every card, deep-linking the editor with ?from= the queue", async () => {
+    renderReview();
+
+    for (const item of reviewItemsFixture) {
+      const { card } = await itemCard(item.title);
+      /* A real <Link>, not a button — middle-click and ⌘-click have to work
+         — and the queue's whole URL rides along, same call the View link
+         makes. */
+      const edit = card.getByRole("link", { name: "Edit" });
+      expect(edit).toHaveAttribute(
+        "href",
+        `/recipes/${item.id}/edit?from=%2Freview`,
+      );
+    }
+  });
+
+  /* The epic's criterion end to end: the third verb is reachable from where a
+     reviewer works, and 5.1's contract — not a bespoke param — is what brings
+     them back to the book they were working through. */
+  it("round-trips queue → editor → back link → the filtered queue", async () => {
+    server.use(anyReviewRecipeHandler());
+    const user = userEvent.setup();
+    const { router } = renderAt("/review?document=doc_baking");
+
+    const { card } = await itemCard("Maple Cutout Cookies");
+    await user.click(card.getByRole("link", { name: "Edit" }));
+
+    await waitFor(() =>
+      expect(url(router)).toBe(
+        "/recipes/ki_maple_cutouts/edit?from=%2Freview%3Fdocument%3Ddoc_baking",
+      ),
+    );
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
+
+    const back = await screen.findByRole("link", {
+      name: "← Back to review queue",
+    });
+    await user.click(back);
+
+    await waitFor(() =>
+      expect(url(router)).toBe("/review?document=doc_baking"),
+    );
+    /* The FILTERED queue, not the whole thing. */
+    expect(
+      await screen.findByRole("heading", { name: "Maple Cutout Cookies" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Stovetop Skillet Granola" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks an edited item on the meta line, and leaves an unedited one bare", async () => {
+    renderReview();
+
+    const paleo = await itemCard("Everyday Paleo Salad Dressing");
+    const marker = paleo.card.getByTestId("review-edited-marker");
+    expect(marker.tagName).toBe("TIME");
+    /* The timestamp rides in `dateTime`; the visible text stays "Edited" —
+       no formatted date, which would be a second source of truth about when. */
+    expect(marker).toHaveAttribute("datetime", "2026-03-04T09:15:00.482913Z");
+    expect(marker.textContent).toBe("Edited");
+    /* Appended to the provenance line, not a line of its own. */
+    expect(marker.closest("small")).toHaveTextContent(
+      "eatdrinkpaleo · p. 112 · Edited",
+    );
+
+    const maple = await itemCard("Maple Cutout Cookies");
+    expect(
+      maple.card.queryByTestId("review-edited-marker"),
+    ).not.toBeInTheDocument();
   });
 
   it("falls back to the raw code when a message is the empty string", async () => {
