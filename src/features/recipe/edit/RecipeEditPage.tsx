@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useParams } from "react-router";
 import { ApiError, useKnowledgeItem } from "../../../api";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "../RecipeStates";
@@ -43,6 +44,15 @@ function isRecipeShaped(schema: string | undefined): boolean {
 export function RecipeEditPage() {
   const { id } = useParams();
   const item = useKnowledgeItem(id);
+  /* What the mounted form last reported about itself. The status gate below is
+     re-evaluated on every cache update, and `useKnowledgeItem` has no
+     `staleTime` and leaves `refetchOnReconnect` at its default — so a reconnect
+     or an invalidation can hand this page an item another tab has since
+     approved. Swapping the form out for `NotEditable` at that moment would
+     throw away the reviewer's unsaved work in silence: `useBlocker` and
+     `beforeunload` only see navigation and unload, never an unmount (review
+     #1.2). */
+  const draftRef = useRef({ id: "", dirty: false });
 
   if (item.isLoading) {
     return <EditSkeleton />;
@@ -75,10 +85,16 @@ export function RecipeEditPage() {
   }
 
   /* `status` is a plain string on the item type — a string compare, not a
-     narrowed union. */
-  if (data.knowledge_item.status !== "needs_review") {
+     narrowed union. A CLEAN session still yields to the dead end, which is the
+     honest and more useful answer; only an open draft holds the form. The
+     stale-status conflict is then the save's to surface, and the save is 5.4's
+     (D12) — the backend answers `review_not_pending`. */
+  const draftHeld =
+    draftRef.current.dirty && draftRef.current.id === data.knowledge_item.id;
+
+  if (data.knowledge_item.status !== "needs_review" && !draftHeld) {
     return <NotEditable status={data.knowledge_item.status} id={id} />;
   }
 
-  return <RecipeEditForm item={data} />;
+  return <RecipeEditForm item={data} draftRef={draftRef} />;
 }

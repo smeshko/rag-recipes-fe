@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../../../../src/routes";
+import { needsReviewItemFixture } from "../../../msw/knowledgeItems";
 import { server } from "../../../msw/server";
 
 /* The edit page's states ladder (5.3 TASK-001). Every case renders through
@@ -22,8 +23,17 @@ function renderAt(path: string) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return { ...utils, router };
+  return { ...utils, router, queryClient };
 }
+
+/** The same item, as another tab's approval would leave it in the cache. */
+const approvedInCache = {
+  ...needsReviewItemFixture,
+  knowledge_item: {
+    ...needsReviewItemFixture.knowledge_item,
+    status: "ready",
+  },
+};
 
 describe("edit page ladder", () => {
   it("renders the form host for a needs_review item, narrow and unfooted", async () => {
@@ -143,6 +153,56 @@ describe("edit page ladder", () => {
     expect(
       screen.queryByText("This one's already on the shelf."),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps a dirty form when the item is approved under it", async () => {
+    /* The status gate is re-evaluated on every cache update, and neither
+       `useBlocker` nor `beforeunload` can see an unmount — so a background
+       refetch that returns `ready` would otherwise swap the form for
+       NotEditable and take the reviewer's unsaved work with it (review #1.2). */
+    const user = userEvent.setup();
+    const { queryClient } = renderAt("/recipes/item_review/edit");
+
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Title"), " (repaired)");
+
+    act(() => {
+      queryClient.setQueryData(
+        ["knowledge-item", "item_review"],
+        approvedInCache,
+      );
+    });
+
+    /* The pill reading Ready is the proof the fresh payload really reached the
+       page — the form survived it rather than never being re-rendered. */
+    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    expect(screen.getByTestId("recipe-edit-page")).toBeInTheDocument();
+    expect(
+      screen.queryByText("This one's already on the shelf."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue(
+      `${needsReviewItemFixture.knowledge_item.title} (repaired)`,
+    );
+  });
+
+  it("still yields to the dead end when the approved-under form is clean", async () => {
+    /* Nothing to lose, so the honest answer wins: the item really is on the
+       shelf now. Only an open draft holds the form. */
+    const { queryClient } = renderAt("/recipes/item_review/edit");
+
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
+
+    act(() => {
+      queryClient.setQueryData(
+        ["knowledge-item", "item_review"],
+        approvedInCache,
+      );
+    });
+
+    expect(
+      await screen.findByText("This one's already on the shelf."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
   });
 
   it("leaves the read page untouched at /recipes/:id", async () => {

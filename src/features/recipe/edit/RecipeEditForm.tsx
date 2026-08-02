@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import type { KnowledgeItemResponse } from "../../../api";
 import {
@@ -28,7 +28,17 @@ import { useEditForm } from "./useEditForm";
  * `patchBody` still has no consumer: Save renders disabled and unwired until
  * phase 5.4 (D12).
  */
-export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
+export function RecipeEditForm({
+  item,
+  draftRef,
+}: {
+  item: KnowledgeItemResponse;
+  /* Reported upward so the page's status gate can tell a clean session from
+     one holding unsaved work (review #1.2). Same pattern as `discardingRef`
+     below: a ref, because it is read during the page's render rather than
+     subscribed to. */
+  draftRef: RefObject<{ id: string; dirty: boolean }>;
+}) {
   const status = statusTone(item.knowledge_item.status);
   const { form, setField, setRows, newRow, isDirty, isValid } =
     useEditForm(item);
@@ -58,6 +68,13 @@ export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
     discardingRef.current = true;
     navigate(cancelTo);
   };
+
+  /* Keyed by item id, not a bare boolean: navigating from one dirty edit form
+     straight to another item's would otherwise leave the flag set for an id
+     that never had a draft. */
+  useEffect(() => {
+    draftRef.current = { id, dirty: isDirty };
+  }, [draftRef, id, isDirty]);
 
   return (
     <div data-testid="recipe-edit-page">
