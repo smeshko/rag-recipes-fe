@@ -25,10 +25,10 @@ function Chip({ citation }: { citation: AnswerCitation }) {
       to={withReturnTo(`/recipes/${citation.knowledge_item_id}`, location)}
       aria-label={destination}
       title={destination}
-      /* The hover fill is `accent-strong`, not `accent`: white on light
-         `accent` #C96F3B is 3.61:1 and this chip is the fourth of the four
-         solid-accent surfaces carrying `fg-on-accent` (plan D12). #B25E2E is
-         4.63:1 in light and #F5B481/#1E1509 is 10.05:1 in dark. The chip's
+      /* The hover fill is `accent-strong`, not `accent`: `fg-on-accent` on
+         light `accent` is 3.61:1 and this chip is the fourth of the four
+         solid-accent surfaces carrying `fg-on-accent` (plan D12). On
+         `accent-strong` it is 4.63:1 in light and 10.05:1 in dark. The chip's
          REST state (`bg-accent-fill text-accent`, 3.01:1 in light) is one of
          the seven light shortfalls deferred to the accessibility pass — see
          RESEARCH.md's light table; do not "fix" it here. */
