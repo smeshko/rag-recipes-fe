@@ -22,7 +22,7 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
           doc.isFetching && (
             <span
               aria-hidden="true"
-              className="h-[29px] w-28 animate-pulse rounded-pill bg-line/60"
+              className="h-[29px] w-28 animate-pulse rounded-pill bg-skeleton/60"
             />
           )
         )}
@@ -39,7 +39,7 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
         {item.display.title}
       </h1>
       {item.knowledge_item.summary ? (
-        <p className="mt-3 max-w-[720px] font-display text-[17px] text-ink-soft italic">
+        <p className="mt-3 max-w-[720px] font-display text-[17px] text-fg-muted italic">
           {item.knowledge_item.summary}
         </p>
       ) : null}

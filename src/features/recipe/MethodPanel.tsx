@@ -56,23 +56,23 @@ export function MethodPanel({
     <Panel>
       <h2 className="font-display text-[19px] font-semibold">Method</h2>
       {steps.length === 0 ? (
-        <p className="mt-3 text-[13.5px] text-ink-faint italic">
+        <p className="mt-3 text-[13.5px] text-fg-subtle italic">
           {status === "extracting"
             ? "Still being extracted…"
             : "No structured method was extracted."}
         </p>
       ) : (
         <>
-          <p className="mt-1 text-[12.5px] text-ink-faint">
+          <p className="mt-1 text-[12.5px] text-fg-subtle">
             {steps.length} steps{fragment}
           </p>
           <ol className="mt-4 flex flex-col gap-4">
             {steps.map((step) => (
               <li key={step.key} className="grid grid-cols-[40px_1fr] gap-1">
-                <span className="font-display text-[17px] font-semibold text-apricot italic">
+                <span className="font-display text-[17px] font-semibold text-accent italic">
                   {step.number}.
                 </span>
-                <span className="text-[15px] leading-[1.65] text-ink">
+                <span className="text-[15px] leading-[1.65] text-fg">
                   {step.text}
                 </span>
               </li>

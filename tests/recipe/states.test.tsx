@@ -30,7 +30,7 @@ describe("recipe failure states", () => {
       }),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/recipes/item_ghost");
-    expect(document.querySelector(".bg-danger-soft")).toBeNull();
+    expect(document.querySelector(".bg-danger-fill")).toBeNull();
     /* The crumb and the state body both offer the way home. */
     expect(
       screen.getAllByRole("link", { name: /back to cook/i }).length,
