@@ -6,6 +6,7 @@ import { IngredientsPanel } from "./IngredientsPanel";
 import { MethodPanel } from "./MethodPanel";
 import { Provenance } from "./Provenance";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "./RecipeStates";
+import { ReviewCallout } from "./ReviewCallout";
 import { TitleBlock } from "./TitleBlock";
 
 function TitleSkeleton() {
@@ -51,6 +52,12 @@ export function RecipePage() {
         <Bloom duration={0.7} delay={0.08} className="pt-8">
           <TitleBlock item={data} />
           <FactsRow sd={data.knowledge_item.structured_data} />
+        </Bloom>
+        {/* Between the head and the panels, on its own step of the cadence:
+            what is still flagged is the first thing a reviewer needs after the
+            title, and it renders nothing at all for a decided item. */}
+        <Bloom duration={0.7} delay={0.11}>
+          <ReviewCallout item={data} />
         </Bloom>
         <div className="mt-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-[26px] max-[880px]:grid-cols-1">
           <Bloom duration={0.7} delay={0.14}>

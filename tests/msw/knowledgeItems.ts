@@ -1,7 +1,16 @@
 import { HttpResponse, http } from "msw";
+import { buildReviewReasons } from "../../src/mocks/knowledgeItems";
 
 /* Knowledge-item detail fixtures (2.2). Shapes captured from the live
-   backend; every variant here exists to prove a rendering branch. */
+   backend; every variant here exists to prove a rendering branch.
+
+   `review_reasons` and `edited_at` were added in 5.4 (TASK-005): the backend
+   has sent both on every detail payload since epic 21.1, and a fixture that
+   omits them makes an unflagged-looking `needs_review` item the read page
+   would render as "nothing is flagged any more". The projection is 5.2's
+   `buildReviewReasons` rather than a second hand-written copy of the backend's
+   message table — the codes live in `structured_data.warnings`, exactly as
+   `build_review_reasons` reads them. */
 
 export const knowledgeItemNotFoundEnvelope = (itemId: string) => ({
   error: {
@@ -103,6 +112,11 @@ export const fullItemFixture = {
         step(3, "Pour in the eggs and bake until puffy."),
       ],
     },
+    /* A decided item: the backend projects an empty list, and nobody has
+       edited it. Every fixture below spreads these and overrides where its
+       own branch needs to. */
+    review_reasons: [],
+    edited_at: null,
   },
   display: {
     title: "Spinach and Cheddar Frittata",
@@ -134,6 +148,8 @@ export const sparseItemFixture = {
       ingredients: [],
       steps: [],
     },
+    review_reasons: [],
+    edited_at: null,
   },
   display: { title: "Rustic Campfire Beans", subtitle: null },
   source_citations: [],
@@ -230,12 +246,22 @@ export const gappedNumberingItemFixture = {
   },
 };
 
+/* Flagged for two reasons an edit cannot both clear — `warnings` carries the
+   codes and `review_reasons` is their projection, the pairing the backend
+   guarantees (a `needs_review` item is one whose warnings list is non-empty). */
+const needsReviewWarnings = ["low_overall_confidence", "recipe_too_short"];
+
 export const needsReviewItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
     ...fullItemFixture.knowledge_item,
     id: "item_review",
     status: "needs_review",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      warnings: needsReviewWarnings,
+    },
+    review_reasons: buildReviewReasons("needs_review", needsReviewWarnings),
   },
 };
 
@@ -250,12 +276,16 @@ export const duplicateLinesReviewItemFixture = {
     status: "needs_review",
     structured_data: {
       ...fullItemFixture.knowledge_item.structured_data,
+      warnings: ["low_overall_confidence"],
       ingredients: [
         ingredient(1, "1 tsp sea salt", "sea salt"),
         ingredient(2, "8 large eggs", "eggs"),
         ingredient(3, "1 tsp sea salt", "sea salt"),
       ],
     },
+    review_reasons: buildReviewReasons("needs_review", [
+      "low_overall_confidence",
+    ]),
   },
 };
 
@@ -286,6 +316,7 @@ export const emptyIngredientsReviewItemFixture = {
         step(3, "Pour in the eggs and bake until puffy."),
       ],
     },
+    review_reasons: buildReviewReasons("needs_review", ["no_ingredients"]),
   },
 };
 
@@ -340,6 +371,8 @@ export const nonRecipeItemFixture = {
     source_span_ids: ["span_tech"],
     confidence: null,
     structured_data: { schema: "technique.v1" },
+    review_reasons: [],
+    edited_at: null,
   },
   display: { title: "How to fold an omelet", subtitle: null },
   source_citations: [],
@@ -358,6 +391,10 @@ export const warningsItemFixture = {
       ...fullItemFixture.knowledge_item.structured_data,
       warnings: ["low_overall_confidence", "recipe_too_short"],
     },
+    review_reasons: buildReviewReasons("needs_review", [
+      "low_overall_confidence",
+      "recipe_too_short",
+    ]),
   },
 };
 
