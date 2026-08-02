@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type {
   DocumentCounts,
   DocumentDetailResponse,
@@ -10,7 +10,7 @@ import {
   useIngestionStatus,
   useReprocess,
 } from "../../api";
-import { Bloom, Pill } from "../../ui";
+import { Bloom, Pill, withReturnTo } from "../../ui";
 import { reviewQueueUrl } from "../review/reviewQueueUrl";
 import { CalmNotice } from "./CalmNotice";
 import { IngestionProgress } from "./IngestionProgress";
@@ -116,6 +116,9 @@ function CountsRow({
 export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
   const counts = detail.status === "success" ? detail.detail.counts : undefined;
   const pill = statusPill(doc.status, counts?.needs_review_items);
+  /* Per-row, deliberately: lifting this into LibraryPage and threading it
+     down would make the next link-out someone else's plumbing problem. */
+  const location = useLocation();
 
   /* Called unconditionally at the top level — moving it inside the
      non-terminal branch would break the rules of hooks on the very
@@ -182,7 +185,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           </Pill>
           {(counts?.needs_review_items ?? 0) > 0 && (
             <Link
-              to={reviewQueueUrl(doc.id)}
+              to={withReturnTo(reviewQueueUrl(doc.id), location)}
               className="mt-2 block text-[12.5px] font-bold text-apricot hover:underline"
             >
               Open review queue →

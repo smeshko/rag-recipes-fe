@@ -126,14 +126,17 @@ describe("flagged-item card", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("links each card to /recipes/<item id>", async () => {
+  it("links each card to /recipes/<item id>, carrying ?from= the queue", async () => {
     renderReview();
 
     for (const item of reviewItemsFixture) {
       const { card } = await itemCard(item.title);
+      /* The queue's whole URL is the return target — here the bare /review
+         this harness renders at; the ?document= case is pinned end to end in
+         tests/routing.test.tsx. */
       expect(card.getByRole("link", { name: /view recipe/i })).toHaveAttribute(
         "href",
-        `/recipes/${item.id}`,
+        `/recipes/${item.id}?from=%2Freview`,
       );
     }
   });
