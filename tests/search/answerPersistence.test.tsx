@@ -233,6 +233,32 @@ describe("asked=1 is the ask", () => {
     );
   });
 
+  it("a repeat Ask on a noncanonically-spelled URL adds no history entry", async () => {
+    /* Same question, different spelling (review #2.1): a hand-typed or
+       bookmarked param order differs byte-wise from what writeParams emits,
+       and comparing bytes would push it as a fresh entry that Back cannot
+       tell apart from the one below it. The URL normalises — in place. */
+    server.use(answersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
+    const router = renderAt("/");
+    await act(async () => {
+      await router.navigate("/?mode=vector&q=breakfast&asked=1");
+    });
+    await settleGrid();
+    await user.click(askButton());
+    await screen.findByText(/Grounded in your books/);
+    expect(router.state.location.search).toBe(
+      "?q=breakfast&mode=vector&asked=1",
+    );
+
+    await act(async () => {
+      await router.navigate(-1);
+    });
+    /* One Back reaches the entry underneath — the bare / — rather than the
+       same search wearing a different spelling. */
+    await waitFor(() => expect(router.state.location.search).toBe(""));
+  });
+
   it("a cold load of ?asked=1 shows no answer and fires no /answers", async () => {
     /* No answers handler registered: the unhandled-request guard is the second
        backstop behind the spy. The cache does not survive a reload either, and

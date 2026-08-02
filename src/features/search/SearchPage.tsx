@@ -130,18 +130,33 @@ export function SearchPage() {
       mode: nextMode,
       asked: options?.asked === true,
     };
-    /* A commit that changes nothing is not a commit (review #1.1). A second
-       Ask on the question already on screen — the button is enabled again the
-       moment the answer lands — recomputes an identical param string, and
-       setSearchParams would push it as a fresh history entry regardless. The
-       user then has to press Back twice to leave the answered entry, which is
-       exactly what "Back/Forward across an ask lands on the right answer
-       state" says must not happen. Compared as strings because that is what
-       the entry records; the canonical order nextSearchParams imposes means a
-       hand-typed ?mode=vector&q=x still commits, and normalises. */
+    /* A commit that changes nothing is not a history entry (review #1.1). A
+       second Ask on the question already on screen — the button re-enables
+       the moment the answer lands — recomputes the same search, and
+       setSearchParams would push it regardless. The user then has to press
+       Back twice to leave the answered entry, the first press visibly doing
+       nothing, which is exactly what "Back/Forward across an ask lands on the
+       right answer state" says must not happen.
+
+       Compared against what this URL would be spelled as under the same
+       rules, not against its literal bytes (review #2.1): a hand-typed
+       ?mode=vector&q=x&asked=1 differs byte-wise from the canonical
+       ?q=x&mode=vector&asked=1 while describing the same search, and pushing
+       that is the same dead Back press. Same question, different spelling
+       still commits — with `replace`, so the URL normalises without growing
+       the history. */
     const committed = nextSearchParams(searchParams, commit);
-    if (committed.toString() !== searchParams.toString()) {
+    const canonicalHere = nextSearchParams(searchParams, {
+      q,
+      mode,
+      asked: searchParams.get("asked") === "1",
+    });
+    if (committed.toString() !== canonicalHere.toString()) {
       setSearchParams((prev) => nextSearchParams(prev, commit));
+    } else if (committed.toString() !== searchParams.toString()) {
+      setSearchParams((prev) => nextSearchParams(prev, commit), {
+        replace: true,
+      });
     }
     /* Beside the setSearchParams call, not inside its updater — the updater
        stays pure and React may invoke it more than once. This one site covers
