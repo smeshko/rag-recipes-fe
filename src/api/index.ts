@@ -22,7 +22,8 @@ export {
   useReprocess,
   useShelfStats,
 } from "./documents";
-export { useKnowledgeItem } from "./knowledgeItems";
+export type { UseUpdateKnowledgeItemOptions } from "./knowledgeItems";
+export { useKnowledgeItem, useUpdateKnowledgeItem } from "./knowledgeItems";
 export { createQueryClient, shouldRetry } from "./queryClient";
 export type { UseReviewDecisionOptions } from "./review";
 export {
@@ -59,6 +60,7 @@ export type {
   Ingredient,
   ItemConfidence,
   KnowledgeItemResponse,
+  KnowledgeItemUpdateRequest,
   RecipeStructuredData,
   Recommendation,
   ReprocessResponse,
