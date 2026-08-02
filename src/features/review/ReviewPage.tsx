@@ -88,9 +88,9 @@ export function ReviewPage() {
         className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
       >
         <h1 className="font-display text-[clamp(30px,4vw,40px)] font-medium">
-          Needs a <em className="text-apricot italic">second look.</em>
+          Needs a <em className="text-accent italic">second look.</em>
         </h1>
-        <div className="mt-2 text-[15px] text-ink-soft">{countLine}</div>
+        <div className="mt-2 text-[15px] text-fg-muted">{countLine}</div>
       </Bloom>
 
       {documentId && (
