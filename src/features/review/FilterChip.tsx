@@ -23,8 +23,15 @@ export function FilterChip({
       : "…";
 
   return (
-    <Pill size="md" tone="working" className="gap-2">
-      <span>filtering: {title}</span>
+    /* Pill is inline-flex and does not wrap internally, so a long book title
+       pushes the chip past the viewport. This is the plan's ONE sanctioned
+       truncation (PLAN.md's no-clipping rule names it explicitly) and it is
+       only allowed because the full title stays reachable in the title
+       attribute — the visible text is shortened, the accessible text is not. */
+    <Pill size="md" tone="working" className="max-w-full gap-2">
+      <span className="truncate" title={title}>
+        filtering: {title}
+      </span>
       <button
         type="button"
         aria-label="Clear the book filter"

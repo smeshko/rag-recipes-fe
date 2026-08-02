@@ -277,7 +277,11 @@ function Row({
         aria-label={`${capitalize(noun)} ${position}`}
         value={row.text}
         onChange={(event) => onText(index, event.target.value)}
-        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg focus:border-accent focus:shadow-focus focus:outline-none"
+        /* text-base on phones: under 16px, iOS zooms the viewport on focus,
+           and these textareas are what a reviewer actually types into. The
+           auto-grow layout effect re-measures on every change, so the larger
+           face just means a taller box, not a clipped one. */
+        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg max-[560px]:text-base focus:border-accent focus:shadow-focus focus:outline-none"
       />
       <span className="mt-1.5 flex items-center gap-2">
         <button

@@ -141,7 +141,16 @@ export function ReviewItemCard({
         </p>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+      {/* justify-between strands the link and the controls at opposite edges
+          with a ragged gap once the row wraps, so the phone tier stacks it
+          instead: link on its own line, controls beneath.
+
+          Deliberately sized for FOUR controls though only three exist today —
+          phase 5.4 adds an Edit button beside Approve and Reject (and an
+          "edited" marker), and a stack built for three would need relaying
+          out the moment it lands. Verified by temporarily rendering a fourth
+          control; see the plan's TASK-005. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-3">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
           className="text-[12.5px] font-bold text-accent hover:underline"
@@ -151,7 +160,11 @@ export function ReviewItemCard({
         {confirmingReject ? (
           /* Reject is terminal — the actions row swaps in place for an
              inline confirm; no request has been made yet. */
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          /* The warning is a full sentence, so on a phone it takes its own
+             line above the two buttons rather than competing with them for
+             335px. Button order is unchanged: "Keep" stays last, which in a
+             column puts the safe choice nearest the thumb. */
+          <div className="flex flex-wrap items-center justify-end gap-3 max-[560px]:flex-col max-[560px]:items-stretch">
             <p className="text-[12.5px] font-semibold text-danger">
               Rejecting is permanent — recovery is reprocessing the whole book.
             </p>
@@ -173,7 +186,10 @@ export function ReviewItemCard({
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          /* Approve + Reject stay side by side even on a phone — together
+             they measure ~160px, and with 5.4's Edit and the View link
+             hoisted in they are still inside 335px. */
+          <div className="flex items-center gap-2 max-[560px]:justify-end">
             <button
               type="button"
               disabled={decide.isPending}

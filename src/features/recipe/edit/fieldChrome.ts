@@ -16,8 +16,15 @@ export const labelClass =
 /** Title and summary: an inset fill, apricot on focus. Carries no text colour
     — each field sets its own face, and two colour utilities on one element
     would be decided by stylesheet order rather than by the call site. */
+/* `max-[560px]:text-base` on every editable field here and in
+   LineListEditor: iOS Safari zooms the viewport when a focused control's
+   font-size is under 16px, and the edit form is the only screen in the app
+   built out of text inputs. The desktop faces (inherited 15px here, 13px on
+   the fact chips) are untouched — the bump is phone-only, so the read
+   surface and the edit surface still match at the width the mockups
+   describe. */
 export const fieldClass =
-  "w-full rounded-[12px] border border-border bg-surface-inset px-3 py-2 focus:border-accent focus:outline-none focus:shadow-focus";
+  "w-full rounded-[12px] border border-border bg-surface-inset px-3 py-2 max-[560px]:text-base focus:border-accent focus:outline-none focus:shadow-focus";
 
 /** The four facts sit in `FactsRow`'s chip instead of the inset field: a
     raised, shadowed shell holding the label and the input together, so the
@@ -28,4 +35,4 @@ export const factChipClass =
 
 /** …and the input inside it is bare: the chip is the visible field. */
 export const factInputClass =
-  "w-full border-none bg-transparent text-[13px] font-semibold text-fg outline-none placeholder:font-normal placeholder:text-fg-subtle";
+  "w-full border-none bg-transparent text-[13px] font-semibold text-fg outline-none placeholder:font-normal placeholder:text-fg-subtle max-[560px]:text-base";
