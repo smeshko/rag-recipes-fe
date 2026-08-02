@@ -50,7 +50,7 @@ export function ReviewEmptyFiltered({ onClear }: { onClear: () => void }) {
       <button
         type="button"
         onClick={onClear}
-        className="mt-2 text-[12.5px] font-bold text-accent hover:underline"
+        className="mt-2 inline-flex items-center text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
       >
         See the whole queue
       </button>
