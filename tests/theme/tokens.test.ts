@@ -83,6 +83,25 @@ describe("theme.css token parity", () => {
     expect(orphans).toEqual([]);
   });
 
+  it("gives every @theme colour token a dark value", () => {
+    /* The other direction, and the one the plan's Risks section says already
+       bit once: a token the dark block simply OMITS is not a typo, it is a
+       surface that keeps its light value in dark mode. The first draft of the
+       plan missed three (--color-surface-warm, --color-surface-warm-strong,
+       --color-surface-glow) and only a hand review caught them.
+
+       Scoped to --color-* on purpose. The rest of @theme is either
+       theme-independent (fonts, radii), already re-toned through its own
+       property (the --shadow-* tokens route their colour through
+       --shadow-tint-*, guarded below), or derives from tokens that are
+       overridden (--gradient-warm is var()-only, so it follows the surfaces). */
+    const missing = [...light]
+      .filter((name) => name.startsWith("--color-") && !dark.has(name))
+      .sort();
+
+    expect(missing).toEqual([]);
+  });
+
   it("routes every shadow colour through an overridable var()", () => {
     /* Tailwind v4 inlines an @theme shadow's VALUE into --tw-shadow at build
        time, so a dark override of --shadow-card is dead CSS — but it preserves
