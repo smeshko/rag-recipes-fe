@@ -67,7 +67,7 @@ export function IngestionProgress({
   const states = stageStates(status);
 
   return (
-    <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
+    <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5">
       <div className="mb-2 flex justify-between text-[12.5px] font-semibold text-fg-muted">
         <span>{stageLabel(status)}</span>
         {determinate && (

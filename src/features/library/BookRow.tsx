@@ -78,7 +78,7 @@ function CountCell({
    just — the phone tier trims it so a four-digit chunk count still can't
    force a wrap mid-row. */
 const COUNTS_LAYOUT =
-  "flex flex-wrap gap-[26px] py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5 max-[560px]:gap-x-5";
+  "flex flex-wrap gap-[26px] py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5 max-[560px]:gap-x-5";
 
 function CountsRow({
   state,
@@ -169,7 +169,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
         ) : doc.status === "failed" ? (
           /* Honest failure copy: names NO cause — status is only "failed"
              and progress.message is null today; prefer it if it ever lands. */
-          <div className="py-5 text-[13px] text-fg-muted max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
+          <div className="py-5 text-[13px] text-fg-muted max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5">
             <b className="text-danger">Ingestion failed.</b>{" "}
             {ingest.data?.progress.message ??
               "The API doesn't expose the reason yet."}
