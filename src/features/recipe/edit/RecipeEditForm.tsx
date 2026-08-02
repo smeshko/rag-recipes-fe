@@ -14,6 +14,7 @@ import {
   withReturnTo,
 } from "../../../ui";
 import { statusTone } from "../statusTone";
+import { SaveConflict } from "./EditStates";
 import { FactsFields } from "./FactsFields";
 import { IngredientsEditPanel } from "./IngredientsEditPanel";
 import { MethodEditPanel } from "./MethodEditPanel";
@@ -45,6 +46,7 @@ const messageOf = (failure: unknown): string =>
 export function RecipeEditForm({
   item,
   draftRef,
+  conflictStatus,
 }: {
   item: KnowledgeItemResponse;
   /* Reported upward so the page's status gate can tell a clean session from
@@ -52,18 +54,23 @@ export function RecipeEditForm({
      below: a ref, because it is read during the page's render rather than
      subscribed to. */
   draftRef: RefObject<{ id: string; dirty: boolean }>;
+  /* Set only when the page held the form open over an item that has since
+     left `needs_review` — the proactive half of the conflict surface. The
+     page owns the observation because the page is what re-evaluates the
+     status gate on every cache update. */
+  conflictStatus?: string;
 }) {
   const status = statusTone(item.knowledge_item.status);
   const { form, setField, setRows, newRow, isDirty, isValid, patchBody } =
     useEditForm(item);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  /* The failed-save message, rendered verbatim. TASK-007 hands this same field
-     to `SaveConflict`, which picks its copy from the envelope's `code`. */
+  /* The refused save, handed to `SaveConflict`, which picks its copy from the
+     envelope's `code` and falls back to the message verbatim. */
   const [saveError, setSaveError] = useState<Error | null>(null);
   /* A DOWNSTREAM failure, kept apart from `saveError` on purpose: the patch
-     committed, so this is not a failed save and must never render as one.
-     TASK-007 folds the field into `SaveConflict` unchanged. */
+     committed, so this is not a failed save and must never render as one —
+     `SaveConflict` gives it its own, reassuring arm. */
   const [approveError, setApproveError] = useState<string | null>(null);
 
   /* The discard latch, owned here and read by two consumers that must agree:
@@ -192,6 +199,14 @@ export function RecipeEditForm({
         <h1 className="mt-5 font-display text-[clamp(30px,4vw,40px)] font-medium">
           Repair this <em className="text-accent italic">extraction.</em>
         </h1>
+        {/* Above the fields, below the head: whichever trigger raised it, a
+            conflict is the first thing to read after the title — not a line
+            discovered under the action row once the reviewer scrolls. */}
+        <SaveConflict
+          status={conflictStatus}
+          error={saveError}
+          approveError={approveError}
+        />
         <TitleFields form={form} isValid={isValid} setField={setField} />
         <FactsFields form={form} setField={setField} />
       </Bloom>
@@ -259,27 +274,6 @@ export function RecipeEditForm({
           {decide.isPending ? "Approving…" : "Save & approve"}
         </button>
       </Bloom>
-      {saveError && (
-        /* The card's error idiom — announced, danger-toned, message verbatim.
-           TASK-007 replaces this line with `SaveConflict` and its coded copy. */
-        <p
-          role="alert"
-          className="mt-3 text-[12.5px] font-semibold text-danger"
-        >
-          {saveError.message}
-        </p>
-      )}
-      {approveError && (
-        /* Warning, not danger, and it leads with the reassurance: the edit is
-           on the server. The reviewer's next move is to approve from the
-           queue, not to type it all again. */
-        <p
-          role="alert"
-          className="mt-3 text-[12.5px] font-semibold text-warning"
-        >
-          Saved — but the approval failed: {approveError}
-        </p>
-      )}
     </div>
   );
 }

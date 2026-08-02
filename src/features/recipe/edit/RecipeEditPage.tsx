@@ -99,12 +99,25 @@ export function RecipeEditPage() {
 
   /* `status` is a plain string on the item type — a string compare, not a
      narrowed union. A CLEAN session still yields to the dead end, which is the
-     honest and more useful answer; only an open draft holds the form. The
-     stale-status conflict is then the save's to surface, and the save is 5.4's
-     (D12) — the backend answers `review_not_pending`. */
+     honest and more useful answer; only an open draft holds the form. */
   if (data.knowledge_item.status !== "needs_review" && !draftHeld) {
     return <NotEditable status={data.knowledge_item.status} id={id} />;
   }
 
-  return <RecipeEditForm item={data} draftRef={draftRef} />;
+  /* The held draft is where the conflict becomes visible, so it is where the
+     page says so: a form that stays mounted over an item somebody else has
+     decided must not do it silently. `SaveConflict` renders this proactively,
+     and the same component renders the backend's coded refusal if the
+     reviewer saves anyway — both triggers, one voice (D11). */
+  return (
+    <RecipeEditForm
+      item={data}
+      draftRef={draftRef}
+      conflictStatus={
+        data.knowledge_item.status !== "needs_review"
+          ? data.knowledge_item.status
+          : undefined
+      }
+    />
+  );
 }
