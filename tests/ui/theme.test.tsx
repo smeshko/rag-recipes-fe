@@ -109,6 +109,26 @@ describe("theme store", () => {
     expect(getThemeSnapshot()).toEqual({ choice: "system", resolved: "light" });
   });
 
+  it("re-reads the OS when a subscriber returns after a gap", () => {
+    /* With nobody subscribed the `change` handler is detached (D9), so the
+       store is blind: the snapshot it cached before the gap is whatever the OS
+       said then. useSyncExternalStore re-reads getSnapshot straight after
+       subscribing to catch exactly this, so the re-attach must re-resolve. */
+    const unsubscribe = subscribeTheme(vi.fn());
+    expect(getThemeSnapshot().resolved).toBe("light");
+    unsubscribe();
+
+    media.setMatches(true);
+
+    /* Blind, as designed — nothing observed the flip. */
+    expect(getThemeSnapshot().resolved).toBe("light");
+
+    subscribeTheme(vi.fn());
+
+    expect(getThemeSnapshot()).toEqual({ choice: "system", resolved: "dark" });
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
   it("returns a stable snapshot reference", () => {
     expect(getThemeSnapshot()).toBe(getThemeSnapshot());
 

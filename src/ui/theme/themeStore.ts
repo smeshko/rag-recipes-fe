@@ -154,6 +154,17 @@ function detachMediaListener(): void {
 export function subscribeTheme(listener: () => void): () => void {
   if (listeners.size === 0) {
     attachMediaListener();
+    /* Re-read the environment the moment the listener is back on. With nobody
+       subscribed there is no `change` handler (D9), so an OS flip in that
+       window is missed entirely and `getThemeSnapshot` would keep serving the
+       cached value — it short-circuits on `snapshot ?? …` and never re-resolves
+       on its own. `useSyncExternalStore` re-reads getSnapshot right after
+       subscribing precisely to catch a change that happened during the gap;
+       without this line that re-read hands back the stale answer. Recomputing
+       (rather than attaching at module scope, which D8 rejects) keeps the
+       ref-counting intact. No notify: `listener` is not in the set yet, and
+       React's own post-subscribe read is what schedules the re-render. */
+    recompute(getThemeSnapshot().choice);
   }
   listeners.add(listener);
 
