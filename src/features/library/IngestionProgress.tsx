@@ -101,7 +101,10 @@ export function IngestionProgress({
       </div>
       <ol
         aria-label="Ingestion stages"
-        className="mt-2.5 flex list-none gap-1.5 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
+        /* Seven stages (stages.ts), each with a possible ✓ or ● marker, plus
+           six gaps — it does not fit 335px on one line, so it wraps rather
+           than pushing the row wide. */
+        className="mt-2.5 flex list-none flex-wrap gap-x-1.5 gap-y-1 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
       >
         {PIPELINE_STAGES.map((stage, index) => {
           const state = states[index];

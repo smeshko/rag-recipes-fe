@@ -85,7 +85,7 @@ export function LibraryPage() {
       <Bloom
         duration={0.7}
         delay={0.14}
-        className="mt-11 mb-[18px] flex items-baseline justify-between"
+        className="mt-11 mb-[18px] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
       >
         <h2 className="font-display text-[24px] font-semibold">On the shelf</h2>
         <span className="text-[13px] text-fg-subtle">

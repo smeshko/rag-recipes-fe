@@ -74,8 +74,11 @@ function CountCell({
   );
 }
 
+/* The three counts fit 335px at the 26px gap (~217px measured), but only
+   just — the phone tier trims it so a four-digit chunk count still can't
+   force a wrap mid-row. */
 const COUNTS_LAYOUT =
-  "flex flex-wrap gap-[26px] py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5";
+  "flex flex-wrap gap-[26px] py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5 max-[560px]:gap-x-5";
 
 function CountsRow({
   state,
