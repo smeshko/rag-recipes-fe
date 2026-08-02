@@ -37,16 +37,16 @@ export function ResultCard({ result, from }: ResultCardProps) {
           </>
         }
       >
-        <h3 className="font-display text-[19.5px] font-semibold leading-[1.28] transition-colors group-hover:text-apricot">
+        <h3 className="font-display text-[19.5px] font-semibold leading-[1.28] transition-colors group-hover:text-accent">
           {result.display.title}
         </h3>
         {result.display.snippet ? (
-          <p className="mt-2 flex-1 text-[13.5px] text-ink-soft">
+          <p className="mt-2 flex-1 text-[13.5px] text-fg-muted">
             {result.display.snippet}
           </p>
         ) : null}
         {ingredients.length > 0 ? (
-          <p className="mt-3 text-[12.5px] text-ink-faint italic">
+          <p className="mt-3 text-[12.5px] text-fg-subtle italic">
             {ingredients.join(" · ")}
           </p>
         ) : null}

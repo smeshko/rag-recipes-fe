@@ -1,8 +1,8 @@
 import { Bloom } from "../../ui";
 
-/* The designed amber fallback (sk-fallback.html): content, not an alert —
-   role="status", never error styling. The body is the API's own warning
-   verbatim (answer.text is the same string; render it once). */
+/* The designed warning-toned fallback (sk-fallback.html): content, not an
+   alert — role="status", never error styling. The body is the API's own
+   warning verbatim (answer.text is the same string; render it once). */
 export function FallbackNotice({
   warnings,
   hasResults,
@@ -16,7 +16,7 @@ export function FallbackNotice({
     <Bloom duration={0.7} delay={0.14} className="mt-14">
       <div
         role="status"
-        className="flex flex-wrap items-start gap-5 rounded-[20px] border border-amber-line bg-amber-bg px-8 py-7"
+        className="flex flex-wrap items-start gap-5 rounded-[20px] border border-warning-border bg-warning-fill px-8 py-7"
       >
         <span
           aria-hidden="true"
@@ -24,7 +24,7 @@ export function FallbackNotice({
         >
           <svg
             viewBox="0 0 24 24"
-            className="h-5 w-5 stroke-amber-ink stroke-2"
+            className="h-5 w-5 stroke-warning stroke-2"
             fill="none"
             aria-hidden="true"
           >
@@ -34,20 +34,20 @@ export function FallbackNotice({
           </svg>
         </span>
         <div className="min-w-[260px] flex-1">
-          <h3 className="font-display text-[21px] font-medium text-amber-ink">
+          <h3 className="font-display text-[21px] font-medium text-warning">
             I couldn't put together a grounded answer for this one.
           </h3>
-          <p className="mt-2 text-[15px] text-ink-soft">{warnings.join(" ")}</p>
+          <p className="mt-2 text-[15px] text-fg-muted">{warnings.join(" ")}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {hasResults ? (
-              <code className="rounded-[6px] bg-[rgba(143,106,30,0.1)] px-2 py-1 font-body text-[11.5px] font-bold text-amber-ink">
+              <code className="rounded-[6px] bg-[rgba(143,106,30,0.1)] px-2 py-1 font-body text-[11.5px] font-bold text-warning">
                 warning: answer_fallback · retrieval still ran
               </code>
             ) : null}
             <button
               type="button"
               onClick={onRephrase}
-              className="rounded-pill border-[1.5px] border-amber-line px-4 py-1.5 text-[13.5px] font-bold text-amber-ink transition-colors hover:bg-[rgba(143,106,30,0.08)]"
+              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning transition-colors hover:bg-[rgba(143,106,30,0.08)]"
             >
               Try rephrasing ↻
             </button>

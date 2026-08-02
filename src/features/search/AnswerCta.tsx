@@ -19,16 +19,16 @@ export function AnswerCta({
     <Bloom duration={0.7} delay={0.18} className="mx-auto mt-10 max-w-[720px]">
       <div
         data-testid="answer-cta"
-        className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-line bg-card px-5 py-3.5 shadow-card"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-border bg-surface-raised px-5 py-3.5 shadow-card"
       >
-        <p className="text-[14px] text-ink-soft">
+        <p className="text-[14px] text-fg-muted">
           Get a grounded answer from your books
         </p>
         <button
           type="button"
           onClick={onAsk}
           disabled={disabled}
-          className="rounded-pill border-[1.5px] border-apricot px-4 py-1.5 text-[13px] font-bold text-apricot-deep transition-colors hover:bg-apricot-soft disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          className="rounded-pill border-[1.5px] border-accent px-4 py-1.5 text-[13px] font-bold text-accent-strong transition-colors hover:bg-accent-fill disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
         >
           Ask the shelf
         </button>
