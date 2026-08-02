@@ -339,10 +339,19 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
     const codes = ["low_boundary_confidence", "low_normalization_confidence"];
     expect(before.structured_data.warnings).toEqual(codes);
 
+    /* Every body here leaves a rebuilt body over MOCK_MIN_RECIPE_CHARS on
+       purpose: recomputation is symmetric, so a short replacement would also
+       RAISE recipe_too_short and stop this being a test about the
+       confidence-derived codes. */
     for (const body of [
       { title: "Honey Oat Sandwich Loaf, corrected" },
       { ingredients: ["2 cups bread flour", "1 tsp fine sea salt"] },
-      { steps: ["Mix everything.", "Bake for 40 minutes."] },
+      {
+        steps: [
+          "Mix the flour, salt and honey into the warm milk and knead.",
+          "Bake for forty minutes and cool the loaf on a wire rack.",
+        ],
+      },
     ] satisfies KnowledgeItemUpdateRequest[]) {
       const after = (await patch("item_edit_confidence", body)).knowledge_item;
       expect(after.structured_data.warnings).toEqual(codes);
@@ -371,8 +380,19 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
 
   it("clears no_steps once the patch supplies a non-empty step list", async () => {
     const item = withWarnings("item_edit_nosteps", ["no_steps"]);
-    item.knowledge_item.structured_data.steps = [];
-    item.knowledge_item.structured_data.steps_text = "";
+    const sd = item.knowledge_item.structured_data;
+    sd.steps = [];
+    sd.steps_text = "";
+    /* Double the ingredient block so the step-less body still clears
+       MOCK_MIN_RECIPE_CHARS. A fixture whose body is BOTH step-less and short
+       is genuinely recipe_too_short as well — recomputation would raise it —
+       and this test is about no_steps. */
+    sd.ingredients = [...(sd.ingredients ?? []), ...(sd.ingredients ?? [])].map(
+      (row, index) => ({ ...row, position: index + 1 }),
+    );
+    sd.ingredients_text = (sd.ingredients ?? [])
+      .map((row) => row.raw_text)
+      .join("\n");
     server.use(knowledgeItemPatchHandler([item]));
 
     const untouched = (
@@ -400,7 +420,8 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
     /* The server clears this once the rebuilt body drops back under the upper
        bound; the mock models no upper bound at all (PLAN D7, contract §2), so
        even a drastically shortened body keeps the code. 5.3 must not build
-       clearing UI on it. */
+       clearing UI on it. The same shortening RAISES recipe_too_short, which
+       the mock does model — so both rows show up in one response. */
     const after = (
       await patch("item_edit_toolong", {
         ingredients: ["2 cups bread flour"],
@@ -408,12 +429,91 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       })
     ).knowledge_item;
 
-    expect(after.structured_data.warnings).toEqual(["recipe_too_long"]);
+    expect(after.structured_data.warnings).toEqual([
+      "recipe_too_long",
+      "recipe_too_short",
+    ]);
     expect(after.review_reasons).toEqual([
       {
         code: "recipe_too_long",
         message: SOFT_WARNING_MESSAGES.recipe_too_long,
       },
+      {
+        code: "recipe_too_short",
+        message: SOFT_WARNING_MESSAGES.recipe_too_short,
+      },
+    ]);
+  });
+
+  /* ---------- flags an edit RAISES ---------- */
+
+  /* The mirror of the three tests above: recomputation is symmetric over the
+     codes the mock models, because emptying a list is a legal patch (contract
+     §1, "send `[]` to empty it") and the server would answer it with the
+     warning back on. A mock that could only drop codes would let 5.3 build a
+     form whose destructive edits always look clean. */
+
+  it("raises no_ingredients when the patch empties the ingredient list", async () => {
+    const before = fixture("item_edit_confidence").knowledge_item;
+    expect(before.structured_data.warnings).not.toContain("no_ingredients");
+
+    const after = (await patch("item_edit_confidence", { ingredients: [] }))
+      .knowledge_item;
+
+    expect(after.structured_data.ingredients).toEqual([]);
+    expect(after.structured_data.warnings).toContain("no_ingredients");
+    expect(after.review_reasons).toContainEqual({
+      code: "no_ingredients",
+      message: SOFT_WARNING_MESSAGES.no_ingredients,
+    });
+    /* The codes it already carried are still there, in their original order. */
+    expect(after.structured_data.warnings.slice(0, 2)).toEqual([
+      "low_boundary_confidence",
+      "low_normalization_confidence",
+    ]);
+  });
+
+  it("raises no_steps when the patch empties the step list", async () => {
+    const after = (await patch("item_edit_confidence", { steps: [] }))
+      .knowledge_item;
+
+    expect(after.structured_data.steps).toEqual([]);
+    expect(after.structured_data.warnings).toContain("no_steps");
+    expect(after.review_reasons).toContainEqual({
+      code: "no_steps",
+      message: SOFT_WARNING_MESSAGES.no_steps,
+    });
+  });
+
+  it("raises recipe_too_short when the rebuilt body drops under the threshold", async () => {
+    const before = fixture("item_edit_confidence").knowledge_item;
+    expect(before.structured_data.warnings).not.toContain("recipe_too_short");
+
+    const after = (
+      await patch("item_edit_confidence", {
+        ingredients: ["1 tsp salt"],
+        steps: ["Mix."],
+      })
+    ).knowledge_item;
+
+    expect(after.structured_data.warnings).toContain("recipe_too_short");
+    expect(after.review_reasons).toContainEqual({
+      code: "recipe_too_short",
+      message: SOFT_WARNING_MESSAGES.recipe_too_short,
+    });
+  });
+
+  it("raises nothing it does not model, however drastic the edit", async () => {
+    /* The four preserve-only codes are never invented: no confidence verdict
+       and no upper length bound can be derived from the fixtures. */
+    const after = (
+      await patch("item_edit_short", { ingredients: [], steps: [] })
+    ).knowledge_item;
+
+    expect(after.structured_data.warnings).toEqual([
+      "recipe_too_short",
+      "no_ingredients",
+      "no_steps",
     ]);
   });
 

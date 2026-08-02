@@ -42,7 +42,13 @@ import type {
    |                              | line is  |                                |
    |                              | edited   |                                |
    | low_overall_confidence       | keeps    | keeps                          |
-   | low_boundary_confidence      | keeps    | keeps                          | */
+   | low_boundary_confidence      | keeps    | keeps                          |
+
+   Recomputation is SYMMETRIC over the three codes the mock models: an edit
+   that empties a list or drops the body under MOCK_MIN_RECIPE_CHARS RAISES
+   the code again, exactly as the server's `validate_soft` re-derivation
+   would. The four preserve-only codes are never raised — the mock has no
+   basis to invent a confidence verdict or an upper length bound. */
 
 /** The copy table, transcribed verbatim from the backend's
     `api/review_reasons.py` SOFT_WARNING_MESSAGES. These seven codes are the
@@ -391,42 +397,70 @@ const composedBody = (structuredData: RecipeStructuredData): string =>
     .filter((block): block is string => Boolean(block))
     .join("\n\n");
 
-/** One row of the contract's §2 table per branch, deliberately spelled out
-    rather than collapsed into a set — the divergences have to be visible
-    next to the code that causes them. */
-const clearedByEdit = (
-  code: string,
+/** The three codes the mock DERIVES from the patched content rather than
+    carrying forward — the clearable rows of the contract's §2 table it can
+    actually decide. The other four are preserve-only (see below). */
+const MODELLED_CONTENT_CODES = [
+  "no_ingredients",
+  "no_steps",
+  "recipe_too_short",
+] as const;
+
+/** Does the corrected content still warrant this code? One row of the
+    contract's §2 table per branch, deliberately spelled out rather than
+    collapsed into a set — the divergences have to be visible next to the
+    code that causes them.
+
+    Symmetric by design: a `false` here CLEARS a code the item carried, a
+    `true` RAISES one the edit created — emptying a list is a legal patch
+    (§1: "send `[]` to empty it"), and the server would answer it with the
+    warning back on. */
+const warrantedByContent = (
+  code: (typeof MODELLED_CONTENT_CODES)[number],
   structuredData: RecipeStructuredData,
 ): boolean => {
   switch (code) {
     case "no_ingredients":
-      return (structuredData.ingredients ?? []).length > 0;
+      return (structuredData.ingredients ?? []).length === 0;
     case "no_steps":
-      return (structuredData.steps ?? []).length > 0;
+      return (structuredData.steps ?? []).length === 0;
     case "recipe_too_short":
-      return composedBody(structuredData).length >= MOCK_MIN_RECIPE_CHARS;
-    /* Everything else is KEPT:
-       - low_overall_confidence / low_boundary_confidence — the server keeps
-         them too. Judgments about whether the recipe was cut out of the page
-         correctly; they clear on approve, not on fix. No divergence.
-       - low_normalization_confidence — DIVERGENCE. The server clears it once
-         every below-threshold line has been edited; the fixtures carry no
-         per-line threshold bookkeeping to decide that with.
-       - recipe_too_long — DIVERGENCE. The server clears it when the rebuilt
-         body drops back under the upper bound; the mock models no upper
-         bound, and no fixture carries the code. */
-    default:
-      return false;
+      return composedBody(structuredData).length < MOCK_MIN_RECIPE_CHARS;
   }
 };
 
-/** Re-derive the warning list from the corrected content, order preserved.
-    Codes are only ever DROPPED here — a mock that invented new ones would
-    let 5.3 build UI against flags the fixtures never agreed to. */
+/** Re-derive the warning list from the corrected content, order preserved:
+    the three modelled content codes are recomputed (dropped when the edit
+    resolves them, raised when the edit creates them), every other code is
+    carried forward untouched.
+ *
+ *  The four preserve-only codes:
+ *  - low_overall_confidence / low_boundary_confidence — the server keeps them
+ *    too. Judgments about whether the recipe was cut out of the page
+ *    correctly; they clear on approve, not on fix. No divergence.
+ *  - low_normalization_confidence — DIVERGENCE. The server clears it once
+ *    every below-threshold line has been edited; the fixtures carry no
+ *    per-line threshold bookkeeping to decide that with.
+ *  - recipe_too_long — DIVERGENCE. The server clears it when the rebuilt body
+ *    drops back under the upper bound; the mock models no upper bound, so it
+ *    neither clears nor raises it. */
 export const recomputeWarnings = (
   warnings: readonly string[],
   structuredData: RecipeStructuredData,
-): string[] => warnings.filter((code) => !clearedByEdit(code, structuredData));
+): string[] => {
+  const isModelled = (
+    code: string,
+  ): code is (typeof MODELLED_CONTENT_CODES)[number] =>
+    (MODELLED_CONTENT_CODES as readonly string[]).includes(code);
+  const kept = warnings.filter(
+    (code) => !isModelled(code) || warrantedByContent(code, structuredData),
+  );
+  const raised = MODELLED_CONTENT_CODES.filter(
+    (code) =>
+      !warnings.includes(code) && warrantedByContent(code, structuredData),
+  );
+  return [...kept, ...raised];
+};
 
 /* ---------- the pure patch core ---------- */
 
