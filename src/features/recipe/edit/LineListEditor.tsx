@@ -281,7 +281,7 @@ function Row({
            and these textareas are what a reviewer actually types into. The
            auto-grow layout effect re-measures on every change, so the larger
            face just means a taller box, not a clipped one. */
-        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg max-[560px]:text-base focus:border-accent focus:shadow-focus focus:outline-none"
+        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg pointer-coarse:min-h-11 pointer-coarse:text-base focus:border-accent focus:shadow-focus focus:outline-none"
       />
       <span className="mt-1.5 flex items-center gap-2">
         <button

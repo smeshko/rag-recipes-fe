@@ -285,12 +285,18 @@ html[data-theme="dark"] {
        single unbroken 60-character token in any of them widens the whole page
        at 375px, and no amount of per-component padding prevents it.
 
-       break-word, not anywhere: it only breaks a word that cannot fit on a
-       line by itself, so ordinary prose wraps exactly as before. Set on body
-       so it inherits everywhere rather than being remembered per component —
-       the failure mode this guards against is precisely the string nobody
-       remembered to guard. */
-    overflow-wrap: break-word;
+       `anywhere`, NOT `break-word`, and the difference is the whole point:
+       only `anywhere` lets a soft wrap opportunity count toward an element's
+       min-content size. `break-word` breaks the line but still reports the
+       unbroken word as the minimum width, so a flex child or a `1fr` grid
+       track — the recipe's ingredient rows and method steps are both — sizes
+       itself to the whole token and pushes the page sideways anyway. Measured:
+       with `break-word` a 60-character ingredient line still overflowed 375px.
+
+       Set on body so it inherits everywhere rather than being remembered per
+       component — the string that breaks the layout is precisely the one
+       nobody remembered to guard. */
+    overflow-wrap: anywhere;
   }
 }
 
