@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
@@ -492,6 +492,26 @@ describe("Save & approve", () => {
     expect(await screen.findByText(OTHER_QUEUE_TITLE)).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/review");
     expect(router.state.location.search).toBe(`?document=${QUEUE_DOCUMENT}`);
+  });
+
+  it("does not steal the navigation of a reviewer who left mid-flight", async () => {
+    /* The seam is a HOOK-level callback, so query-core runs it even after this
+       form has unmounted, and `useNavigate` keeps working off an unmounted
+       component. Cancel is not disabled while the patch is in flight, so
+       without the mounted latch the reviewer lands on the read page and is
+       then thrown to /review a moment later (review #1.1). */
+    const { decisions } = wireApproveServer({ patchDelay: 80 });
+    const { user, router } = await renderForm(`${EDIT_PATH}?from=%2Freview`);
+
+    await repair(user);
+    await user.click(approveButton());
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(router.state.location.pathname).toBe(READ_PATH);
+
+    /* The act they asked for still completes — only the navigation is
+       dropped. */
+    await waitFor(() => expect(decisions).toEqual([{ decision: "approved" }]));
+    expect(router.state.location.pathname).toBe(READ_PATH);
   });
 
   it("raises no conflict banner on a save that worked", async () => {

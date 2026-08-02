@@ -80,6 +80,25 @@ export function RecipeEditForm({
      `onCancel`. */
   const discardingRef = useRef(false);
 
+  /* Still on this page? The seam below is a HOOK-level callback, so query-core
+     keeps it on the mutation's own options and runs it even after this
+     component has gone (`MutationObserver#onUnsubscribe` drops the observer,
+     not the options) — and `useNavigate` has no unmount guard of its own
+     (react-router's `activeRef` is raised in a layout effect and never
+     lowered). Cancel, `BackLink` and the whole `Nav` stay live while
+     `update.isPending`, so a reviewer who leaves mid-save would otherwise be
+     yanked out of wherever they went the moment the patch landed — to
+     `/review`, on the approve path. The post-save navigation is only ever
+     ours to make while we are the page the reviewer is looking at (review
+     #1.1). */
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const id = item.knowledge_item.id;
   /* Where BOTH exits land: Cancel, and a save that worked. One const rather
      than the expression twice, so the two destinations cannot drift.
@@ -147,6 +166,16 @@ export function RecipeEditForm({
           setApproveError(messageOf(failure));
           return;
         }
+      }
+      /* The reviewer left while this was in flight: the patch committed and,
+         on the approve path, the decision they asked for went through — but
+         where they are now is their choice, not ours. Deliberately placed
+         AFTER the approve rather than before it: they pressed "Save &
+         approve", the patch is already on the server, and dropping the second
+         half would leave the item edited-but-still-queued with nothing on
+         screen to say so. What we drop is the navigation, not the act. */
+      if (!mountedRef.current) {
+        return;
       }
       /* The latch, mandatory rather than defensive: a successful save does
          NOT make `useEditForm` clean — it compares against the seed snapshot,
