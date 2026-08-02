@@ -17,14 +17,14 @@ export function Shell() {
     <div className={`mx-auto px-9 pb-[100px] ${width}`}>
       <header className="bloom flex items-center justify-between py-[26px]">
         <div className="font-display text-[23px] font-semibold">
-          Stove<span className="text-apricot">.</span>
+          Stove<span className="text-accent">.</span>
         </div>
         <Nav />
       </header>
       <Outlet />
       {handle.footer ? (
-        <footer className="mt-[70px] text-center text-[13px] text-ink-faint">
-          <b className="font-semibold text-ink-soft">Stove</b> is your private
+        <footer className="mt-[70px] text-center text-[13px] text-fg-subtle">
+          <b className="font-semibold text-fg-muted">Stove</b> is your private
           shelf · grounded in your own books
         </footer>
       ) : null}

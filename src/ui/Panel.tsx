@@ -10,7 +10,7 @@ export interface PanelProps {
 export function Panel({ className = "", children }: PanelProps) {
   return (
     <section
-      className={`rounded-[20px] border border-line bg-card px-7 py-[26px] shadow-card ${className}`}
+      className={`rounded-[20px] border border-border bg-surface-raised px-7 py-[26px] shadow-card ${className}`}
     >
       {children}
     </section>

@@ -21,7 +21,7 @@ export interface CardProps {
 export function Card({ accent, header, className = "", children }: CardProps) {
   return (
     <article
-      className={`overflow-hidden rounded-card border border-line bg-card transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] hover:-translate-y-[5px] hover:shadow-card-hover ${className}`}
+      className={`overflow-hidden rounded-card border border-border bg-surface-raised transition-[transform,box-shadow] duration-[220ms] ease-[cubic-bezier(0.2,0.7,0.2,1)] hover:-translate-y-[5px] hover:shadow-card-hover ${className}`}
     >
       <div
         className={`flex items-center justify-between px-5 py-3 text-[11.5px] font-bold uppercase tracking-[0.08em] ${HEAD[accent]}`}

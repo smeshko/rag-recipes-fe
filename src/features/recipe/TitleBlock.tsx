@@ -12,7 +12,7 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {doc.isSuccess ? (
-          <Pill size="md" tone="accent" uppercase>
+          <Pill size="md" tone="book" uppercase>
             {doc.data.document.title}
           </Pill>
         ) : (

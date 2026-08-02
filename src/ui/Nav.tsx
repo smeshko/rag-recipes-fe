@@ -44,8 +44,8 @@ function activePill({
 
 function pillClass(active: boolean): string {
   return active
-    ? "rounded-pill bg-ink px-[18px] py-[9px] text-sm font-semibold text-cream"
-    : "rounded-pill px-[18px] py-[9px] text-sm font-semibold text-ink-soft transition-colors hover:bg-apricot-soft hover:text-ink";
+    ? "rounded-pill bg-surface-inverted px-[18px] py-[9px] text-sm font-semibold text-fg-inverted"
+    : "rounded-pill px-[18px] py-[9px] text-sm font-semibold text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg";
 }
 
 export function Nav() {
