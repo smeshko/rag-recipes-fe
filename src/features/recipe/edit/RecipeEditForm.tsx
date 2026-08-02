@@ -1,6 +1,9 @@
 import type { KnowledgeItemResponse } from "../../../api";
 import { BackLink, Bloom, Eyebrow, Pill } from "../../../ui";
 import { statusTone } from "../statusTone";
+import { FactsFields } from "./FactsFields";
+import { TitleFields } from "./TitleFields";
+import { useEditForm } from "./useEditForm";
 
 /**
  * The form host — the child `RecipeEditPage` mounts on its success rung, and
@@ -10,11 +13,13 @@ import { statusTone } from "../statusTone";
  * `useEditForm` / `useBlocker` / `useBeforeUnload` can be called
  * unconditionally here without any "is there an item yet" narrowing.
  *
- * TASK-001 ships the chrome only. The fields, both line editors, the action
- * row and `discardingRef` land in TASK-002 … TASK-006.
+ * TASK-003 adds the six scalar fields. Both line editors, the action row and
+ * `discardingRef` land in TASK-004 … TASK-006 — hence the deliberately
+ * partial destructure of `useEditForm` below.
  */
 export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
   const status = statusTone(item.knowledge_item.status);
+  const { form, setField, isValid } = useEditForm(item);
 
   return (
     <div data-testid="recipe-edit-page">
@@ -31,6 +36,8 @@ export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
         <h1 className="mt-5 font-display text-[clamp(30px,4vw,40px)] font-medium">
           Repair this <em className="text-accent italic">extraction.</em>
         </h1>
+        <TitleFields form={form} isValid={isValid} setField={setField} />
+        <FactsFields form={form} setField={setField} />
       </Bloom>
     </div>
   );
