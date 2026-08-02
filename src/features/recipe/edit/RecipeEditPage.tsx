@@ -54,11 +54,25 @@ export function RecipeEditPage() {
      #1.2). */
   const draftRef = useRef({ id: "", dirty: false });
 
+  /* Hoisted above every rung, because two of them can fire on a *background*
+     result rather than the first load: the error rung when a refetch fails
+     while the cached item is still perfectly good, and the status rung above.
+     Matching on either the route param or the cached item's own id keeps the
+     latch from surviving into a different recipe's session. */
+  const draftHeld =
+    draftRef.current.dirty &&
+    (draftRef.current.id === id ||
+      draftRef.current.id === item.data?.knowledge_item.id);
+
   if (item.isLoading) {
     return <EditSkeleton />;
   }
 
-  if (item.isError) {
+  /* `!draftHeld`: with data already in hand, an errored query means a refetch
+     failed, not that the item is gone — TanStack keeps the last good `data`
+     alongside the error. Tearing the form down for a transient blip loses the
+     draft exactly as the status flip would (review #2.1). */
+  if (item.isError && !(draftHeld && item.data)) {
     const err = item.error;
     /* The cast is required and is what RecipePage:43 does: `item.error` is
        typed `Error`, the prop is `ApiError`. */
@@ -70,15 +84,14 @@ export function RecipeEditPage() {
     );
   }
 
-  /* Explicit, not a fallthrough: with no `:id` the query is disabled, so it is
-     neither loading nor errored nor successful. The route always supplies one,
-     but LibraryPage's discipline is to name the branch rather than let a bare
-     `else` render a form against `undefined`. */
-  if (!item.isSuccess) {
+  /* Explicit, not a fallthrough: with no `:id` the query is disabled, so there
+     is nothing to render a form against. `item.data` rather than
+     `item.isSuccess`, because the held-draft path above arrives here with the
+     last good payload and a query whose status is `error`. */
+  const data = item.data;
+  if (!data) {
     return null;
   }
-
-  const data = item.data;
 
   if (!isRecipeShaped(data.knowledge_item.structured_data.schema)) {
     return <RecipeNotARecipe title={data.display.title} />;
@@ -89,9 +102,6 @@ export function RecipeEditPage() {
      honest and more useful answer; only an open draft holds the form. The
      stale-status conflict is then the save's to surface, and the save is 5.4's
      (D12) — the backend answers `review_not_pending`. */
-  const draftHeld =
-    draftRef.current.dirty && draftRef.current.id === data.knowledge_item.id;
-
   if (data.knowledge_item.status !== "needs_review" && !draftHeld) {
     return <NotEditable status={data.knowledge_item.status} id={id} />;
   }

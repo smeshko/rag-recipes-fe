@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
@@ -180,6 +180,52 @@ describe("edit page ladder", () => {
     expect(
       screen.queryByText("This one's already on the shelf."),
     ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveValue(
+      `${needsReviewItemFixture.knowledge_item.title} (repaired)`,
+    );
+  });
+
+  it("keeps a dirty form when a background refetch fails", async () => {
+    /* The same data-loss shape as the status flip, through the error rung:
+       TanStack keeps the last good `data` alongside a failed refetch, so an
+       errored query here means a blip — not that the item is gone. Tearing the
+       form down for it would lose the draft in silence (review #2.1). */
+    const user = userEvent.setup();
+    const { queryClient } = renderAt("/recipes/item_review/edit");
+
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Title"), " (repaired)");
+
+    server.use(
+      http.get("/api/v1/knowledge-items/item_review", () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "internal_error",
+              message: "The stove hiccuped.",
+              details: {},
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    await act(async () => {
+      await queryClient.refetchQueries({
+        queryKey: ["knowledge-item", "item_review"],
+      });
+    });
+    /* Nothing about a surviving form changes on error, so there is no positive
+       signal to await — wait on the cache instead, then let React commit the
+       observer's error notification before asserting. */
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryState(["knowledge-item", "item_review"])?.status,
+      ).toBe("error"),
+    );
+
+    expect(screen.getByTestId("recipe-edit-page")).toBeInTheDocument();
+    expect(screen.queryByText("The stove hiccuped.")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveValue(
       `${needsReviewItemFixture.knowledge_item.title} (repaired)`,
     );
