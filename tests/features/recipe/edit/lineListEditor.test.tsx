@@ -164,6 +164,45 @@ describe("LineListEditor", () => {
     );
   });
 
+  /* The end of the travel is where naive focus management strands the
+     keyboard: the button that was pressed disables the moment its row reaches
+     the end, and `focus()` on a disabled control is a silent no-op that drops
+     the caret onto `document.body`. Chromium reproduces it on the real page —
+     jsdom does too, because it honours `disabled` for focus. */
+  it("hands focus to the opposite control when a row reaches the top", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={["flour", "butter", "salt"]} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Move ingredient 2 up" }),
+    );
+
+    expect(texts()).toEqual(["butter", "flour", "salt"]);
+    expect(
+      screen.getByRole("button", { name: "Move ingredient 1 up" }),
+    ).toBeDisabled();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Move ingredient 1 down" }),
+    );
+  });
+
+  it("hands focus to the opposite control when a row reaches the bottom", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={["flour", "butter", "salt"]} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Move ingredient 2 down" }),
+    );
+
+    expect(texts()).toEqual(["flour", "salt", "butter"]);
+    expect(
+      screen.getByRole("button", { name: "Move ingredient 3 down" }),
+    ).toBeDisabled();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Move ingredient 3 up" }),
+    );
+  });
+
   it("moves the DOM node itself, not just the text, across a reorder", async () => {
     const user = userEvent.setup();
     render(<Harness initial={["flour", "butter", "salt"]} />);

@@ -8,6 +8,14 @@ type RowSlot = "text" | "up" | "down";
 
 type PendingFocus = { rowId: string; slot: RowSlot } | { rowId: null };
 
+/** Where focus goes when the preferred slot is disabled — see the layout
+    effect. The text field is last and always live, so every chain terminates. */
+const FOCUS_FALLBACKS: Record<RowSlot, readonly RowSlot[]> = {
+  text: ["text"],
+  up: ["up", "down", "text"],
+  down: ["down", "up", "text"],
+};
+
 /** The DOM nodes one row registers, keyed in the editor's map by the row's
     synthetic id — never by index, because the ids are what survive a reorder
     (D4) and the index is exactly what a move changes. */
@@ -84,7 +92,23 @@ export function LineListEditor({
       addRef.current?.focus();
       return;
     }
-    nodes.current.get(pending.rowId)?.[pending.slot]?.focus();
+    const entry = nodes.current.get(pending.rowId);
+    if (!entry) {
+      return;
+    }
+    /* The end of a travel disables the very button that carried the row there
+       — a row at the top has no ↑ — and `focus()` on a disabled control is a
+       silent no-op that strands the keyboard on `document.body`. So the
+       destination is a preference, not an address: the button that was
+       pressed, else the arrow pointing the other way, else the row's own
+       field. Chromium reproduces the stranding; jsdom does too. */
+    for (const slot of FOCUS_FALLBACKS[pending.slot]) {
+      const el = entry[slot];
+      if (el && !(el as Partial<HTMLButtonElement>).disabled) {
+        el.focus();
+        return;
+      }
+    }
   });
 
   const setText = (index: number, text: string) => {
@@ -231,7 +255,15 @@ function Row({
   }, [row.text]);
 
   return (
-    <li className="grid grid-cols-[auto_1fr_auto] items-start gap-2">
+    /* The track list follows the cell count, because an unordered row renders
+       no ordinal: with three tracks and two children the textarea would land
+       in the leading `auto` track and size to its own text, leaving `w-full`
+       to mean "as wide as this line happens to be". */
+    <li
+      className={`grid items-start gap-2 ${
+        ordered ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[1fr_auto]"
+      }`}
+    >
       {ordered ? (
         /* Derived from render position, never stored — a reorder renumbers by
            construction. */
