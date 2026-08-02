@@ -160,6 +160,6 @@ describe("answer CTA", () => {
     await waitFor(() => expect(answersCalls).toHaveLength(1));
     const body = answersCalls[0]?.body as { query: string } | undefined;
     expect(body?.query).toBe("weekend brunch");
-    expect(router.state.location.search).toBe("?q=weekend+brunch");
+    expect(router.state.location.search).toBe("?q=weekend+brunch&asked=1");
   });
 });

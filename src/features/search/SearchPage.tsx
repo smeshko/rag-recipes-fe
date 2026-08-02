@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import {
   type AnswerAsk,
   type AnswerResponse,
@@ -16,12 +16,12 @@ import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
-import { armedAsk, clearLastAsk, saveLastAsk } from "./lastAsk";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { ModeChips } from "./ModeChips";
 import { parseMode } from "./mode";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
+import { nextSearchParams, searchUrl } from "./searchUrl";
 
 function ShelfStatsLine() {
   const { cookbookCount, readyRecipes, partial, unavailable } = useShelfStats();
@@ -51,8 +51,6 @@ function ShelfStatsLine() {
 /* The answer slot's four arms in one place so SearchPage stays readable. */
 function AnswerSection({
   answer,
-  q,
-  mode,
   onRephrase,
   onRetry,
 }: {
@@ -64,8 +62,6 @@ function AnswerSection({
     data: AnswerResponse | undefined;
     error: unknown;
   };
-  q: string;
-  mode: SearchMode;
   onRephrase: () => void;
   onRetry: () => void;
 }) {
@@ -88,13 +84,14 @@ function AnswerSection({
         />
       );
     }
-    return <AnswerCard answer={answer.data} q={q} mode={mode} />;
+    return <AnswerCard answer={answer.data} />;
   }
   return null;
 }
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const q = searchParams.get("q") ?? "";
   const mode = parseMode(searchParams.get("mode"));
   /* Armed by the library's "Open review queue →" link-out; read-only in v1
@@ -108,89 +105,119 @@ export function SearchPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* The ask whose answer belongs on this screen — the note that says which
-     cache entry to read, not the answer itself. Seeded from the per-tab record
-     because opening a recipe unmounts SearchPage: an ask held only in
-     component state would be gone by the time the user comes back, and the
-     answer would vanish while the (cached) results reappeared. */
-  const [ask, setAsk] = useState<AnswerAsk | null>(() =>
-    armedAsk(q, reviewIncluded),
-  );
-  /* The record is per-tab while the URL is per-history-entry, so the two can
-     disagree — a Back/Forward step, or the library's armed link-out landing on
-     the same query over a different corpus. The URL decides: an ask that no
-     longer describes the search on screen is not this screen's ask. */
-  const liveAsk =
-    ask !== null && ask.query === q && ask.reviewIncluded === reviewIncluded
-      ? ask
+     cache entry to read, not the answer itself. Derived from the URL, so it is
+     per history entry: opening a recipe unmounts SearchPage, and coming back
+     re-derives the same ask and re-reads the same cache entry. Back and
+     Forward across the Ask click land on the right answer state for free,
+     because the arming lives in the entry rather than beside it. */
+  const ask: AnswerAsk | null =
+    q !== "" && searchParams.get("asked") === "1"
+      ? { query: q, mode, reviewIncluded }
       : null;
 
-  /* Functional updater so unknown params (e.g. epic 03's review=included)
-     survive every write; hybrid stays out of the URL (D1). */
-  const writeParams = (nextQ: string, nextMode: SearchMode) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (nextQ) {
-        params.set("q", nextQ);
-      } else {
-        params.delete("q");
-      }
-      if (nextMode !== "hybrid") {
-        params.set("mode", nextMode);
-      } else {
-        params.delete("mode");
-      }
-      return params;
+  /* The single URL-commit choke point. Every param rule — unknown params
+     survive, hybrid stays out of the URL, `asked` only where it still
+     describes the question — lives in nextSearchParams, called twice with the
+     same commit: once inside the functional updater (which stays pure) and
+     once against this render's params to build the string to remember. Same
+     function, so the two cannot describe different searches (D12). */
+  const writeParams = (
+    nextQ: string,
+    nextMode: SearchMode,
+    options?: { asked?: boolean },
+  ) => {
+    const commit = {
+      q: nextQ,
+      mode: nextMode,
+      asked: options?.asked === true,
+    };
+    /* A commit that changes nothing is not a history entry (review #1.1). A
+       second Ask on the question already on screen — the button re-enables
+       the moment the answer lands — recomputes the same search, and
+       setSearchParams would push it regardless. The user then has to press
+       Back twice to leave the answered entry, the first press visibly doing
+       nothing, which is exactly what "Back/Forward across an ask lands on the
+       right answer state" says must not happen.
+
+       Compared against what this URL would be spelled as under the same
+       rules, not against its literal bytes (review #2.1): a hand-typed
+       ?mode=vector&q=x&asked=1 differs byte-wise from the canonical
+       ?q=x&mode=vector&asked=1 while describing the same search, and pushing
+       that is the same dead Back press. Same question, different spelling
+       still commits — with `replace`, so the URL normalises without growing
+       the history. */
+    const committed = nextSearchParams(searchParams, commit);
+    const canonicalHere = nextSearchParams(searchParams, {
+      q,
+      mode,
+      asked: searchParams.get("asked") === "1",
     });
+    if (committed.toString() !== canonicalHere.toString()) {
+      setSearchParams((prev) => nextSearchParams(prev, commit));
+    } else if (committed.toString() !== searchParams.toString()) {
+      setSearchParams((prev) => nextSearchParams(prev, commit), {
+        replace: true,
+      });
+    }
     /* Beside the setSearchParams call, not inside its updater — the updater
-       stays pure. writeParams is the single URL-commit choke point, so this
-       one site covers Enter, Ask and the mode chips alike. Emptying a
-       committed query deliberately forgets the remembered search: an emptied
-       box must not resurrect through the Cook pill. Guarded on the previous
-       q: on the bare / (Back to the initial entry, the Crumb's "Back to
-       Cook") a mode-chip click also commits an empty q, and that must not
-       wipe a search the user never had on screen (review #1.1). */
+       stays pure and React may invoke it more than once. This one site covers
+       Enter, Ask and the mode chips alike. Emptying a committed query
+       deliberately forgets the remembered search: an emptied box must not
+       resurrect through the Cook pill. Guarded on the previous q: on the bare
+       / (Back to the initial entry, the BackLink's "Back to Cook") a mode-chip
+       click also commits an empty q, and that must not wipe a search the user
+       never had on screen (review #1.1). */
     if (nextQ) {
-      saveLastSearch(nextQ, nextMode, reviewIncluded);
+      saveLastSearch(searchUrl(committed));
     } else if (q !== "") {
       clearLastSearch();
-    }
-    /* A new query is a new question, and the old answer goes with it. An
-       unchanged q does not disarm: a mode chip must leave the answer standing
-       (/answers ran its own retrieval, so the toggle changes the grid, not the
-       answer), and Ask on the committed query re-arms immediately below. */
-    if (nextQ !== q) {
-      clearLastAsk();
-      setAsk(null);
     }
   };
 
   const search = useSearch(q, mode, reviewIncluded);
   /* Render what the data says, not what the URL says: during a mode change
      the grid still holds the previous mode's results (D7's placeholder), so
-     the header label and every card's router state must use the mode that
+     the header label and every card's return target must use the mode that
      produced them. Falls back to the URL's mode only when there is no data
      to describe. */
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
 
-  /* Reads the cache for `liveAsk` and never fetches by itself, so a remount —
-     Back from a recipe — restores the answer without a second LLM call, and no
-     navigation can produce one. run() is the single thing that spends. */
-  const answer = useAnswer(liveAsk);
+  /* The search those held-over cards actually came out of (review #2.2). The
+     same nextSearchParams rule that writes the URL, with the producing mode
+     substituted for the URL's — so this is the URL verbatim whenever the two
+     agree (every render but the in-flight window of a mode change), and never
+     a second hand-rolled spelling of the param rules. */
+  const resultsParams = nextSearchParams(searchParams, {
+    q,
+    mode: resultsMode,
+    asked: searchParams.get("asked") === "1",
+  });
+  const resultsFrom = {
+    pathname: location.pathname,
+    search: resultsParams.toString() === "" ? "" : `?${resultsParams}`,
+  };
 
-  /* URL commit, then arm, then fetch — the ordering is what keeps the
-     committed ?q= and the answer describing the same question. No in-flight
-     latch: two clicks in one frame fetch the same key, and TanStack dedupes
-     that into one round-trip. */
+  /* Reads the cache for `ask` and never fetches by itself, so a remount — Back
+     from a recipe, Forward across the Ask click, a bookmarked ?asked=1 — reads
+     whatever the cache holds and no navigation can produce a round-trip. On a
+     cold load the entry is simply empty and the slot renders nothing. run() is
+     the single thing that spends. */
+  const answer = useAnswer(ask);
+
+  /* URL commit, then fetch — the committed ?q=&asked=1 and the answer describe
+     the same question. `next` is passed to run() rather than read back from
+     searchParams: setSearchParams has not committed in this tick, and run()
+     fetches by key precisely so it does not depend on the observer's current
+     binding. No in-flight latch either: two clicks in one frame fetch the same
+     key, and TanStack dedupes that into one round-trip. */
   const askShelf = () => {
     const asked = text.trim();
     if (asked === "") {
       return;
     }
     const next: AnswerAsk = { query: asked, mode, reviewIncluded };
-    writeParams(asked, mode);
-    saveLastAsk(next);
-    setAsk(next);
+    writeParams(asked, mode, { asked: true });
     answer.run(next);
   };
 
@@ -200,22 +227,17 @@ export function SearchPage() {
   };
 
   /* "An answer never appears for a query it wasn't asked about" is true by
-     construction now: the ask IS the cache key, so a q the user never asked
-     about has no entry to read and the slot renders nothing. */
+     construction: the ask IS the cache key, so a q the user never asked about
+     has no entry to read and the slot renders nothing. */
 
-  /* The fallback grid replaces 2.1's section only while the answer still
-     matches the current search — /answers ran its own retrieval at the
-     answer-time mode, so after a chip toggle the live grid returns. */
+  /* The fallback grid replaces 2.1's section only while an ask is armed. No
+     mode comparison left to make — the ask is read from the same URL the grid
+     is, so its mode IS the URL's, and a chip toggle disarms rather than
+     leaving a stale answer standing (D9/D10). */
   const fallbackData =
     answer.data && isFallback(answer.data) ? answer.data : null;
-  /* Provenance is the ask's own mode, not the URL's. (The armed state needs no
-     comparison: it is part of the key, so an answer retrieved under a
-     different needs-review filter is simply not readable here.) */
-  const answerMatchesSearch = liveAsk !== null && liveAsk.mode === mode;
   const showFallbackGrid =
-    fallbackData !== null &&
-    fallbackData.results.length > 0 &&
-    answerMatchesSearch;
+    fallbackData !== null && fallbackData.results.length > 0 && ask !== null;
   /* A zero-result fallback already says "nothing found" — don't say it twice.
      It suppresses *only* SearchEmpty, not the whole ladder (TASK-004): the
      2.1 section still owns the page, and /answers runs its own retrieval, so
@@ -223,9 +245,7 @@ export function SearchPage() {
      Verified live: the two retrievals genuinely diverge — "xyzzy quantum
      blockchain tractor" gives /answers 10 results and /search 0. */
   const zeroResultFallback =
-    fallbackData !== null &&
-    fallbackData.results.length === 0 &&
-    answerMatchesSearch;
+    fallbackData !== null && fallbackData.results.length === 0 && ask !== null;
 
   /* Every arm AnswerSection would render, in one predicate. */
   const answerSlotOccupied =
@@ -292,12 +312,10 @@ export function SearchPage() {
           that produced it can address that entry. */}
       <AnswerSection
         answer={answer}
-        q={q}
-        mode={mode}
         onRephrase={rephrase}
         onRetry={() => {
-          if (liveAsk !== null) {
-            answer.run(liveAsk);
+          if (ask !== null) {
+            answer.run(ask);
           }
         }}
       />
@@ -311,10 +329,11 @@ export function SearchPage() {
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
           results={fallbackData.results}
-          q={q}
-          /* answerMatchesSearch gates this grid, so the ask's mode and the
-             URL's are the same one here. */
+          /* The ask is read from this URL, so its mode and the URL's are the
+             same one here — and nothing is held over, so the URL the reader is
+             standing on IS the search that produced these. */
           mode={mode}
+          from={location}
           bloomBase={0.24}
           heading={
             <>
@@ -347,8 +366,8 @@ export function SearchPage() {
       ) : (
         <ResultsGrid
           results={results}
-          q={q}
           mode={resultsMode}
+          from={resultsFrom}
           dimmed={search.isPlaceholderData}
           /* The default subline hard-codes "needs-review excluded", which is
              a lie once the library's link-out has armed the filter. */

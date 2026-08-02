@@ -6,13 +6,11 @@ import { statusTone } from "../../src/features/recipe/statusTone";
 import { routes } from "../../src/routes";
 import { fullItemFixture, sparseItemFixture } from "../msw/knowledgeItems";
 
-function renderAt(path: string, state?: unknown) {
+function renderAt(path: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const router = createMemoryRouter(routes, {
-    initialEntries: [state === undefined ? path : { pathname: path, state }],
-  });
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -67,9 +65,9 @@ describe("recipe title block", () => {
   });
 });
 
-describe("crumb", () => {
-  it("preserves q from location state", async () => {
-    renderAt("/recipes/item_full", { q: "breakfast" });
+describe("back link", () => {
+  it("preserves q from the return target", async () => {
+    renderAt("/recipes/item_full?from=%2F%3Fq%3Dbreakfast");
     const crumb = await screen.findByRole("link", {
       name: /back to results/i,
     });
@@ -77,15 +75,15 @@ describe("crumb", () => {
   });
 
   it("reproduces a non-hybrid mode", async () => {
-    renderAt("/recipes/item_full", { q: "breakfast", mode: "vector" });
+    renderAt("/recipes/item_full?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector");
     const crumb = await screen.findByRole("link", {
       name: /back to results/i,
     });
     expect(crumb.getAttribute("href")).toBe("/?q=breakfast&mode=vector");
   });
 
-  it("omits the hybrid default mode", async () => {
-    renderAt("/recipes/item_full", { q: "breakfast", mode: "hybrid" });
+  it("omits the hybrid default mode — the target never carried it", async () => {
+    renderAt("/recipes/item_full?from=%2F%3Fq%3Dbreakfast");
     const crumb = await screen.findByRole("link", {
       name: /back to results/i,
     });

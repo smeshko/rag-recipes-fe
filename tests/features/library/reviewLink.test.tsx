@@ -4,10 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { reviewItemsFixture, reviewScenario } from "../../../src/mocks/review";
+import { reviewScenario } from "../../../src/mocks/review";
 import { routes } from "../../../src/routes";
 import { groundedAnswerFixture } from "../../msw/answers";
-import { libraryShelfHandlers, searchFixture } from "../../msw/handlers";
+import {
+  libraryShelfHandlers,
+  searchFixture,
+  shelfKeyedReviewItems,
+} from "../../msw/handlers";
 import { server } from "../../msw/server";
 
 function renderAt(path: string) {
@@ -32,33 +36,23 @@ const bookRow = async (title: string) => {
 
 const LINK_NAME = /open review queue/i;
 
-/* 4.2's review fixtures key their items to `doc_baking`-style ids while the
-   shelf's books use `book-*` ids — separate data sets. Remapping the fixture
-   items onto the shelf ids is what makes the landed pre-filtered queue
-   non-empty in the navigation test below. */
-const SHELF_ID_BY_FIXTURE_DOC: Record<string, string> = {
-  doc_baking: "book-baking-less-sugar",
-  doc_onepan: "book-one-pan",
-  doc_paleo: "book-eat-drink-paleo",
-};
-const shelfKeyedReviewItems = reviewItemsFixture.map((item) => ({
-  ...item,
-  document: {
-    ...item.document,
-    id: SHELF_ID_BY_FIXTURE_DOC[item.document.id] ?? item.document.id,
-  },
-}));
-
 describe("review queue link-out", () => {
   beforeEach(() => server.use(...libraryShelfHandlers()));
 
   it("renders on both books with review items, with the exact href", async () => {
     renderAt("/library");
 
-    /* The needs_review book (14 items) AND the ready book with 1 item. */
+    /* `&`, not `?`: reviewQueueUrl already emitted the ?document= filter, so
+       withReturnTo joins the shelf's return target onto it. */
     for (const [title, href] of [
-      ["Baking with Less Sugar", "/review?document=book-baking-less-sugar"],
-      ["One Pan to Rule Them All", "/review?document=book-one-pan"],
+      [
+        "Baking with Less Sugar",
+        "/review?document=book-baking-less-sugar&from=%2Flibrary",
+      ],
+      [
+        "One Pan to Rule Them All",
+        "/review?document=book-one-pan&from=%2Flibrary",
+      ],
     ]) {
       const row = await bookRow(title);
       const link = await row.findByRole("link", { name: LINK_NAME });
@@ -91,7 +85,7 @@ describe("review queue link-out", () => {
 
     expect(router.state.location.pathname).toBe("/review");
     expect(router.state.location.search).toBe(
-      "?document=book-baking-less-sugar",
+      "?document=book-baking-less-sugar&from=%2Flibrary",
     );
     /* The landed queue lists that book's items only… */
     expect(

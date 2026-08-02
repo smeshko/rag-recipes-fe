@@ -8,9 +8,11 @@ import type {
   ErrorEnvelope,
   IngestionStatusResponse,
   ReprocessResponse,
+  ReviewItem,
   UploadResponse,
 } from "../../src/api";
 import { TERMINAL_STATUSES } from "../../src/api";
+import { reviewItemsFixture } from "../../src/mocks/review";
 
 /* Fixtures mirror the live backend's shapes byte-for-byte — the 401 body was
    captured from an unauthenticated GET /api/v1/health, the search/documents
@@ -368,6 +370,28 @@ export const libraryBooks: LibraryBookFixture[] = [
 
 export const libraryBookList: DocumentListItem[] = libraryBooks.map(
   (b) => b.list,
+);
+
+/* 4.2's review fixtures key their items to `doc_baking`-style ids while the
+   shelf's books use `book-*` ids — separate data sets (phase 4.3 RESEARCH,
+   "Fixture-id mismatch"). Remapping the fixture items onto the shelf ids is
+   what makes a library → filtered-queue walk land on a NON-EMPTY queue; keyed
+   the other way the walk proves nothing. Shared by every test that crosses
+   the shelf/queue boundary. */
+const SHELF_ID_BY_FIXTURE_DOC: Record<string, string> = {
+  doc_baking: "book-baking-less-sugar",
+  doc_onepan: "book-one-pan",
+  doc_paleo: "book-eat-drink-paleo",
+};
+
+export const shelfKeyedReviewItems: ReviewItem[] = reviewItemsFixture.map(
+  (item) => ({
+    ...item,
+    document: {
+      ...item.document,
+      id: SHELF_ID_BY_FIXTURE_DOC[item.document.id] ?? item.document.id,
+    },
+  }),
 );
 
 export const libraryBookDetails: Record<string, DocumentDetailResponse> =

@@ -4,8 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import type { SearchMode } from "../../src/api/search";
 import { LAST_SEARCH_KEY } from "../../src/features/search/lastSearch";
+import {
+  nextSearchParams,
+  searchUrl,
+} from "../../src/features/search/searchUrl";
 import { routes } from "../../src/routes";
+import { answersHandler, groundedAnswerFixture } from "../msw/answers";
 import { searchFixture } from "../msw/handlers";
 import { server } from "../msw/server";
 
@@ -40,42 +46,96 @@ const searchBox = () =>
 
 const cookPill = () => screen.getByRole("link", { name: "Cook" });
 
-const storedLastSearch = () => {
-  const raw = sessionStorage.getItem(LAST_SEARCH_KEY);
-  return raw === null ? null : JSON.parse(raw);
-};
+/* The store holds the URL string verbatim now — no JSON hop to undo. */
+const storedLastSearch = () => sessionStorage.getItem(LAST_SEARCH_KEY);
 
 /* sessionStorage outlives each jsdom render — scrub it so no test inherits
    another test's "last search". */
 beforeEach(() => sessionStorage.clear());
 
+describe("nextSearchParams / searchUrl (the param rules, in one place)", () => {
+  const commit = (
+    prev: string,
+    q: string,
+    mode: SearchMode,
+    asked = false,
+  ): string =>
+    searchUrl(nextSearchParams(new URLSearchParams(prev), { q, mode, asked }));
+
+  it("keeps unknown params — they belong to somebody else", () => {
+    expect(commit("review=included&future=param", "muffins", "hybrid")).toBe(
+      "/?q=muffins&review=included&future=param",
+    );
+  });
+
+  it("keeps hybrid out of the URL and deletes a mode that was there", () => {
+    expect(commit("", "scones", "hybrid")).toBe("/?q=scones");
+    expect(commit("q=scones&mode=vector", "scones", "hybrid")).toBe(
+      "/?q=scones",
+    );
+    expect(commit("q=scones", "scones", "vector")).toBe(
+      "/?q=scones&mode=vector",
+    );
+  });
+
+  it("sets asked=1 on the write that arms the entry", () => {
+    expect(commit("q=scones", "scones", "hybrid", true)).toBe(
+      "/?q=scones&asked=1",
+    );
+  });
+
+  it("drops asked when the question changed, keeps it when it did not", () => {
+    /* A new q or a mode chip addresses a cache entry nobody asked for. */
+    expect(commit("q=scones&asked=1", "muffins", "hybrid")).toBe("/?q=muffins");
+    expect(commit("q=scones&asked=1", "scones", "vector")).toBe(
+      "/?q=scones&mode=vector",
+    );
+    expect(commit("q=scones&asked=1", "scones", "hybrid")).toBe(
+      "/?q=scones&asked=1",
+    );
+  });
+
+  it("deletes an emptied q, and empty params are the bare /", () => {
+    expect(commit("q=scones", "", "hybrid")).toBe("/");
+    expect(searchUrl(new URLSearchParams())).toBe("/");
+  });
+});
+
 describe("last-search persistence (storage writes)", () => {
-  it("submitting a search stores {q, mode, reviewIncluded}", async () => {
+  it("submitting a search stores the committed URL", async () => {
     const user = userEvent.setup();
     renderAt("/");
     await user.type(searchBox(), "scones");
     await user.keyboard("{Enter}");
+    await waitFor(() => expect(storedLastSearch()).toBe("/?q=scones"));
+  });
+
+  it("stores a non-hybrid mode exactly as the URL carries it", async () => {
+    const user = userEvent.setup();
+    renderAt("/?q=frittata");
+    await user.click(screen.getByRole("button", { name: "Vector only" }));
     await waitFor(() =>
-      expect(storedLastSearch()).toEqual({
-        q: "scones",
-        mode: "hybrid",
-        reviewIncluded: false,
-      }),
+      expect(storedLastSearch()).toBe("/?q=frittata&mode=vector"),
     );
   });
 
-  it("a submit with the review filter armed stores reviewIncluded: true", async () => {
+  it("a submit with the review filter armed stores review=included", async () => {
     const user = userEvent.setup();
     renderAt("/?review=included");
     await user.type(searchBox(), "muffins");
     await user.keyboard("{Enter}");
     await waitFor(() =>
-      expect(storedLastSearch()).toEqual({
-        q: "muffins",
-        mode: "hybrid",
-        reviewIncluded: true,
-      }),
+      expect(storedLastSearch()).toBe("/?q=muffins&review=included"),
     );
+  });
+
+  it("survives an ask as ?…&asked=1", async () => {
+    server.use(answersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
+    renderAt("/");
+    await user.type(searchBox(), "scones");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await waitFor(() => expect(storedLastSearch()).toBe("/?q=scones&asked=1"));
   });
 
   it("committing an emptied query removes the key", async () => {
@@ -87,49 +147,33 @@ describe("last-search persistence (storage writes)", () => {
   });
 
   it("a mode-chip click on the bare / leaves the stored search alone", async () => {
-    /* Back to the initial "/" entry (or the Crumb's "Back to Cook") lands
+    /* Back to the initial "/" entry (or the BackLink's "Back to Cook") lands
        here with a search still remembered; toggling a chip commits an empty
        q and must not wipe it (review #1.1). */
-    sessionStorage.setItem(
-      LAST_SEARCH_KEY,
-      JSON.stringify({ q: "frittata", mode: "hybrid", reviewIncluded: false }),
-    );
+    sessionStorage.setItem(LAST_SEARCH_KEY, "/?q=frittata");
     const user = userEvent.setup();
     renderAt("/");
     await user.click(screen.getByRole("button", { name: "Keyword only" }));
-    expect(storedLastSearch()).toEqual({
-      q: "frittata",
-      mode: "hybrid",
-      reviewIncluded: false,
-    });
+    expect(storedLastSearch()).toBe("/?q=frittata");
     expect(cookPill()).toHaveAttribute("href", "/?q=frittata");
   });
 });
 
 describe("Cook pill restore", () => {
   it("carries the stored q from /library", async () => {
-    sessionStorage.setItem(
-      LAST_SEARCH_KEY,
-      JSON.stringify({ q: "frittata", mode: "hybrid", reviewIncluded: false }),
-    );
+    sessionStorage.setItem(LAST_SEARCH_KEY, "/?q=frittata");
     renderAt("/library");
     expect(cookPill()).toHaveAttribute("href", "/?q=frittata");
   });
 
   it("carries a non-hybrid mode", async () => {
-    sessionStorage.setItem(
-      LAST_SEARCH_KEY,
-      JSON.stringify({ q: "frittata", mode: "vector", reviewIncluded: false }),
-    );
+    sessionStorage.setItem(LAST_SEARCH_KEY, "/?q=frittata&mode=vector");
     renderAt("/library");
     expect(cookPill()).toHaveAttribute("href", "/?q=frittata&mode=vector");
   });
 
   it("carries review=included when the stored search was armed", async () => {
-    sessionStorage.setItem(
-      LAST_SEARCH_KEY,
-      JSON.stringify({ q: "frittata", mode: "hybrid", reviewIncluded: true }),
-    );
+    sessionStorage.setItem(LAST_SEARCH_KEY, "/?q=frittata&review=included");
     renderAt("/library");
     expect(cookPill()).toHaveAttribute("href", "/?q=frittata&review=included");
   });
@@ -140,11 +184,14 @@ describe("Cook pill restore", () => {
   });
 
   /* The degrade contract (review #1.5): unreadable or nonsense storage must
-     never break the nav — it falls back to the blank slate, silently. */
+     never break the nav — it falls back to the blank slate, silently. The key
+     is writable from devtools and its value goes straight into an href, so an
+     off-origin value is an open redirect, not merely a broken link. */
   it.each([
     ["corrupt JSON", "{not json"],
-    ["an empty q", JSON.stringify({ q: "", mode: "hybrid" })],
-    ["a non-string q", JSON.stringify({ q: 7, mode: "hybrid" })],
+    ["an empty string", ""],
+    ["an absolute URL", "https://evil.com"],
+    ["a protocol-relative URL", "//evil.com"],
   ])("degrades to bare / on %s in storage", (_label, raw) => {
     sessionStorage.setItem(LAST_SEARCH_KEY, raw);
     renderAt("/library");

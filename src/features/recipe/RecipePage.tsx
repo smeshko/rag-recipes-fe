@@ -1,7 +1,6 @@
 import { useParams } from "react-router";
 import { ApiError, useKnowledgeItem } from "../../api";
-import { Bloom } from "../../ui";
-import { Crumb } from "./Crumb";
+import { BackLink, Bloom } from "../../ui";
 import { FactsRow } from "./FactsRow";
 import { IngredientsPanel } from "./IngredientsPanel";
 import { MethodPanel } from "./MethodPanel";
@@ -78,7 +77,7 @@ export function RecipePage() {
   return (
     <div data-testid="recipe-page">
       <Bloom duration={0.7} delay={0.04} className="pt-8">
-        <Crumb />
+        <BackLink />
       </Bloom>
       {body}
     </div>

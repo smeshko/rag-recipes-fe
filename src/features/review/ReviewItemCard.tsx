@@ -1,12 +1,13 @@
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import {
   type ReviewFlag,
   type ReviewItem,
   type ReviewListResponse,
   useReviewDecision,
 } from "../../api";
+import { withReturnTo } from "../../ui";
 
 /* The flagged-item card (phase 4.3, TASK-002). A vertical-list composition of
    primitives — NOT `Card`, which is the 3-col grid shape — on the BookRow
@@ -18,6 +19,11 @@ import {
    non-wrapping inline-flex and cannot hold sentences). The FE keeps no
    code→copy table: `code` is an opaque backend enum used only as a stable
    key, and the only fallback for an empty `message` is the raw code string.
+
+   Every link OFF this card carries the queue's whole URL as `?from=`
+   (phase 5.1's return-to contract): the ?document= filter the reviewer is
+   working through lives only in that URL, so a link that drops it strands
+   them on the unfiltered queue — or, before the contract, on `/`.
 
    Decisions (TASK-004) run through 4.2's `useReviewDecision(itemId, options)`
    seam as a pure consumer: the card supplies ONLY the snapshot / optimistic
@@ -66,6 +72,9 @@ export function ReviewItemCard({
 
   const queryClient = useQueryClient();
   const [confirmingReject, setConfirmingReject] = useState(false);
+  /* The queue's whole URL — `?document=` and its own `?from=` alike — is the
+     return target; rebuilding it from props is the drift `?from=` removes. */
+  const location = useLocation();
 
   const decide = useReviewDecision<ListSnapshot>(item.id, {
     onMutate: async () => {
@@ -134,7 +143,7 @@ export function ReviewItemCard({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <Link
-          to={`/recipes/${item.id}`}
+          to={withReturnTo(`/recipes/${item.id}`, location)}
           className="text-[12.5px] font-bold text-apricot hover:underline"
         >
           View recipe →

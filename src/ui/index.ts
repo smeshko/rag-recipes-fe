@@ -1,3 +1,4 @@
+export { BackLink } from "./BackLink";
 export type { BloomProps } from "./Bloom";
 export { Bloom } from "./Bloom";
 export type { CardAccent, CardProps } from "./Card";
@@ -8,6 +9,14 @@ export type { PanelProps } from "./Panel";
 export { Panel } from "./Panel";
 export type { PillProps, PillSize, PillTone } from "./Pill";
 export { Pill } from "./Pill";
+export type { ReturnSection, ReturnTarget } from "./returnTo";
+export {
+  isInternalPath,
+  RETURN_TO_ROUTES,
+  readReturnTo,
+  returnSection,
+  withReturnTo,
+} from "./returnTo";
 export type { SearchInputProps } from "./SearchInput";
 export { SearchInput } from "./SearchInput";
 export type { ShellHandle } from "./Shell";

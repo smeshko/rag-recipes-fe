@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { type ApiError, useReviewItems } from "../../api";
-import { Bloom } from "../../ui";
+import { BackLink, Bloom, readReturnTo } from "../../ui";
 import { FilterChip } from "./FilterChip";
 import { ReviewItemCard } from "./ReviewItemCard";
 import {
@@ -27,6 +27,14 @@ export function ReviewPage() {
   const documentId = searchParams.get("document") || undefined;
   const items = useReviewItems(documentId);
   const flagged = items.data?.review_items ?? [];
+
+  /* The queue is the one screen that must NOT degrade to "← Back to Cook":
+     a bookmarked or hand-typed /review would otherwise grow a prominent link
+     dumping the reviewer on the search page — the very failure this contract
+     exists to fix, newly installed on a page that never had a back link.
+     So it is guarded here rather than in BackLink, whose four-arm degrade is
+     right for /recipes/:id. */
+  const returnTarget = readReturnTo(searchParams);
 
   /* Decision failures, keyed by item id (TASK-004). A failed decision
      optimistically UNMOUNTS the card and rolls it back, so the message must
@@ -66,7 +74,19 @@ export function ReviewPage() {
 
   return (
     <div>
-      <Bloom duration={0.7} delay={0.06} className="pt-10 pb-2">
+      {returnTarget !== null && (
+        <Bloom duration={0.7} delay={0.04} className="pt-8">
+          <BackLink />
+        </Bloom>
+      )}
+      {/* The back link takes the head's top padding over, so the queue's
+          total top spacing stays 40px either way — padding moved between two
+          stacked elements, not a restyle. */}
+      <Bloom
+        duration={0.7}
+        delay={0.06}
+        className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
+      >
         <h1 className="font-display text-[clamp(30px,4vw,40px)] font-medium">
           Needs a <em className="text-apricot italic">second look.</em>
         </h1>

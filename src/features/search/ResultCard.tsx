@@ -1,25 +1,26 @@
 import { Link } from "react-router";
-import type { SearchMode } from "../../api/search";
 import type { KnowledgeItemResult } from "../../api/types";
-import { Card, Pill } from "../../ui";
+import { Card, Pill, withReturnTo } from "../../ui";
 import { accentFor } from "./accent";
 
 export interface ResultCardProps {
   result: KnowledgeItemResult;
-  /* {q, mode} exactly — 2.2's crumb destructures both by name, and mode
-     changes the result set, so a back link from q alone would return a
-     vector-mode searcher to hybrid results. */
-  q: string;
-  mode: SearchMode;
+  /* The search these cards came out of, as a location — not read from
+     useLocation here (review #2.2). During a mode change the grid holds the
+     previous mode's results while the URL already names the new one, and a
+     card that captured the URL would send the reader back to a result set the
+     card they clicked is not in. The owner of the results says which search
+     produced them; it builds that with the same nextSearchParams rule the URL
+     itself is built from, so nothing is reconstructed by hand. */
+  from: { pathname: string; search: string };
 }
 
-export function ResultCard({ result, q, mode }: ResultCardProps) {
+export function ResultCard({ result, from }: ResultCardProps) {
   const ingredients = result.structured_preview?.top_ingredients ?? [];
 
   return (
     <Link
-      to={`/recipes/${result.item.id}`}
-      state={{ q, mode }}
+      to={withReturnTo(`/recipes/${result.item.id}`, from)}
       className="group flex"
     >
       <Card
