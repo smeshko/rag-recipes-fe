@@ -1,10 +1,20 @@
+import { useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import type { KnowledgeItemResponse } from "../../../api";
-import { BackLink, Bloom, Eyebrow, Pill } from "../../../ui";
+import {
+  BackLink,
+  Bloom,
+  Eyebrow,
+  Pill,
+  readReturnTo,
+  withReturnTo,
+} from "../../../ui";
 import { statusTone } from "../statusTone";
 import { FactsFields } from "./FactsFields";
 import { IngredientsEditPanel } from "./IngredientsEditPanel";
 import { MethodEditPanel } from "./MethodEditPanel";
 import { TitleFields } from "./TitleFields";
+import { UnsavedGuard } from "./UnsavedGuard";
 import { useEditForm } from "./useEditForm";
 
 /**
@@ -15,16 +25,43 @@ import { useEditForm } from "./useEditForm";
  * `useEditForm` / `useBlocker` / `useBeforeUnload` can be called
  * unconditionally here without any "is there an item yet" narrowing.
  *
- * TASK-005 adds both line panels. The action row and `discardingRef` land in
- * TASK-006 — hence the deliberately partial destructure of `useEditForm`
- * below (`isDirty` and `patchBody` have no consumer until then).
+ * `patchBody` still has no consumer: Save renders disabled and unwired until
+ * phase 5.4 (D12).
  */
 export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
   const status = statusTone(item.knowledge_item.status);
-  const { form, setField, setRows, newRow, isValid } = useEditForm(item);
+  const { form, setField, setRows, newRow, isDirty, isValid } =
+    useEditForm(item);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  /* The discard latch, owned here and read by two consumers that must agree:
+     the Cancel handler below raises it, `UnsavedGuard`'s blocker reads it
+     (D22). A ref, not state, precisely because it has to be readable in the
+     same tick it is written — there is no re-render between the two lines of
+     `onCancel`. */
+  const discardingRef = useRef(false);
+
+  const id = item.knowledge_item.id;
+  /* Cancel returns to the read page for this item, carrying this page's own
+     return target one hop down so the recipe's back link still points where
+     the reviewer came from (D13). The *validated* target travels, never the
+     raw `?from=` — a rejected value is churn the recipe's `BackLink` discards
+     anyway. `withReturnTo` captures a location and concatenates
+     `pathname + search`, so the whole captured URL rides in `pathname`. */
+  const target = readReturnTo(searchParams);
+  const cancelTo = target
+    ? withReturnTo(`/recipes/${id}`, { pathname: target.to, search: "" })
+    : `/recipes/${id}`;
+
+  const onCancel = () => {
+    discardingRef.current = true;
+    navigate(cancelTo);
+  };
 
   return (
     <div data-testid="recipe-edit-page">
+      <UnsavedGuard isDirty={isDirty} discardingRef={discardingRef} />
       <Bloom duration={0.7} delay={0.04} className="pt-8">
         <BackLink />
       </Bloom>
@@ -61,6 +98,30 @@ export function RecipeEditForm({ item }: { item: KnowledgeItemResponse }) {
           />
         </Bloom>
       </div>
+      <Bloom
+        duration={0.7}
+        delay={0.22}
+        className="mt-8 flex items-center gap-3"
+      >
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-pill border border-border px-5 py-2 text-[13px] font-bold text-fg-muted hover:text-fg"
+        >
+          Cancel
+        </button>
+        {/* Deliberately unwired: phase 5.4 owns the mutation and attaches the
+            handler here (D12). The control ships now because the disabled
+            state is itself the epic's acceptance criterion. */}
+        <button
+          type="button"
+          data-testid="edit-save"
+          disabled={!isDirty || !isValid}
+          className="rounded-pill bg-accent px-5 py-2 text-[13px] font-bold text-fg-on-accent disabled:opacity-40"
+        >
+          Save changes
+        </button>
+      </Bloom>
     </div>
   );
 }
