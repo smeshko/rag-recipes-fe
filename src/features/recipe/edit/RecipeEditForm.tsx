@@ -123,7 +123,7 @@ export function RecipeEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-pill border border-border px-5 py-2 text-[13px] font-bold text-fg-muted hover:text-fg"
+          className="rounded-pill border border-border px-5 py-2 text-[13px] font-bold text-fg-muted pointer-coarse:min-h-11 hover:text-fg"
         >
           Cancel
         </button>
@@ -138,7 +138,7 @@ export function RecipeEditForm({
              `fg-on-accent`, and one 5.6's D12 enumeration missed: white on light
              `accent` measures 3.61:1, on `accent-strong` 4.63:1. Theme-agnostic
              like its four siblings; see SearchInput's Ask button. */
-          className="rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold text-fg-on-accent disabled:opacity-40"
+          className="rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold text-fg-on-accent pointer-coarse:min-h-11 disabled:opacity-40"
         >
           Save changes
         </button>

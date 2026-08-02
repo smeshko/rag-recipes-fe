@@ -69,7 +69,7 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         aria-label={label ?? placeholder}
         placeholder={placeholder}
-        className="flex-1 border-none bg-transparent font-display text-[19px] text-fg outline-none"
+        className="flex-1 border-none bg-transparent font-display text-[19px] text-fg outline-none pointer-coarse:min-h-11"
       />
       <button
         type={onAsk ? "button" : "submit"}

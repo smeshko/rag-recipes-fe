@@ -61,7 +61,7 @@ export function IngredientsPanel({
                     type="button"
                     aria-pressed={done}
                     onClick={() => toggle(index)}
-                    className="flex w-full items-start gap-3 rounded-[10px] px-2 py-1.5 text-left transition-colors hover:bg-surface-inset"
+                    className="flex w-full items-start gap-3 rounded-[10px] px-2 py-1.5 text-left transition-colors hover:bg-surface-inset pointer-coarse:min-h-11"
                   >
                     <span
                       aria-hidden="true"

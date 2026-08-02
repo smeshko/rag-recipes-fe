@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router";
 import { readReturnTo, returnSection } from "./returnTo";
 
 const CLASSES =
-  "text-[13px] font-semibold text-fg-muted transition-colors hover:text-accent";
+  "inline-flex items-center text-[13px] font-semibold text-fg-muted transition-colors hover:text-accent pointer-coarse:min-h-11";
 
 /**
  * One hop back, to wherever this screen was actually reached from — read from

@@ -14,7 +14,7 @@ export function NotFoundPage() {
             Ask button for the measured pairs (plan D12). */}
         <Link
           to="/"
-          className="rounded-pill bg-accent-strong px-[26px] py-[13px] text-sm font-bold text-fg-on-accent transition-colors hover:bg-accent-pressed"
+          className="rounded-pill bg-accent-strong px-[26px] py-[13px] inline-flex items-center pointer-coarse:min-h-11 text-sm font-bold text-fg-on-accent transition-colors hover:bg-accent-pressed"
         >
           Back to the kitchen
         </Link>

@@ -47,7 +47,7 @@ export function FallbackNotice({
             <button
               type="button"
               onClick={onRephrase}
-              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning transition-colors hover:bg-warning/8"
+              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning pointer-coarse:min-h-11 transition-colors hover:bg-warning/8"
             >
               Try rephrasing ↻
             </button>

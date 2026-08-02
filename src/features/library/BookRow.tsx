@@ -189,7 +189,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           {(counts?.needs_review_items ?? 0) > 0 && (
             <Link
               to={withReturnTo(reviewQueueUrl(doc.id), location)}
-              className="mt-2 block text-[12.5px] font-bold text-accent hover:underline"
+              className="mt-2 block text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
             >
               Open review queue →
             </Link>
@@ -199,7 +199,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               type="button"
               disabled={reprocess.isPending}
               onClick={() => reprocess.mutate()}
-              className="mt-2 block w-full text-right text-[12.5px] font-bold text-accent hover:underline disabled:opacity-50 max-[880px]:text-left"
+              className="mt-2 block w-full text-right text-[12.5px] font-bold text-accent hover:underline disabled:opacity-50 pointer-coarse:min-h-11 max-[880px]:text-left"
             >
               {doc.status === "failed" ? "Retry ↻" : "Reprocess ↻"}
             </button>

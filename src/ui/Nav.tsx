@@ -42,10 +42,17 @@ function activePill({
   return null;
 }
 
+/* `inline-flex items-center` is load-bearing, not decoration: min-height has
+   no effect on an inline box, and these are <Link>s. `pointer-coarse:min-h-11`
+   is the 44px touch floor — keyed to the POINTER, not to a width, so a
+   landscape phone at 667px gets it too (theme.css's breakpoint note). */
+const PILL_BASE =
+  "inline-flex items-center rounded-pill px-[18px] py-[9px] text-sm font-semibold max-[560px]:px-3 pointer-coarse:min-h-11";
+
 function pillClass(active: boolean): string {
   return active
-    ? "rounded-pill bg-surface-inverted px-[18px] py-[9px] text-sm font-semibold text-fg-inverted"
-    : "rounded-pill px-[18px] py-[9px] text-sm font-semibold text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg";
+    ? `${PILL_BASE} bg-surface-inverted text-fg-inverted`
+    : `${PILL_BASE} text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg`;
 }
 
 export function Nav() {

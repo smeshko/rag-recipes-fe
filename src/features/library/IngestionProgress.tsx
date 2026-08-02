@@ -33,7 +33,7 @@ function StopNotice({
       <button
         type="button"
         onClick={checkAgain}
-        className="font-bold text-accent hover:underline"
+        className="font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
       >
         Check again
       </button>

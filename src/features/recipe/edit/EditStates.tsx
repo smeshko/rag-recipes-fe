@@ -37,7 +37,7 @@ export function NotEditable({
         <p className="mt-5">
           <Link
             to={`/recipes/${id}`}
-            className="text-[12.5px] font-bold text-accent hover:underline"
+            className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
           >
             View the recipe →
           </Link>

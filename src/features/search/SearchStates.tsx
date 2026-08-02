@@ -51,7 +51,7 @@ export function SearchError({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-90"
       >
         Try again
       </button>

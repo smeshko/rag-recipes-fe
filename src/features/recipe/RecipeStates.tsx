@@ -14,7 +14,7 @@ export function RecipeNotFound({ id }: { id: string | undefined }) {
       <p className="mt-5">
         <Link
           to="/"
-          className="text-[14px] font-semibold text-accent transition-colors hover:text-accent-strong"
+          className="text-[14px] font-semibold text-accent transition-colors hover:text-accent-strong inline-flex items-center pointer-coarse:min-h-11"
         >
           ← Back to Cook
         </Link>
@@ -37,7 +37,7 @@ export function RecipeError({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-90"
       >
         Try again
       </button>
@@ -59,7 +59,7 @@ export function RecipeNotARecipe({ title }: { title: string }) {
       <p className="mt-5">
         <Link
           to="/"
-          className="text-[14px] font-semibold text-accent transition-colors hover:text-accent-strong"
+          className="text-[14px] font-semibold text-accent transition-colors hover:text-accent-strong inline-flex items-center pointer-coarse:min-h-11"
         >
           ← Back to Cook
         </Link>

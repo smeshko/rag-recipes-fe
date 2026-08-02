@@ -172,7 +172,7 @@ export function LineListEditor({
         type="button"
         ref={addRef}
         onClick={add}
-        className="mt-3 w-full rounded-[10px] border border-border-strong border-dashed py-2 text-[13px] font-bold text-accent hover:bg-accent-fill"
+        className="mt-3 w-full rounded-[10px] border border-border-strong border-dashed py-2 text-[13px] font-bold text-accent pointer-coarse:min-h-11 hover:bg-accent-fill"
       >
         {addLabel}
       </button>
@@ -181,7 +181,7 @@ export function LineListEditor({
 }
 
 const controlClass =
-  "text-[13px] font-bold text-fg-subtle hover:text-accent disabled:cursor-default disabled:opacity-40";
+  "grid place-items-center text-[13px] font-bold text-fg-subtle hover:text-accent disabled:cursor-default disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
 interface RowProps {
   row: LineRow;

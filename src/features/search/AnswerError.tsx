@@ -18,7 +18,7 @@ export function AnswerError({
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-pill bg-danger px-4 py-1.5 text-[12.5px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
+        className="rounded-pill bg-danger px-4 py-1.5 pointer-coarse:min-h-11 text-[12.5px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
       >
         Try again
       </button>

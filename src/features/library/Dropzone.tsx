@@ -88,7 +88,7 @@ export function Dropzone() {
              does nothing useful and would fight w-full, so it is dropped
              there. Drag-and-drop is meaningless on a phone — this button is
              the only real affordance, hence full width. */
-          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60 max-[560px]:ml-0 max-[560px]:w-full"
+          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent pointer-coarse:min-h-11 transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60 max-[560px]:ml-0 max-[560px]:w-full"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */

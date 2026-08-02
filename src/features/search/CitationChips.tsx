@@ -25,6 +25,13 @@ function Chip({ citation }: { citation: AnswerCitation }) {
       to={withReturnTo(`/recipes/${citation.knowledge_item_id}`, location)}
       aria-label={destination}
       title={destination}
+      /* Marks this link as an INLINE target, exempt from the 44px floor under
+         WCAG 2.2 SC 2.5.8's inline exception — it sits inside running answer
+         prose, and growing it would turn a paragraph into a column of rows.
+         The attribute exists so the tap-target sweep can express that
+         exemption mechanically instead of a human waving at the output; see
+         the plan's TASK-006. */
+      data-citation-chip=""
       /* The hover fill is `accent-strong`, not `accent`: `fg-on-accent` on
          light `accent` is 3.61:1 and this chip is the fourth of the four
          solid-accent surfaces carrying `fg-on-accent` (plan D12). On

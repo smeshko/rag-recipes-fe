@@ -36,7 +36,7 @@ export function FilterChip({
         type="button"
         aria-label="Clear the book filter"
         onClick={onClear}
-        className="text-[15px] leading-none transition-opacity hover:opacity-60"
+        className="grid place-items-center text-[15px] leading-none transition-opacity hover:opacity-60 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
       >
         ×
       </button>
