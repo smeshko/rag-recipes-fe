@@ -48,7 +48,13 @@ import type {
    that empties a list or drops the body under MOCK_MIN_RECIPE_CHARS RAISES
    the code again, exactly as the server's `validate_soft` re-derivation
    would. The four preserve-only codes are never raised — the mock has no
-   basis to invent a confidence verdict or an upper length bound. */
+   basis to invent a confidence verdict or an upper length bound.
+
+   Two of them are still DROPPED when the corrected content makes them
+   impossible rather than merely unfixed (`coherent` below): recipe_too_long
+   alongside a body that is now too short, and low_normalization_confidence
+   with no ingredient lines left to be below the threshold. The mock must not
+   answer with a state the server could not produce. */
 
 /** The copy table, transcribed verbatim from the backend's
     `api/review_reasons.py` SOFT_WARNING_MESSAGES. These seven codes are the
@@ -459,7 +465,36 @@ export const recomputeWarnings = (
     (code) =>
       !warnings.includes(code) && warrantedByContent(code, structuredData),
   );
-  return [...kept, ...raised];
+  return coherent([...kept, ...raised], structuredData);
+};
+
+/** Drop preserve-only codes the corrected content makes IMPOSSIBLE, as
+    opposed to merely unfixed. The mock derives one half of two coupled
+    families, so the coherence rule is applied after recomputation rather
+    than folded into it — a state the server could never answer with must
+    not reach phase 5.3's UI just because the mock only models one side:
+
+    - a body cannot be under the lower bound and over the upper one at once,
+      and the lower bound is the one the mock actually measures;
+    - `validate_soft` takes the MINIMUM normalization confidence across the
+      ingredient list, so with no ingredients left there is no line below the
+      threshold. This is narrower than D7's divergence, which is about a
+      list that still HAS lines whose confidence the fixtures cannot track. */
+const coherent = (
+  codes: string[],
+  structuredData: RecipeStructuredData,
+): string[] => {
+  const tooShort = codes.includes("recipe_too_short");
+  const noIngredients = (structuredData.ingredients ?? []).length === 0;
+  return codes.filter((code) => {
+    if (code === "recipe_too_long") {
+      return !tooShort;
+    }
+    if (code === "low_normalization_confidence") {
+      return !noIngredients;
+    }
+    return true;
+  });
 };
 
 /* ---------- the pure patch core ---------- */

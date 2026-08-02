@@ -419,9 +419,39 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
 
     /* The server clears this once the rebuilt body drops back under the upper
        bound; the mock models no upper bound at all (PLAN D7, contract §2), so
-       even a drastically shortened body keeps the code. 5.3 must not build
-       clearing UI on it. The same shortening RAISES recipe_too_short, which
-       the mock does model — so both rows show up in one response. */
+       a shortened body — one still over the LOWER bound, which the mock does
+       measure — keeps the code. 5.3 must not build clearing UI on it. */
+    const after = (
+      await patch("item_edit_toolong", {
+        ingredients: ["2 cups bread flour", "1 tsp fine sea salt"],
+        steps: [
+          "Mix the flour and salt, then knead until the dough is smooth.",
+          "Bake for forty minutes and cool on a rack.",
+        ],
+      })
+    ).knowledge_item;
+
+    expect(after.structured_data.warnings).toEqual(["recipe_too_long"]);
+    expect(after.review_reasons).toEqual([
+      {
+        code: "recipe_too_long",
+        message: SOFT_WARNING_MESSAGES.recipe_too_long,
+      },
+    ]);
+  });
+
+  /* ---------- states the server could never answer with ---------- */
+
+  it("never reports a body as both too short and too long", async () => {
+    server.use(
+      knowledgeItemPatchHandler([
+        withWarnings("item_edit_toolong", ["recipe_too_long"]),
+      ]),
+    );
+
+    /* Cut the body under the lower bound: recipe_too_short is derived, and
+       recipe_too_long — which the mock only ever carries forward — cannot
+       survive next to it. */
     const after = (
       await patch("item_edit_toolong", {
         ingredients: ["2 cups bread flour"],
@@ -429,20 +459,22 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       })
     ).knowledge_item;
 
-    expect(after.structured_data.warnings).toEqual([
-      "recipe_too_long",
-      "recipe_too_short",
-    ]);
-    expect(after.review_reasons).toEqual([
-      {
-        code: "recipe_too_long",
-        message: SOFT_WARNING_MESSAGES.recipe_too_long,
-      },
-      {
-        code: "recipe_too_short",
-        message: SOFT_WARNING_MESSAGES.recipe_too_short,
-      },
-    ]);
+    expect(after.structured_data.warnings).toEqual(["recipe_too_short"]);
+  });
+
+  it("drops low_normalization_confidence once no ingredient line is left", async () => {
+    /* `validate_soft` takes the MINIMUM normalization confidence across the
+       list; an empty list has no line below the threshold. Narrower than D7's
+       divergence, which is about a list that still HAS untrusted lines. */
+    const after = (await patch("item_edit_confidence", { ingredients: [] }))
+      .knowledge_item;
+
+    expect(after.structured_data.warnings).not.toContain(
+      "low_normalization_confidence",
+    );
+    expect(after.review_reasons.map((reason) => reason.code)).not.toContain(
+      "low_normalization_confidence",
+    );
   });
 
   /* ---------- flags an edit RAISES ---------- */
@@ -466,10 +498,12 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       code: "no_ingredients",
       message: SOFT_WARNING_MESSAGES.no_ingredients,
     });
-    /* The codes it already carried are still there, in their original order. */
-    expect((after.structured_data.warnings ?? []).slice(0, 2)).toEqual([
+    /* The confidence code it already carried is still there and still first.
+       low_normalization_confidence is NOT — an empty list has no line below
+       the threshold, so the server could not report it either. */
+    expect(after.structured_data.warnings).toEqual([
       "low_boundary_confidence",
-      "low_normalization_confidence",
+      "no_ingredients",
     ]);
   });
 
