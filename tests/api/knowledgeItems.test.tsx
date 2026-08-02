@@ -350,6 +350,73 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
     }
   });
 
+  /* The remaining two rows of the contract's §2 table have no fixture of
+     their own — the roster proves the branches an edit can reach, and these
+     two are reached by a warning list rather than by content. Register a
+     one-off item over the base handler so each row still has its own named
+     test. */
+  const withWarnings = (
+    id: string,
+    warnings: string[],
+  ): KnowledgeItemResponse => {
+    const item = structuredClone(fixture("item_edit_confidence"));
+    item.knowledge_item.id = id;
+    item.knowledge_item.structured_data.warnings = warnings;
+    item.knowledge_item.review_reasons = warnings.map((code) => ({
+      code,
+      message: SOFT_WARNING_MESSAGES[code] as string,
+    }));
+    return item;
+  };
+
+  it("clears no_steps once the patch supplies a non-empty step list", async () => {
+    const item = withWarnings("item_edit_nosteps", ["no_steps"]);
+    item.knowledge_item.structured_data.steps = [];
+    item.knowledge_item.structured_data.steps_text = "";
+    server.use(knowledgeItemPatchHandler([item]));
+
+    const untouched = (
+      await patch("item_edit_nosteps", { title: "Honey Oat Loaf, corrected" })
+    ).knowledge_item;
+    expect(untouched.structured_data.warnings).toEqual(["no_steps"]);
+
+    const after = (
+      await patch("item_edit_nosteps", {
+        steps: ["Knead for ten minutes.", "Bake for forty minutes."],
+      })
+    ).knowledge_item;
+
+    expect(after.structured_data.warnings).toEqual([]);
+    expect(after.review_reasons).toEqual([]);
+  });
+
+  it("keeps recipe_too_long — a documented mock divergence, not the server's behaviour", async () => {
+    server.use(
+      knowledgeItemPatchHandler([
+        withWarnings("item_edit_toolong", ["recipe_too_long"]),
+      ]),
+    );
+
+    /* The server clears this once the rebuilt body drops back under the upper
+       bound; the mock models no upper bound at all (PLAN D7, contract §2), so
+       even a drastically shortened body keeps the code. 5.3 must not build
+       clearing UI on it. */
+    const after = (
+      await patch("item_edit_toolong", {
+        ingredients: ["2 cups bread flour"],
+        steps: ["Mix."],
+      })
+    ).knowledge_item;
+
+    expect(after.structured_data.warnings).toEqual(["recipe_too_long"]);
+    expect(after.review_reasons).toEqual([
+      {
+        code: "recipe_too_long",
+        message: SOFT_WARNING_MESSAGES.recipe_too_long,
+      },
+    ]);
+  });
+
   /* ---------- edited_at ---------- */
 
   it("stamps edited_at and leaves the item needs_review", async () => {
