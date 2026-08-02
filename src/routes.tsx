@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { NotFoundPage } from "./features/notfound/NotFoundPage";
+import { RecipeEditPage } from "./features/recipe/edit/RecipeEditPage";
 import { RecipePage } from "./features/recipe/RecipePage";
 import { ReviewPage } from "./features/review/ReviewPage";
 import { SearchPage } from "./features/search/SearchPage";
@@ -26,6 +27,11 @@ export const routes: RouteObject[] = [
       {
         path: "/recipes/:id",
         element: <RecipePage />,
+        handle: { width: "narrow" } satisfies ShellHandle,
+      },
+      {
+        path: "/recipes/:id/edit",
+        element: <RecipeEditPage />,
         handle: { width: "narrow" } satisfies ShellHandle,
       },
       {

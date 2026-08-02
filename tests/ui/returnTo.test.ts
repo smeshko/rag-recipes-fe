@@ -162,9 +162,23 @@ describe("returnSection", () => {
 });
 
 describe("RETURN_TO_ROUTES", () => {
-  it("stays in step with the route table, catch-all excluded", () => {
+  /* Two documented exclusions, not a loosened check — a subset assertion here
+     would kill the tripwire that catches a new route nobody taught the back
+     link about. `*` would accept every string on earth; `/recipes/:id/edit` is
+     a form, and a back link that returns a user to one they abandoned is
+     wrong — worse, admitting it would let a hand-edited `?from=/recipes/x/edit`
+     aim a recipe page's back link into the editor. */
+  const EXCLUDED = ["*", "/recipes/:id/edit"];
+
+  it("stays in step with the route table, catch-all and edit excluded", () => {
     const childPaths = (routes[0].children ?? []).map((route) => route.path);
 
-    expect(new Set(childPaths)).toEqual(new Set([...RETURN_TO_ROUTES, "*"]));
+    expect(new Set(childPaths)).toEqual(
+      new Set([...RETURN_TO_ROUTES, ...EXCLUDED]),
+    );
+  });
+
+  it("rejects the edit route as a return target", () => {
+    expect(readFrom("/recipes/x/edit")).toBeNull();
   });
 });
