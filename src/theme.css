@@ -7,7 +7,7 @@
 @source not "../design";
 
 /* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
-   --sage is #5C6B4C (the value the mockups actually paint), not the dead
+   --color-sage is #5c6b4c (the value the mockups actually paint), not the dead
    #7C8A6E declaration; see the plan's DECISIONS.md D4.
 
    NAMING RULE: every --color-* is named for the ROLE it plays (surface, fg,
@@ -61,32 +61,6 @@
   --color-butter: #9a7b25; /* book accent 3, ink */
   --color-butter-fill: #fbf0d3; /* book accent 3, tint */
 
-  /* --- Pigment tokens, superseded by the role names above. TASK-008 of the
-     role-named-tokens plan deletes this block wholesale once every call site
-     has been swept; until then both sets resolve so each commit still
-     paints. Do not add to it. --- */
-  --color-cream: #fbf7ef;
-  --color-card: #ffffff;
-  --color-ink: #2b241a;
-  --color-ink-soft: #6b6152;
-  --color-ink-faint: #a2977f;
-  --color-apricot: #c96f3b;
-  --color-apricot-soft: #f7e8dc;
-  --color-apricot-deep: #b25e2e;
-  --color-butter-soft: #fbf0d3;
-  --color-butter-ink: #9a7b25;
-  --color-sage-soft: #edf0e6;
-  --color-terra-soft: #f5e3d3;
-  --color-terra-ink: #a05a2c;
-  --color-ok: #3e7a50;
-  --color-ok-soft: #e6f2e6;
-  --color-amber-ink: #8f6a1e;
-  --color-amber-bg: #fbf3dc;
-  --color-amber-line: #ead9a8;
-  --color-danger-soft: #fbeae4;
-  --color-danger-line: #f0cdbf;
-  --color-line: #ede5d6;
-
   /* --- Gradients --- */
   /* The warm aside/provenance fill — the design set's one shared gradient. */
   --gradient-warm: linear-gradient(
@@ -123,11 +97,12 @@
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
-   baseline is Figtree 15px/1.55 on the radial cream wash. */
+   baseline is Figtree 15px/1.55 on the radial page wash
+   (--color-surface, highlit by --color-surface-glow). */
 @layer base {
   body {
     /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
-       widgets (scrollbars, input chrome, autofill) against the cream wash. */
+       widgets (scrollbars, input chrome, autofill) against the light wash. */
     color-scheme: light;
     background:
       radial-gradient(
@@ -215,7 +190,9 @@
     }
   }
 
-  /* Card headers are flat soft fills with an accent ink — never gradients. */
+  /* Card headers are a flat book-accent tint under its ink — never gradients.
+     They live here rather than on the utility class list because the accent is
+     chosen at runtime by accentFor(); the pair must move as one. */
   .card-head-terra {
     background: var(--color-terra-fill);
     color: var(--color-terra);
