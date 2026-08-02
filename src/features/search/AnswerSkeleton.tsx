@@ -10,7 +10,10 @@ export function AnswerSkeleton() {
         aria-hidden="true"
         className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] overflow-hidden rounded-[22px] border border-border bg-surface-raised shadow-card max-[960px]:grid-cols-1"
       >
-        <div className="p-9">
+        {/* Tracks AnswerCard's prose column at every tier — the skeleton
+            exists to make the pending→loaded swap not jump, so a padding
+            change there that is not mirrored here defeats the component. */}
+        <div className="p-9 max-[560px]:px-5 max-[560px]:py-6">
           <div className="h-7 w-56 animate-pulse rounded-pill bg-accent-fill" />
           <div className="mt-5 space-y-3">
             <div className="h-4 w-full animate-pulse rounded bg-skeleton/60" />
@@ -20,7 +23,7 @@ export function AnswerSkeleton() {
             <div className="h-4 w-3/4 animate-pulse rounded bg-skeleton/40" />
           </div>
         </div>
-        <div className="space-y-3 border-l border-border p-7 max-[960px]:border-t max-[960px]:border-l-0">
+        <div className="space-y-3 border-l border-border p-7 max-[960px]:border-t max-[960px]:border-l-0 max-[560px]:p-5">
           <div className="h-3 w-28 animate-pulse rounded bg-skeleton/50" />
           <div className="h-16 animate-pulse rounded-[14px] bg-skeleton/40" />
           <div className="h-16 animate-pulse rounded-[14px] bg-skeleton/30" />

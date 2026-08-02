@@ -39,7 +39,12 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <form
-      className="flex items-center gap-3.5 rounded-pill border border-border bg-surface-raised py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-focus"
+      /* The pill's chrome is fixed-width and the input is the only flexible
+         part, so every px of gutter comes straight out of the typing area:
+         at 375px the desktop values leave it under 200px. The phone tier
+         trims the left gutter and the inner gaps rather than the button,
+         which has to stay legible. */
+      className="flex items-center gap-3.5 rounded-pill border border-border bg-surface-raised py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-focus max-[560px]:gap-2.5 max-[560px]:pl-4"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -64,7 +69,7 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         aria-label={label ?? placeholder}
         placeholder={placeholder}
-        className="flex-1 border-none bg-transparent font-display text-[19px] text-fg outline-none"
+        className="flex-1 border-none bg-transparent font-display text-[19px] text-fg outline-none pointer-coarse:min-h-11"
       />
       <button
         type={onAsk ? "button" : "submit"}
@@ -79,7 +84,7 @@ export function SearchInput({
            is also the right rest→hover direction for a dark solid. The hexes
            behind those ratios live in src/theme.css; plan D12 and
            RESEARCH.md's contrast tables carry the working. */
-        className="rounded-pill bg-accent-strong px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-fg-on-accent transition-[background-color,transform] duration-[200ms] hover:bg-accent-pressed active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-pill bg-accent-strong px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-fg-on-accent transition-[background-color,transform] duration-[200ms] hover:bg-accent-pressed active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 max-[560px]:px-[18px]"
       >
         Ask
       </button>

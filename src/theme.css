@@ -6,6 +6,31 @@
    must move with it, or the mockups silently rejoin the build (no error). */
 @source not "../design";
 
+/* BREAKPOINTS — three tiers, all desktop-first `max-[NNNpx]` arbitrary
+   variants. There is deliberately no `--breakpoint-*` token: declaring one
+   would mint Tailwind's mobile-first `sm:`-style variants and invite a
+   half-migration, inverting the polarity of the 26 rules already written this
+   way and desynchronising src/ from design/, which expresses the same two
+   tablet rules as `@media (max-width: 880px|960px)`.
+
+     max-[960px]  the answer card and the 3-col results grid go single-column
+     max-[880px]  the recipe columns, book rows and ingredients panel reflow
+     max-[560px]  PHONE. Gutters, padding and stacked action rows.
+
+   Note the arithmetic: Tailwind v4 compiles `max-[Npx]` to
+   `@media not all and (min-width: Npx)`, which is EXCLUSIVE — the rules apply
+   at 559px and below, not at 560. Measured, not assumed. Nothing depends on
+   the exact edge, but don't write a test asserting the flip happens AT 560.
+
+   560 is picked to sit clear of both neighbours: comfortably below 880 so the
+   tiers never collide, and comfortably above the ~430px widest phone in
+   portrait, so split-view and small-tablet widths get the phone treatment too.
+
+   TOUCH SIZING IS NOT A WIDTH CONCERN. Tap targets key off `pointer-coarse:`,
+   never off 560 — a 667x375 landscape phone is a coarse pointer at a width no
+   phone tier matches, and keying targets to width leaves it with 30px
+   controls. Layout reflows by width; hit areas grow by pointer type. */
+
 /* Rebinds Tailwind's built-in `dark` variant from `prefers-color-scheme: dark`
    to the RESOLVED theme stamped on <html> — the OS preference is resolved in
    JS (src/ui/theme/themeStore.ts), so CSS only ever sees "light" or "dark".
@@ -251,7 +276,27 @@ html[data-theme="dark"] {
     font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.55;
-    min-height: 100vh;
+    /* dvh, not vh: mobile Safari's `vh` is the *largest* viewport, so with the
+       toolbar shown 100vh overflows and every page gains a phantom scroll. */
+    min-height: 100dvh;
+    /* Almost every long string on screen is authored somewhere else — book
+       titles and recipe lines from extraction, filenames from the file
+       picker, error messages from the API, search queries from the URL. A
+       single unbroken 60-character token in any of them widens the whole page
+       at 375px, and no amount of per-component padding prevents it.
+
+       `anywhere`, NOT `break-word`, and the difference is the whole point:
+       only `anywhere` lets a soft wrap opportunity count toward an element's
+       min-content size. `break-word` breaks the line but still reports the
+       unbroken word as the minimum width, so a flex child or a `1fr` grid
+       track — the recipe's ingredient rows and method steps are both — sizes
+       itself to the whole token and pushes the page sideways anyway. Measured:
+       with `break-word` a 60-character ingredient line still overflowed 375px.
+
+       Set on body so it inherits everywhere rather than being remembered per
+       component — the string that breaks the layout is precisely the one
+       nobody remembered to guard. */
+    overflow-wrap: anywhere;
   }
 }
 

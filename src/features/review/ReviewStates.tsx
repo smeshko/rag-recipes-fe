@@ -33,7 +33,7 @@ export function ReviewError({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90 pointer-coarse:min-h-11"
       >
         Try again
       </button>
@@ -50,7 +50,7 @@ export function ReviewEmptyFiltered({ onClear }: { onClear: () => void }) {
       <button
         type="button"
         onClick={onClear}
-        className="mt-2 text-[12.5px] font-bold text-accent hover:underline"
+        className="mt-2 inline-flex items-center text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
       >
         See the whole queue
       </button>

@@ -1,8 +1,20 @@
 import { Link, useSearchParams } from "react-router";
 import { readReturnTo, returnSection } from "./returnTo";
 
+/* The touch floor here is `inline-block` + vertical padding, NOT
+   `inline-flex` + min-height, and the difference is a visible bug.
+
+   The search arm renders two children — the text run "← Back to results · "
+   and an <em> holding the query. Under `inline-flex` each becomes its own
+   anonymous flex item, and a flex item's trailing whitespace is trimmed, so
+   the label collapsed to `← Back to results ·“breakfast”`. `inline-block`
+   keeps an inline formatting context inside, so the space survives; padding
+   grows the box symmetrically and centres the text without `items-center`.
+
+   Guarded behind `pointer-coarse:` so the fine-pointer rendering — where the
+   link is a plain inline box with no padding — is byte-identical to before. */
 const CLASSES =
-  "text-[13px] font-semibold text-fg-muted transition-colors hover:text-accent";
+  "text-[13px] font-semibold text-fg-muted transition-colors hover:text-accent pointer-coarse:inline-block pointer-coarse:py-3";
 
 /**
  * One hop back, to wherever this screen was actually reached from — read from

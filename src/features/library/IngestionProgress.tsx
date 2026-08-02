@@ -33,7 +33,7 @@ function StopNotice({
       <button
         type="button"
         onClick={checkAgain}
-        className="font-bold text-accent hover:underline"
+        className="font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
       >
         Check again
       </button>
@@ -67,7 +67,7 @@ export function IngestionProgress({
   const states = stageStates(status);
 
   return (
-    <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
+    <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5">
       <div className="mb-2 flex justify-between text-[12.5px] font-semibold text-fg-muted">
         <span>{stageLabel(status)}</span>
         {determinate && (
@@ -101,7 +101,10 @@ export function IngestionProgress({
       </div>
       <ol
         aria-label="Ingestion stages"
-        className="mt-2.5 flex list-none gap-1.5 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
+        /* Seven stages (stages.ts), each with a possible ✓ or ● marker, plus
+           six gaps — it does not fit 335px on one line, so it wraps rather
+           than pushing the row wide. */
+        className="mt-2.5 flex list-none flex-wrap gap-x-1.5 gap-y-1 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
       >
         {PIPELINE_STAGES.map((stage, index) => {
           const state = states[index];

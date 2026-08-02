@@ -102,14 +102,14 @@ export function UnsavedGuard({ isDirty, discardingRef }: UnsavedGuardProps) {
           <button
             type="button"
             onClick={() => blocker.proceed?.()}
-            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent"
+            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent pointer-coarse:min-h-11"
           >
             Discard
           </button>
           <button
             type="button"
             onClick={() => blocker.reset?.()}
-            className="text-[12.5px] font-bold text-accent hover:underline"
+            className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
           >
             Keep editing
           </button>

@@ -28,7 +28,7 @@ export function AnswerCta({
           type="button"
           onClick={onAsk}
           disabled={disabled}
-          className="rounded-pill border-[1.5px] border-accent px-4 py-1.5 text-[13px] font-bold text-accent-strong transition-colors hover:bg-accent-fill disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+          className="rounded-pill border-[1.5px] border-accent px-4 py-1.5 text-[13px] font-bold text-accent-strong pointer-coarse:min-h-11 transition-colors hover:bg-accent-fill disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
         >
           Ask the shelf
         </button>

@@ -9,7 +9,7 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
 
   return (
     <div
-      className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-border px-7 py-6"
+      className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5"
       style={{ background: "var(--gradient-warm)" }}
     >
       <p className="text-[13.5px] text-fg-muted">

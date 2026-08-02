@@ -172,7 +172,7 @@ export function LineListEditor({
         type="button"
         ref={addRef}
         onClick={add}
-        className="mt-3 w-full rounded-[10px] border border-border-strong border-dashed py-2 text-[13px] font-bold text-accent hover:bg-accent-fill"
+        className="mt-3 w-full rounded-[10px] border border-border-strong border-dashed py-2 text-[13px] font-bold text-accent pointer-coarse:min-h-11 hover:bg-accent-fill"
       >
         {addLabel}
       </button>
@@ -181,7 +181,7 @@ export function LineListEditor({
 }
 
 const controlClass =
-  "text-[13px] font-bold text-fg-subtle hover:text-accent disabled:cursor-default disabled:opacity-40";
+  "grid place-items-center text-[13px] font-bold text-fg-subtle hover:text-accent disabled:cursor-default disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
 interface RowProps {
   row: LineRow;
@@ -259,9 +259,20 @@ function Row({
        no ordinal: with three tracks and two children the textarea would land
        in the leading `auto` track and size to its own text, leaving `w-full`
        to mean "as wide as this line happens to be". */
+    /* On the phone tier the control column moves BELOW the field instead of
+       beside it. Three 44px touch targets plus their gaps claim ~150px, which
+       out of a 335px row left the textarea near 110px — narrow enough that
+       ordinary words broke mid-word. Dropping the trailing track and letting
+       the controls take their own line gives the field the full width.
+
+       minmax(0,1fr) rather than 1fr on the text track: a grid track's implicit
+       min-width is auto, so a long unbroken word would otherwise size the
+       track to itself and push the row wide, regardless of overflow-wrap. */
     <li
       className={`grid items-start gap-2 ${
-        ordered ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[1fr_auto]"
+        ordered
+          ? "grid-cols-[auto_minmax(0,1fr)_auto] max-[560px]:grid-cols-[auto_minmax(0,1fr)]"
+          : "grid-cols-[minmax(0,1fr)_auto] max-[560px]:grid-cols-[minmax(0,1fr)]"
       }`}
     >
       {ordered ? (
@@ -277,9 +288,20 @@ function Row({
         aria-label={`${capitalize(noun)} ${position}`}
         value={row.text}
         onChange={(event) => onText(index, event.target.value)}
-        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg focus:border-accent focus:shadow-focus focus:outline-none"
+        /* text-base on phones: under 16px, iOS zooms the viewport on focus,
+           and these textareas are what a reviewer actually types into. The
+           auto-grow layout effect re-measures on every change, so the larger
+           face just means a taller box, not a clipped one. */
+        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg pointer-coarse:min-h-11 pointer-coarse:text-base focus:border-accent focus:shadow-focus focus:outline-none"
       />
-      <span className="mt-1.5 flex items-center gap-2">
+      {/* col-start-2 on the ordered arm keeps the controls under the field
+          rather than under the ordinal; justify-end puts them on the thumb
+          side. */}
+      <span
+        className={`mt-1.5 flex items-center gap-2 max-[560px]:justify-end ${
+          ordered ? "max-[560px]:col-start-2" : ""
+        }`}
+      >
         <button
           type="button"
           ref={setUpNode}

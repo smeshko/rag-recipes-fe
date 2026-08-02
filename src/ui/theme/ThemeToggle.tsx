@@ -83,10 +83,15 @@ const SEGMENTS: readonly Segment[] = [
    than an import of Nav's private helper: Nav styles links with text padding,
    this styles square icon buttons, and coupling them would make one file's
    density change silently move the other. */
+/* Icon-only segments, so they need a floor on BOTH axes — 32x32 at rest.
+   grid place-items-center keeps the icon centred once the box grows. */
+const SEGMENT_BASE =
+  "grid place-items-center rounded-pill p-2 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
+
 function segmentClass(selected: boolean): string {
   return selected
-    ? "rounded-pill bg-surface-inverted p-2 text-fg-inverted"
-    : "rounded-pill p-2 text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg";
+    ? `${SEGMENT_BASE} bg-surface-inverted text-fg-inverted`
+    : `${SEGMENT_BASE} text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg`;
 }
 
 export function ThemeToggle() {

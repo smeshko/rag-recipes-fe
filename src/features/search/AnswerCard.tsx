@@ -28,7 +28,9 @@ export function AnswerCard({ answer }: { answer: AnswerResponse }) {
   return (
     <Bloom duration={0.7} delay={0.2} className="mt-14">
       <section className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] overflow-hidden rounded-panel border border-border bg-surface-raised shadow-card max-[960px]:grid-cols-1">
-        <div className="px-[38px] py-[34px]">
+        {/* 38px a side is 76px of a 335px phone box — over a fifth of the
+            width spent on gutter, on the one surface that is pure prose. */}
+        <div className="px-[38px] py-[34px] max-[560px]:px-5 max-[560px]:py-6">
           <Eyebrow>
             Grounded in your books · {chipCount} citation
             {chipCount === 1 ? "" : "s"}
@@ -39,7 +41,9 @@ export function AnswerCard({ answer }: { answer: AnswerResponse }) {
           <TrailingChips citations={answer.citations} inlineIds={inline} />
         </div>
         <aside
-          className="flex flex-col gap-3.5 border-l border-border p-[30px] max-[960px]:border-t max-[960px]:border-l-0"
+          /* Stays tighter than the prose column at every width — the aside is
+             a secondary surface and reads as one because of the difference. */
+          className="flex flex-col gap-3.5 border-l border-border p-[30px] max-[960px]:border-t max-[960px]:border-l-0 max-[560px]:p-5"
           style={{ background: "var(--gradient-warm)" }}
         >
           <h4 className="text-[12px] font-bold tracking-[0.12em] text-fg-subtle uppercase">

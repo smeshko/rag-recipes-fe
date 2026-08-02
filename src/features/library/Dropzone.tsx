@@ -43,7 +43,11 @@ export function Dropzone() {
       <div
         data-testid="dropzone"
         aria-busy={upload.isPending}
-        className={`flex cursor-pointer items-center gap-6 rounded-[20px] border-2 border-dashed p-[34px] transition-colors duration-200 ${zoneLook}`}
+        /* The one row on the site with no `flex-wrap` and two `flex-none`
+           children — a 54px tile and a button — so at 375px it could not
+           shrink and simply overflowed. On the phone tier it becomes a
+           stack; note `items-start`, so the icon does not stretch. */
+        className={`flex cursor-pointer items-center gap-6 rounded-[20px] border-2 border-dashed p-[34px] transition-colors duration-200 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-4 max-[560px]:p-6 ${zoneLook}`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => event.preventDefault()}
         onDragEnter={(event) => {
@@ -80,7 +84,11 @@ export function Dropzone() {
           disabled={upload.isPending}
           /* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
              Ask button for the measured pairs (plan D12). */
-          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60"
+          /* ml-auto is what pushes it right in the row; in the stacked arm it
+             does nothing useful and would fight w-full, so it is dropped
+             there. Drag-and-drop is meaningless on a phone — this button is
+             the only real affordance, hence full width. */
+          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent pointer-coarse:min-h-11 transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60 max-[560px]:ml-0 max-[560px]:w-full"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */
