@@ -158,12 +158,24 @@ describe("page wash hexes stay in sync outside theme.css", () => {
   ].sort();
 
   it("matches the pre-paint script in index.html", () => {
-    const script = readFileSync(join(process.cwd(), "index.html"), "utf8")
-      /* Comments carry the hexes as prose too — strip them, or the assertion
-         passes on the documentation rather than on the code. */
-      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const html = readFileSync(join(process.cwd(), "index.html"), "utf8");
 
-    expect([...new Set(hexes(script))].sort()).toEqual(expected);
+    /* Scoped to the pre-paint <script>, not to the file. The rest of <head> is
+       allowed its own colours — a `<meta name="theme-color">`, a tile colour, an
+       inline SVG favicon — and a guard that failed on those would be reporting
+       "the pre-paint script drifted" about markup the script has nothing to do
+       with. The pre-paint script is the FIRST script in the document and the
+       only inline one; `main.tsx` is a module with a src. */
+    const script = /<script>([\s\S]*?)<\/script>/.exec(html)?.[1];
+    if (script === undefined) {
+      throw new Error("index.html has no inline <script> to check");
+    }
+
+    /* Comments carry the hexes as prose too — strip them, or the assertion
+       passes on the documentation rather than on the code. */
+    const code = script.replace(/\/\*[\s\S]*?\*\//g, "");
+
+    expect([...new Set(hexes(code))].sort()).toEqual(expected);
   });
 
   it("matches PAGE_COLOR in themeStore", () => {
