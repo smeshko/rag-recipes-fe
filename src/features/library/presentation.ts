@@ -53,10 +53,10 @@ export function statusPill(
   }
 }
 
-const ACCENT_ROTATION = ["bg-sage", "bg-terra-ink", "bg-butter-ink"] as const;
+const ACCENT_ROTATION = ["bg-sage", "bg-terra", "bg-butter"] as const;
 
 /**
- * Spine accent: status overrides first (working → apricot, failed → danger),
+ * Spine accent: status overrides first (working → accent, failed → danger),
  * otherwise a stable pick from the rotation by hashing the document id —
  * index cycling would recolor every book when one is added.
  */
@@ -65,7 +65,7 @@ export function spineAccent(status: DocumentStatus, id: string): string {
     return "bg-danger";
   }
   if (!isReadyIsh(status)) {
-    return "bg-apricot";
+    return "bg-accent";
   }
   let hash = 0;
   for (const char of id) {

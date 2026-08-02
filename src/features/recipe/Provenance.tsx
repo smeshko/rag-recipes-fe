@@ -9,15 +9,15 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
 
   return (
     <div
-      className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-line px-7 py-6"
+      className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-border px-7 py-6"
       style={{ background: "var(--gradient-warm)" }}
     >
-      <p className="text-[13.5px] text-ink-soft">
+      <p className="text-[13.5px] text-fg-muted">
         Extracted
         {doc.isSuccess ? (
           <>
             {" "}
-            from <b className="text-ink">{doc.data.document.title}</b>
+            from <b className="text-fg">{doc.data.document.title}</b>
           </>
         ) : null}
         {label ? <>, {label}</> : null}.
@@ -37,15 +37,15 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
             needs is carried by things that are true: the status pill (needs_review
             iff the payload has warnings) and the confidence figure beside it. */}
       </p>
-      <p className="flex flex-wrap gap-4 text-[12.5px] text-ink-faint">
+      <p className="flex flex-wrap gap-4 text-[12.5px] text-fg-subtle">
         {schema ? (
           <span>
-            schema <b className="text-ink-soft">{schema}</b>
+            schema <b className="text-fg-muted">{schema}</b>
           </span>
         ) : null}
         {typeof overall === "number" ? (
           <span>
-            confidence <b className="text-ink-soft">{overall.toFixed(2)}</b>
+            confidence <b className="text-fg-muted">{overall.toFixed(2)}</b>
           </span>
         ) : null}
         <span>

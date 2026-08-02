@@ -2,10 +2,11 @@ import { useRef, useState } from "react";
 import { useUploadBooks } from "../../api";
 import { UploadOutcome } from "./UploadOutcome";
 
-/* Mockup-faithful surface (sk-library.html:71-102): dashed #DCCFB4 border,
-   translucent white bg, apricot hover — deliberately NOT a Panel. The busy
-   state and the outcome area below are declared design extensions; the
-   mockup has neither. No `accept` filter on the input and no client-side
+/* Mockup-faithful surface (sk-library.html:71-102): dashed border-strong
+   edge, translucent surface-raised bg, accent hover — deliberately NOT a
+   Panel.
+   The busy state and the outcome area below are declared design extensions;
+   the mockup has neither. No `accept` filter on the input and no client-side
    type check: the server's magic-byte 415 is the authority. */
 
 export function Dropzone() {
@@ -24,8 +25,8 @@ export function Dropzone() {
 
   const active = dragDepth > 0;
   const zoneLook = active
-    ? "border-apricot bg-white/85"
-    : "border-[#DCCFB4] bg-white/55 hover:border-apricot hover:bg-white/85";
+    ? "border-accent bg-surface-raised/85"
+    : "border-border-strong bg-surface-raised/55 hover:border-accent hover:bg-surface-raised/85";
 
   return (
     <div>
@@ -48,10 +49,10 @@ export function Dropzone() {
           addFiles(event.dataTransfer?.files);
         }}
       >
-        <div className="grid h-[54px] w-[54px] flex-none place-items-center rounded-2xl bg-apricot-soft">
+        <div className="grid h-[54px] w-[54px] flex-none place-items-center rounded-2xl bg-accent-fill">
           <svg
             viewBox="0 0 24 24"
-            className="h-6 w-6 fill-none stroke-apricot stroke-2"
+            className="h-6 w-6 fill-none stroke-accent stroke-2"
             aria-hidden="true"
           >
             <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" />
@@ -61,7 +62,7 @@ export function Dropzone() {
           <b className="block font-display text-[18px] font-semibold">
             {upload.isPending ? "Adding to the shelf…" : "Drop cookbooks here"}
           </b>
-          <small className="mt-[3px] block text-[13.5px] text-ink-soft">
+          <small className="mt-[3px] block text-[13.5px] text-fg-muted">
             PDF only · duplicates are detected automatically · batches go
             through Anthropic overnight pricing
           </small>
@@ -69,7 +70,7 @@ export function Dropzone() {
         <button
           type="button"
           disabled={upload.isPending}
-          className="ml-auto flex-none rounded-pill bg-apricot px-6 py-3 text-sm font-bold text-white transition-colors duration-200 hover:bg-apricot-deep disabled:opacity-60"
+          className="ml-auto flex-none rounded-pill bg-accent px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-strong disabled:opacity-60"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */

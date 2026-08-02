@@ -11,7 +11,7 @@ describe("Pill", () => {
         <Pill size="md" tone="failed">
           failed
         </Pill>
-        <Pill size="md" tone="accent" uppercase>
+        <Pill size="md" tone="book" uppercase>
           book title
         </Pill>
       </>,

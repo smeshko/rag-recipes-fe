@@ -39,7 +39,7 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <form
-      className="flex items-center gap-3.5 rounded-pill border border-line bg-card py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-[0_14px_40px_rgba(94,74,44,0.14),0_0_0_4px_var(--color-apricot-soft)]"
+      className="flex items-center gap-3.5 rounded-pill border border-border bg-surface-raised py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-focus"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -51,7 +51,7 @@ export function SearchInput({
           implying an accessible name the icon does not have. */}
       <svg
         viewBox="0 0 24 24"
-        className="h-[18px] w-[18px] flex-none stroke-apricot stroke-2"
+        className="h-[18px] w-[18px] flex-none stroke-accent stroke-2"
         fill="none"
         aria-hidden="true"
       >
@@ -64,14 +64,14 @@ export function SearchInput({
         onChange={(event) => onChange(event.target.value)}
         aria-label={label ?? placeholder}
         placeholder={placeholder}
-        className="flex-1 border-none bg-transparent font-display text-[19px] text-ink outline-none"
+        className="flex-1 border-none bg-transparent font-display text-[19px] text-fg outline-none"
       />
       <button
         type={onAsk ? "button" : "submit"}
         onClick={onAsk}
         disabled={onAsk ? value.trim() === "" || asking : false}
         aria-busy={onAsk && asking ? true : undefined}
-        className="rounded-pill bg-apricot px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-white transition-[background-color,transform] duration-[200ms] hover:bg-apricot-deep active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-pill bg-accent px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-fg-on-accent transition-[background-color,transform] duration-[200ms] hover:bg-accent-strong active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Ask
       </button>

@@ -40,7 +40,7 @@ export function ResultsGrid({
               </>
             )}
           </h2>
-          <span className="text-[13.5px] text-ink-faint">
+          <span className="text-[13.5px] text-fg-subtle">
             {subline ?? <>ranked by {mode} score · needs-review excluded</>}
           </span>
         </div>

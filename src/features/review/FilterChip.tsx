@@ -5,7 +5,7 @@ import { Pill } from "../../ui";
    ['document', id] detail cache — warm from the library, and NEVER from the
    review items, because an empty filtered list has no items to read a title
    from. Pending degrades to an ellipsis, error to "this book"; the clear
-   button works regardless. Visual: the `working` apricot-soft surface so it
+   button works regardless. Visual: the `working` accent-fill surface so it
    reads as an active filter, not a status. */
 
 export function FilterChip({

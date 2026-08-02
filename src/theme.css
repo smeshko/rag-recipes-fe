@@ -7,36 +7,70 @@
 @source not "../design";
 
 /* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
-   --sage is #5C6B4C (the value the mockups actually paint), not the dead
-   #7C8A6E declaration; see the plan's DECISIONS.md D4. */
-@theme {
-  --color-cream: #fbf7ef;
-  --color-card: #ffffff;
-  --color-ink: #2b241a;
-  --color-ink-soft: #6b6152;
-  --color-ink-faint: #a2977f;
-  --color-apricot: #c96f3b;
-  --color-apricot-soft: #f7e8dc;
-  --color-apricot-deep: #b25e2e;
-  --color-butter: #f4d9a0;
-  --color-butter-soft: #fbf0d3;
-  --color-butter-ink: #9a7b25;
-  --color-sage: #5c6b4c;
-  --color-sage-soft: #edf0e6;
-  --color-terra-soft: #f5e3d3;
-  --color-terra-ink: #a05a2c;
-  --color-ok: #3e7a50;
-  --color-ok-soft: #e6f2e6;
-  --color-amber-ink: #8f6a1e;
-  --color-amber-bg: #fbf3dc;
-  --color-amber-line: #ead9a8;
-  --color-danger: #b4472e;
-  --color-danger-soft: #fbeae4;
-  --color-danger-line: #f0cdbf;
-  --color-line: #ede5d6;
+   --color-sage is #5c6b4c (the value the mockups actually paint), not the dead
+   #7C8A6E declaration; see the plan's DECISIONS.md D4.
 
+   NAMING RULE: every --color-* is named for the ROLE it plays (surface, fg,
+   accent, border, skeleton, success/warning/danger), never for its pigment —
+   so phase 5.6 can drop in a dark palette by editing values alone. The three
+   exceptions are the categorical book accents sage / terra / butter, where
+   the hue IS the identity: they label which book a card belongs to, so they
+   rotate as a set and cannot be renamed to a role. */
+@theme {
+  /* --- Surfaces --- */
+  --color-surface: #fbf7ef; /* the page wash */
+  --color-surface-inset: #fbf7ef; /* inset fill sitting ON a raised surface */
+  --color-surface-raised: #ffffff; /* cards, panels, the search bar */
+  --color-surface-inverted: #2b241a; /* solid pill / chip fill */
+  --color-surface-warm: #fdf6ea; /* warm aside fill, light stop */
+  --color-surface-warm-strong: #faf1e0; /* warm aside fill, deep stop */
+  --color-surface-glow: #fdf0dc; /* the body wash's radial highlight */
+
+  /* --- Foregrounds --- */
+  --color-fg: #2b241a; /* body text on a light surface */
+  --color-fg-muted: #6b6152; /* secondary text, labels */
+  --color-fg-subtle: #a2977f; /* tertiary text, meta, placeholders */
+  --color-fg-inverted: #fbf7ef; /* text on --color-surface-inverted */
+  --color-fg-on-accent: #ffffff; /* text on an accent or danger solid */
+
+  /* --- Accent --- */
+  --color-accent: #c96f3b; /* primary action and emphasis */
+  --color-accent-strong: #b25e2e; /* accent hover / pressed */
+  --color-accent-fill: #f7e8dc; /* accent tint background, and the focus ring */
+
+  /* --- Lines --- */
+  --color-border: #ede5d6; /* every hairline border */
+  --color-border-strong: #dccfb4; /* the dropzone's dashed edge */
+  --color-skeleton: #ede5d6; /* loading placeholder blocks */
+
+  /* --- Status --- */
+  --color-success: #3e7a50; /* success ink */
+  --color-success-fill: #e6f2e6; /* success tint background */
+  --color-warning: #8f6a1e; /* warning ink */
+  --color-warning-fill: #fbf3dc; /* warning tint background */
+  --color-warning-border: #ead9a8; /* warning outline */
+  --color-danger: #b4472e; /* danger ink and solid fill */
+  --color-danger-fill: #fbeae4; /* danger tint background */
+  --color-danger-border: #f0cdbf; /* danger outline */
+
+  /* --- Book accents (categorical — the name IS the role) --- */
+  --color-sage: #5c6b4c; /* book accent 1, ink */
+  --color-sage-fill: #edf0e6; /* book accent 1, tint */
+  --color-terra: #a05a2c; /* book accent 2, ink */
+  --color-terra-fill: #f5e3d3; /* book accent 2, tint */
+  --color-butter: #9a7b25; /* book accent 3, ink */
+  --color-butter-fill: #fbf0d3; /* book accent 3, tint */
+
+  /* --- Gradients --- */
   /* The warm aside/provenance fill — the design set's one shared gradient. */
-  --gradient-warm: linear-gradient(180deg, #fdf6ea, #faf1e0);
+  --gradient-warm: linear-gradient(
+    180deg,
+    var(--color-surface-warm),
+    var(--color-surface-warm-strong)
+  );
+  /* The ingestion progress-bar fill (design/sk-library.html). The light stop
+     has no other consumer, so it stays a literal inside the token. */
+  --gradient-progress: linear-gradient(90deg, #e8b08a, var(--color-accent));
 
   --font-display: "Petrona", serif;
   --font-body: "Figtree", sans-serif;
@@ -50,25 +84,34 @@
   /* Names are TASK-002's. Which mockup surface each one belongs to, since the
      pair reads as one surface's rest/hover state but is not: --shadow-card is
      the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
-     no resting shadow. --shadow-card-hover is .card:hover only. */
+     no resting shadow. --shadow-card-hover is .card:hover only.
+     --shadow-row-hover is the library BookRow's lift on hover — a third
+     surface again, deeper than --shadow-card and shallower than
+     --shadow-card-hover. */
   --shadow-card:
     0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
   --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
+  --shadow-row-hover: 0 16px 40px rgba(94, 74, 44, 0.13);
   --shadow-focus:
-    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-apricot-soft);
+    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-accent-fill);
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
-   baseline is Figtree 15px/1.55 on the radial cream wash. */
+   baseline is Figtree 15px/1.55 on the radial page wash
+   (--color-surface, highlit by --color-surface-glow). */
 @layer base {
   body {
     /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
-       widgets (scrollbars, input chrome, autofill) against the cream wash. */
+       widgets (scrollbars, input chrome, autofill) against the light wash. */
     color-scheme: light;
     background:
-      radial-gradient(1000px 500px at 50% -160px, #fdf0dc, transparent 70%),
-      var(--color-cream);
-    color: var(--color-ink);
+      radial-gradient(
+        1000px 500px at 50% -160px,
+        var(--color-surface-glow),
+        transparent 70%
+      ),
+      var(--color-surface);
+    color: var(--color-fg);
     font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.55;
@@ -147,17 +190,19 @@
     }
   }
 
-  /* Card headers are flat soft fills with an accent ink — never gradients. */
+  /* Card headers are a flat book-accent tint under its ink — never gradients.
+     They live here rather than on the utility class list because the accent is
+     chosen at runtime by accentFor(); the pair must move as one. */
   .card-head-terra {
-    background: var(--color-terra-soft);
-    color: var(--color-terra-ink);
+    background: var(--color-terra-fill);
+    color: var(--color-terra);
   }
   .card-head-sage {
-    background: var(--color-sage-soft);
+    background: var(--color-sage-fill);
     color: var(--color-sage);
   }
   .card-head-butter {
-    background: var(--color-butter-soft);
-    color: var(--color-butter-ink);
+    background: var(--color-butter-fill);
+    color: var(--color-butter);
   }
 }

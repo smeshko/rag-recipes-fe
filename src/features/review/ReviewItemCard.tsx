@@ -109,7 +109,7 @@ export function ReviewItemCard({
   });
 
   return (
-    <article className="rounded-[18px] border border-line bg-card px-6 py-5 shadow-card">
+    <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
       <p
         data-testid="review-flag-lead"
         className="text-[13px] font-semibold text-danger"
@@ -129,13 +129,13 @@ export function ReviewItemCard({
       <h3 className="mt-2 font-display text-[20px] font-semibold leading-[1.25]">
         {item.title}
       </h3>
-      <small className="mt-1 block text-[12.5px] font-semibold text-ink-faint">
+      <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
         {span ? `${item.document.title} · ${span}` : item.document.title}
       </small>
       {item.summary && (
         <p
           data-testid="review-item-summary"
-          className="mt-2 text-[13.5px] text-ink-soft"
+          className="mt-2 text-[13.5px] text-fg-muted"
         >
           {item.summary}
         </p>
@@ -144,7 +144,7 @@ export function ReviewItemCard({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
-          className="text-[12.5px] font-bold text-apricot hover:underline"
+          className="text-[12.5px] font-bold text-accent hover:underline"
         >
           View recipe →
         </Link>
@@ -159,7 +159,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => decide.mutate("rejected")}
-              className="rounded-pill bg-danger px-4 py-[7px] text-[12.5px] font-bold text-white transition-colors hover:bg-danger/85 disabled:opacity-50"
+              className="rounded-pill bg-danger px-4 py-[7px] text-[12.5px] font-bold text-fg-on-accent transition-colors hover:bg-danger/85 disabled:opacity-50"
             >
               Reject item
             </button>
@@ -167,7 +167,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => setConfirmingReject(false)}
-              className="rounded-pill border border-line bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-ink-soft transition-colors hover:bg-apricot-soft disabled:opacity-50"
+              className="rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-fg-muted transition-colors hover:bg-accent-fill disabled:opacity-50"
             >
               Keep
             </button>
@@ -178,7 +178,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => decide.mutate("approved")}
-              className="rounded-pill bg-ok-soft px-4 py-[7px] text-[12.5px] font-bold text-ok transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="rounded-pill bg-success-fill px-4 py-[7px] text-[12.5px] font-bold text-success transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Approve
             </button>
@@ -186,7 +186,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => setConfirmingReject(true)}
-              className="rounded-pill border border-danger-line bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
+              className="rounded-pill border border-danger-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold text-danger transition-colors hover:bg-danger-fill disabled:opacity-50"
             >
               Reject
             </button>

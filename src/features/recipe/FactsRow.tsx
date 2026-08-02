@@ -33,12 +33,12 @@ export function FactsRow({ sd }: { sd: RecipeStructuredData }) {
       {list.map((fact) => (
         <div
           key={fact.label}
-          className="rounded-[12px] border border-line bg-card px-4 py-2.5 text-[13px] shadow-card"
+          className="rounded-[12px] border border-border bg-surface-raised px-4 py-2.5 text-[13px] shadow-card"
         >
-          <span className="font-bold tracking-[0.06em] text-ink-faint uppercase">
+          <span className="font-bold tracking-[0.06em] text-fg-subtle uppercase">
             {fact.label}
           </span>{" "}
-          <span className="font-semibold text-ink">{fact.value}</span>
+          <span className="font-semibold text-fg">{fact.value}</span>
         </div>
       ))}
     </div>

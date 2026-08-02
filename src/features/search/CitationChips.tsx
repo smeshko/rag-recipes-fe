@@ -25,7 +25,7 @@ function Chip({ citation }: { citation: AnswerCitation }) {
       to={withReturnTo(`/recipes/${citation.knowledge_item_id}`, location)}
       aria-label={destination}
       title={destination}
-      className="mx-0.5 inline-block rounded-chip bg-apricot-soft px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-apricot transition-colors hover:bg-apricot hover:text-white"
+      className="mx-0.5 inline-block rounded-chip bg-accent-fill px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-accent transition-colors hover:bg-accent hover:text-fg-on-accent"
     >
       {citation.label}
     </Link>
@@ -99,7 +99,7 @@ export function AnswerText({ text, map }: { text: string; map: CitationMap }) {
   flushList();
 
   return (
-    <div className="font-display text-[19.5px] leading-[1.65] text-ink">
+    <div className="font-display text-[19.5px] leading-[1.65] text-fg">
       {rendered}
     </div>
   );
@@ -127,7 +127,7 @@ export function TrailingChips({
     return null;
   }
   return (
-    <p className="mt-5 text-[12px] font-bold tracking-[0.06em] text-ink-faint uppercase">
+    <p className="mt-5 text-[12px] font-bold tracking-[0.06em] text-fg-subtle uppercase">
       Cited pages{" "}
       {remaining.map((citation) => (
         <Chip key={citation.citation_id} citation={citation} />

@@ -11,7 +11,7 @@ export function ReviewSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="mb-4 h-[88px] animate-pulse rounded-[18px] border border-line bg-card/70"
+          className="mb-4 h-[88px] animate-pulse rounded-[18px] border border-border bg-surface-raised/70"
         />
       ))}
     </div>
@@ -26,14 +26,14 @@ export function ReviewError({
   onRetry: () => void;
 }) {
   return (
-    <div className="mx-auto mt-8 max-w-[560px] rounded-[20px] border border-danger-line bg-danger-soft px-7 py-6 text-center">
+    <div className="mx-auto mt-8 max-w-[560px] rounded-[20px] border border-danger-border bg-danger-fill px-7 py-6 text-center">
       <p role="alert" className="text-[15px] font-semibold text-danger">
         {error.message}
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
       >
         Try again
       </button>
@@ -50,7 +50,7 @@ export function ReviewEmptyFiltered({ onClear }: { onClear: () => void }) {
       <button
         type="button"
         onClick={onClear}
-        className="mt-2 text-[12.5px] font-bold text-apricot hover:underline"
+        className="mt-2 text-[12.5px] font-bold text-accent hover:underline"
       >
         See the whole queue
       </button>
@@ -64,7 +64,7 @@ export function ReviewEmptyAll() {
       <p className="font-display text-[18px] font-semibold">
         Nothing waiting for review.
       </p>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-[13.5px] text-fg-muted">
         Flagged extractions will land here when a book needs a human eye.
       </p>
     </Panel>

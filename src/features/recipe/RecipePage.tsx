@@ -12,11 +12,11 @@ function TitleSkeleton() {
   return (
     <div aria-hidden="true" data-testid="recipe-skeleton" className="pt-10">
       <div className="flex gap-2">
-        <div className="h-[29px] w-28 animate-pulse rounded-pill bg-line/60" />
-        <div className="h-[29px] w-20 animate-pulse rounded-pill bg-line/40" />
+        <div className="h-[29px] w-28 animate-pulse rounded-pill bg-skeleton/60" />
+        <div className="h-[29px] w-20 animate-pulse rounded-pill bg-skeleton/40" />
       </div>
-      <div className="mt-5 h-10 w-2/3 animate-pulse rounded bg-line/60" />
-      <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-line/40" />
+      <div className="mt-5 h-10 w-2/3 animate-pulse rounded bg-skeleton/60" />
+      <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-skeleton/40" />
     </div>
   );
 }

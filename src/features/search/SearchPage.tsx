@@ -29,10 +29,10 @@ function ShelfStatsLine() {
      cookbookCount undefined, and "warming up the shelf…" would then sit there
      forever describing a request that is never coming back. */
   if (unavailable) {
-    return <span className="text-ink-faint">shelf stats unavailable</span>;
+    return <span className="text-fg-subtle">shelf stats unavailable</span>;
   }
   if (cookbookCount === undefined) {
-    return <span className="text-ink-faint">warming up the shelf…</span>;
+    return <span className="text-fg-subtle">warming up the shelf…</span>;
   }
   /* A book whose counts failed to load makes the sum a floor, not a total —
      say so with a "+" rather than presenting a short number as exact. */
@@ -282,9 +282,9 @@ export function SearchPage() {
       <Bloom duration={0.7} delay={0.06} className="pt-16 pb-5 text-center">
         <h1 className="font-display text-[clamp(32px,4.4vw,46px)] font-medium leading-[1.2] tracking-[-0.01em]">
           Good morning.{" "}
-          <em className="text-apricot italic">What are we cooking?</em>
+          <em className="text-accent italic">What are we cooking?</em>
         </h1>
-        <p className="mt-2.5 text-[15px] text-ink-soft">
+        <p className="mt-2.5 text-[15px] text-fg-muted">
           <ShelfStatsLine />
         </p>
       </Bloom>
@@ -337,7 +337,7 @@ export function SearchPage() {
           bloomBase={0.24}
           heading={
             <>
-              What the shelf <em className="text-apricot italic">does</em> know
+              What the shelf <em className="text-accent italic">does</em> know
             </>
           }
           subline={

@@ -28,12 +28,12 @@ function StopNotice({
   checkAgain: () => void;
 }) {
   return (
-    <div role="status" className="mt-2 text-[12.5px] text-ink-soft">
+    <div role="status" className="mt-2 text-[12.5px] text-fg-muted">
       {STOP_COPY[reason]}{" "}
       <button
         type="button"
         onClick={checkAgain}
-        className="font-bold text-apricot hover:underline"
+        className="font-bold text-accent hover:underline"
       >
         Check again
       </button>
@@ -68,10 +68,10 @@ export function IngestionProgress({
 
   return (
     <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
-      <div className="mb-2 flex justify-between text-[12.5px] font-semibold text-ink-soft">
+      <div className="mb-2 flex justify-between text-[12.5px] font-semibold text-fg-muted">
         <span>{stageLabel(status)}</span>
         {determinate && (
-          <b className="text-apricot">
+          <b className="text-accent">
             {pagesProcessed} / {pagesTotal} pages
           </b>
         )}
@@ -86,19 +86,22 @@ export function IngestionProgress({
               "aria-valuemax": pagesTotal,
             }
           : {})}
-        className="h-2 overflow-hidden rounded-[4px] border border-line bg-cream"
+        className="h-2 overflow-hidden rounded-[4px] border border-border bg-surface-inset"
       >
         <span
           data-testid="progress-fill"
-          className={`progress-fill block h-full rounded-[4px] bg-[linear-gradient(90deg,#E8B08A,var(--color-apricot))] ${
+          className={`progress-fill block h-full rounded-[4px] ${
             determinate ? "" : "opacity-40"
           }`}
-          style={{ width: `${fillPct}%` }}
+          style={{
+            width: `${fillPct}%`,
+            background: "var(--gradient-progress)",
+          }}
         />
       </div>
       <ol
         aria-label="Ingestion stages"
-        className="mt-2.5 flex list-none gap-1.5 text-[10.5px] font-bold tracking-[0.04em] text-ink-faint uppercase"
+        className="mt-2.5 flex list-none gap-1.5 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
       >
         {PIPELINE_STAGES.map((stage, index) => {
           const state = states[index];
@@ -107,11 +110,11 @@ export function IngestionProgress({
               key={stage.status}
               {...(state === "now" ? { "aria-current": "step" } : {})}
               className={`flex items-center gap-1 ${
-                state === "now" ? "text-apricot" : ""
+                state === "now" ? "text-accent" : ""
               } ${state === "pending" ? "opacity-60" : ""}`}
             >
               {state === "done" && (
-                <span aria-hidden="true" className="text-ok">
+                <span aria-hidden="true" className="text-success">
                   ✓
                 </span>
               )}

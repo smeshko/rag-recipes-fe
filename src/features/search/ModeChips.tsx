@@ -22,8 +22,8 @@ export function ModeChips({ active, onSelect }: ModeChipsProps) {
           onClick={() => onSelect(mode)}
           className={
             mode === active
-              ? "rounded-pill border border-ink bg-ink px-[15px] py-[7px] text-[13px] font-medium text-cream"
-              : "rounded-pill border border-line bg-card px-[15px] py-[7px] text-[13px] font-medium text-ink-soft transition-colors hover:border-apricot hover:text-apricot"
+              ? "rounded-pill border border-surface-inverted bg-surface-inverted px-[15px] py-[7px] text-[13px] font-medium text-fg-inverted"
+              : "rounded-pill border border-border bg-surface-raised px-[15px] py-[7px] text-[13px] font-medium text-fg-muted transition-colors hover:border-accent hover:text-accent"
           }
         >
           {label}

@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 /* Two shapes, six tones — the mockups' metadata pill (sm, bordered) and
    status pill (md, borderless) on one component. `.pill.review` in the
-   library mockup resolves to the same colours as warn: one tone, two names. */
+   library mockup resolves to the same colours as warn: one tone, two names.
+   `book` is the bookline pill: it paints the categorical sage book accent,
+   not --color-accent, which is why it is not called `accent`. */
 export type PillSize = "sm" | "md";
 export type PillTone =
   | "neutral"
@@ -10,7 +12,7 @@ export type PillTone =
   | "ok"
   | "working"
   | "failed"
-  | "accent";
+  | "book";
 
 const SIZE: Record<PillSize, string> = {
   sm: "text-[11.5px] px-[11px] py-[4px] border",
@@ -18,12 +20,12 @@ const SIZE: Record<PillSize, string> = {
 };
 
 const TONE: Record<PillTone, string> = {
-  neutral: "text-ink-soft bg-cream border-line",
-  warn: "text-danger bg-danger-soft border-danger-line",
-  ok: "text-ok bg-ok-soft border-ok-soft",
-  working: "text-apricot bg-apricot-soft border-apricot-soft",
-  failed: "text-white bg-danger border-danger",
-  accent: "text-sage bg-sage-soft border-sage-soft",
+  neutral: "text-fg-muted bg-surface-inset border-border",
+  warn: "text-danger bg-danger-fill border-danger-border",
+  ok: "text-success bg-success-fill border-success-fill",
+  working: "text-accent bg-accent-fill border-accent-fill",
+  failed: "text-fg-on-accent bg-danger border-danger",
+  book: "text-sage bg-sage-fill border-sage-fill",
 };
 
 export interface PillProps {

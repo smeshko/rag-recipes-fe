@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  */
 export function CalmNotice({ children }: { children: ReactNode }) {
   return (
-    <span role="status" className="mt-2 block text-[12.5px] text-ink-soft">
+    <span role="status" className="mt-2 block text-[12.5px] text-fg-muted">
       {children}
     </span>
   );
