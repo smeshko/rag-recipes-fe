@@ -16,13 +16,18 @@ export function Shell() {
   const handle = (matches[matches.length - 1]?.handle ?? {}) as ShellHandle;
   const width = handle.width === "narrow" ? "max-w-[1020px]" : "max-w-[1120px]";
 
+  /* Gutters are the phone tier's single highest-leverage change: 36px a side
+     costs 72px of a 375px viewport, leaving 303px of content. 20px gives that
+     back as 335px. See theme.css for the three-tier scale. */
   return (
-    <div className={`mx-auto px-9 pb-[100px] ${width}`}>
-      <header className="bloom flex items-center justify-between py-[26px]">
+    <div
+      className={`mx-auto px-9 pb-[100px] max-[560px]:px-5 max-[560px]:pb-16 ${width}`}
+    >
+      <header className="bloom flex items-center justify-between py-[26px] max-[560px]:py-4">
         <div className="font-display text-[23px] font-semibold">
           Stove<span className="text-accent">.</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-[560px]:gap-1.5">
           <Nav />
           <ThemeToggle />
         </div>
