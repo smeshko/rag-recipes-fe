@@ -239,6 +239,56 @@ export const needsReviewItemFixture = {
   },
 };
 
+/** A flagged item whose ingredient list repeats a line verbatim (5.3 D20).
+    The edit form's row identity has to survive it: two rows, same text,
+    different synthetic ids, edited independently. */
+export const duplicateLinesReviewItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_review_dupes",
+    status: "needs_review",
+    structured_data: {
+      ...fullItemFixture.knowledge_item.structured_data,
+      ingredients: [
+        ingredient(1, "1 tsp sea salt", "sea salt"),
+        ingredient(2, "8 large eggs", "eggs"),
+        ingredient(3, "1 tsp sea salt", "sea salt"),
+      ],
+    },
+  },
+};
+
+/** The `no_ingredients` case this epic exists to repair (5.3 D20): flagged,
+    with nothing for the reviewer to start from.
+
+    `structured_data` is written out in full rather than spread from
+    `fullItemFixture` on purpose — the parent carries `ingredients_text`, and
+    inheriting it would make `ingredientLines` resolve `kind: "text"` with
+    three lines, so the fixture would silently stop testing an empty list. */
+export const emptyIngredientsReviewItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_review_empty",
+    status: "needs_review",
+    structured_data: {
+      schema: "recipe.v1",
+      yield: "4–6 servings",
+      cook_time: null,
+      prep_time: null,
+      total_time: "30 minutes",
+      warnings: ["no_ingredients"],
+      ingredients: [],
+      steps: [
+        step(1, "Preheat the oven to 375°F."),
+        step(2, "Sauté the onion and spinach until wilted."),
+        step(3, "Pour in the eggs and bake until puffy."),
+      ],
+    },
+  },
+};
+
 export const supersededItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -315,6 +365,8 @@ const byId: Record<string, unknown> = {
   item_full: fullItemFixture,
   item_sparse: sparseItemFixture,
   item_review: needsReviewItemFixture,
+  item_review_dupes: duplicateLinesReviewItemFixture,
+  item_review_empty: emptyIngredientsReviewItemFixture,
   item_superseded: supersededItemFixture,
   item_extracting: extractingItemFixture,
   item_extracting_empty: extractingEmptyItemFixture,
