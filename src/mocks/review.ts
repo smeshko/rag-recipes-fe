@@ -144,7 +144,7 @@ export const knowledgeItemNotFoundEnvelope = (
   error: {
     code: "knowledge_item_not_found",
     message: `Knowledge item '${itemId}' not found.`,
-    details: { knowledge_item_id: itemId },
+    details: { item_id: itemId },
   },
 });
 
@@ -156,7 +156,7 @@ export const reviewNotPendingEnvelope = (
   error: {
     code: "review_not_pending",
     message: `Knowledge item '${itemId}' is not awaiting review.`,
-    details: { knowledge_item_id: itemId, status },
+    details: { item_id: itemId, status },
   },
 });
 

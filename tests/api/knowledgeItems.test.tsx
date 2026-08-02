@@ -77,7 +77,7 @@ describe("useKnowledgeItem", () => {
     const err = result.current.error as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.code).toBe("knowledge_item_not_found");
-    expect(err.details).toEqual({ knowledge_item_id: "item_missing" });
+    expect(err.details).toEqual({ item_id: "item_missing" });
   });
 
   it("passes the sparse fixture through without guards failing", async () => {
@@ -132,11 +132,10 @@ describe("useDocument", () => {
    goes through `request(route(…, "patch"))`, so this block exercises the
    generated PATCH route end-to-end rather than only at compile time.
 
-   NOTE the two spellings of `knowledge_item_not_found`'s `details` living in
-   this one file: the GET 404 above asserts `{knowledge_item_id}` (the 2.2
-   read fixture), the PATCH 404 below asserts `{item_id}` (the shipped
-   backend's guard stack). That divergence is PLAN D8, not a bug; phase 5.4
-   reconciles the review-side doc. */
+   Both 404s in this file now assert the same `details` key, `{item_id}`:
+   the 2.2 read fixture used to spell it differently, which was fixture-side
+   drift rather than a wire difference. Closed in 5.4 against live probes of
+   both the GET and the PATCH. */
 describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
   const patch = (itemId: string, body: KnowledgeItemUpdateRequest) =>
     request<KnowledgeItemResponse>(

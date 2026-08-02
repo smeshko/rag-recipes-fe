@@ -671,9 +671,11 @@ export const applyPatch = (
 /* ---------- error envelopes, one per row of the contract's §3 table ---------- */
 
 /* `details` uses `item_id`, matching the SHIPPED backend's guard stack
-   (routes/review.py). docs/review-api-contract.md v0.4 and src/mocks/review.ts
-   say `knowledge_item_id` for the sibling POST …/review guards — a doc-side
-   drift phase 5.4 reconciles, deliberately NOT harmonised here (PLAN D8). */
+   (routes/review.py) — and, since 5.4's reconciliation, every other fixture
+   and both contract docs. The review-side fixtures and v0.4 of the review
+   contract spelled the same key differently; live probes of BOTH routes
+   answer `{item_id}`, so the divergence PLAN D8 recorded is closed, not
+   deliberate any more. Nothing FE-side keys on `details`. */
 
 /** 400 — the body names no editable field at all (an empty patch). */
 export const emptyPatchEnvelope = (itemId: string): ErrorEnvelope => ({

@@ -7,7 +7,7 @@ export const knowledgeItemNotFoundEnvelope = (itemId: string) => ({
   error: {
     code: "knowledge_item_not_found",
     message: `Knowledge item '${itemId}' not found.`,
-    details: { knowledge_item_id: itemId },
+    details: { item_id: itemId },
   },
 });
 

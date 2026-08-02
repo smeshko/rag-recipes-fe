@@ -253,7 +253,7 @@ describe("useReviewDecision", () => {
     expect((err as ApiError).code).toBe("knowledge_item_not_found");
     expect((err as ApiError).status).toBe(404);
     expect((err as ApiError).details).toEqual({
-      knowledge_item_id: "ki_missing",
+      item_id: "ki_missing",
     });
   });
 
@@ -273,7 +273,7 @@ describe("useReviewDecision", () => {
     expect((err as ApiError).code).toBe("review_not_pending");
     expect((err as ApiError).status).toBe(404);
     expect((err as ApiError).details).toEqual({
-      knowledge_item_id: "ki_pear_galette",
+      item_id: "ki_pear_galette",
       status: "indexing",
     });
   });
