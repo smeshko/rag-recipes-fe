@@ -279,6 +279,18 @@ html[data-theme="dark"] {
     /* dvh, not vh: mobile Safari's `vh` is the *largest* viewport, so with the
        toolbar shown 100vh overflows and every page gains a phantom scroll. */
     min-height: 100dvh;
+    /* Almost every long string on screen is authored somewhere else — book
+       titles and recipe lines from extraction, filenames from the file
+       picker, error messages from the API, search queries from the URL. A
+       single unbroken 60-character token in any of them widens the whole page
+       at 375px, and no amount of per-component padding prevents it.
+
+       break-word, not anywhere: it only breaks a word that cannot fit on a
+       line by itself, so ordinary prose wraps exactly as before. Set on body
+       so it inherits everywhere rather than being remembered per component —
+       the failure mode this guards against is precisely the string nobody
+       remembered to guard. */
+    overflow-wrap: break-word;
   }
 }
 
