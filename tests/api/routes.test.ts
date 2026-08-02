@@ -4,6 +4,10 @@ import type {
   ReviewListResponse,
 } from "../../src/api";
 import { request, route } from "../../src/api";
+/* The one place outside src/api that reads schema.d.ts directly: the D2
+   tripwire below has to compare the hand-written request type against the
+   generated one, which means naming the generated one. */
+import type { components } from "../../src/api/schema";
 
 /* The @ts-expect-error lines below are the negative half of this suite: they
    are checked by `just build` (tsconfig.test.json covers tests/), and TS fails
@@ -127,9 +131,8 @@ describe("route", () => {
     expect(endpoint.method).toBe("POST");
   });
 
-  /* The edit route (5.2). `patch` is not in the generated schema yet — it
-     comes from the src/api/edit-schema.d.ts overlay, which phase 5.4 deletes
-     once `just typegen` emits the real operation. */
+  /* The edit route (5.2), typed by the generated schema since 5.4 replaced
+     the hand-authored overlay with `just typegen`. */
   it("interpolates the knowledge-item edit route", () => {
     const endpoint = route("/knowledge-items/{item_id}", "patch", {
       params: { item_id: "item_warned" },
@@ -168,9 +171,9 @@ describe("route typing (compile-time)", () => {
       route("/review-items", "get", { query: { documentId: "d" } });
       // @ts-expect-error — the review decision route needs its item_id
       route("/knowledge-items/{item_id}/review", "post");
-      // @ts-expect-error — the overlay adds patch only; put stays undeclared
+      // @ts-expect-error — the schema declares patch here, but not put
       route("/knowledge-items/{item_id}", "put", { params: { item_id: "a" } });
-      // @ts-expect-error — the overlay must not leak patch onto other routes
+      // @ts-expect-error — patch is declared on the item route, not on this one
       route("/documents", "patch");
     };
     expect(checks).toBeTypeOf("function");
@@ -220,10 +223,50 @@ describe("KnowledgeItemUpdateRequest typing (compile-time)", () => {
   });
 });
 
+/* The D2 tripwire. `KnowledgeItemUpdateRequest` is the ONE type in types.ts
+   deliberately not aliased to its generated twin: the generated shape allows
+   `title: null`, `ingredients: null` and `steps: null` because the non-null
+   rule is a Pydantic `field_validator` that OpenAPI cannot express, and the
+   live endpoint answers 422 to all three. The hand-written type narrows those
+   away — so this pair of checks, not an alias, is what keeps the two in step.
+   Both halves are needed and neither substitutes for the other. */
+describe("KnowledgeItemUpdateRequest vs the generated schema (compile-time)", () => {
+  it("stays a narrowing of the generated request type", () => {
+    /* Half (a) — ASSIGNABILITY, deliberately not equality. The FE type must
+       remain a subset of what the backend declares. Do NOT flip this into an
+       equality check: it would fail by design (that IS the narrowing) and the
+       only way to "fix" it would be widening the FE type back to permitting
+       the nulls the endpoint 422s on. */
+    const narrowed: KnowledgeItemUpdateRequest = { title: "Maple Cutouts" };
+    const generated: components["schemas"]["KnowledgeItemUpdateRequest"] =
+      narrowed;
+
+    /* Half (b) — KEY SET. Assignability alone does not catch a generated field
+       being renamed or removed: TypeScript's excess-property check fires only
+       on fresh object literals, so an orphaned key on a declared interface
+       stays assignable and the build stays green. This exclusion is `never`
+       exactly while every FE key still exists upstream. */
+    type _NoOrphanKeys =
+      Exclude<
+        keyof KnowledgeItemUpdateRequest,
+        keyof components["schemas"]["KnowledgeItemUpdateRequest"]
+      > extends never
+        ? true
+        : never;
+    const noOrphanKeys: _NoOrphanKeys = true;
+
+    expect(generated).toBe(narrowed);
+    expect(noOrphanKeys).toBe(true);
+  });
+});
+
 /* D4's `edited_at` has to be reachable where the queue is actually read —
    through the LIST response every consumer goes through, not only through the
-   standalone `ReviewItem` alias. This case fails to compile if
-   `ReviewListResponse` ever falls back to the generated container. */
+   standalone `ReviewItem` alias. 5.2 bought that reachability with an
+   intersection and an `Omit` re-type; 5.4 collapsed both to plain generated
+   aliases, and this case passing UNCHANGED across that collapse is the proof
+   the field survived it. It fails to compile if `edited_at` ever leaves the
+   generated `ReviewItem`. */
 describe("ReviewListResponse typing (compile-time)", () => {
   it("carries edited_at on the items the queue reads", () => {
     const checks = () => {

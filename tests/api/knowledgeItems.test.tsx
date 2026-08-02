@@ -129,8 +129,8 @@ describe("useDocument", () => {
 });
 
 /* The mocked edit wire (5.2 TASK-003). No hook exists yet — every call below
-   goes through `request(route(…, "patch"))`, so this block also proves
-   TASK-002's edit-schema overlay end-to-end rather than only at compile time.
+   goes through `request(route(…, "patch"))`, so this block exercises the
+   generated PATCH route end-to-end rather than only at compile time.
 
    NOTE the two spellings of `knowledge_item_not_found`'s `details` living in
    this one file: the GET 404 above asserts `{knowledge_item_id}` (the 2.2

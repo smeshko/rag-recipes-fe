@@ -203,7 +203,35 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Knowledge Item
+         * @description Correct a pending-review item in place (Epic 22.2).
+         *
+         *     The third review verb. Editing never decides: the item is still
+         *     ``needs_review`` afterwards, with its content warnings re-derived from the
+         *     corrected text — so a reviewer who fixes "no ingredients" stops seeing the
+         *     flag that said so, while ``low_overall_confidence`` /
+         *     ``low_boundary_confidence`` survive, because retyping a line does not attest
+         *     that the recipe was cut out of the page correctly.
+         *
+         *     Restricted to ``needs_review`` by the guarded UPDATE. Those items have no
+         *     chunks and no embeddings, so an edit is a pure row rewrite and the *edited*
+         *     text is what gets chunked when the reviewer then approves; editing an
+         *     indexed item would need a delete-and-re-embed path that does not exist.
+         *
+         *     Guards run in the same order as ``POST …/review`` so each stays reachable
+         *     rather than masked: 404 unknown id → 409 mid-reprocess document → 409 stale
+         *     generation → guarded UPDATE → 404 not awaiting review. The empty-body 400
+         *     sits *after* the 404 so an unknown id reports as unknown whatever the body
+         *     says.
+         *
+         *     Not closed here (and not asked for by the epic): two concurrent PATCHes are
+         *     last-write-wins on content. The guarded UPDATE closes the edit-vs-decide
+         *     race, and the COALESCE keeps the snapshot at the original extraction, but
+         *     neither is a content-level precondition — two reviewers editing the same
+         *     item in two tabs would see the second edit replace the first wholesale.
+         */
+        patch: operations["update_knowledge_item_api_v1_knowledge_items__item_id__patch"];
         trace?: never;
     };
     "/api/v1/review-items": {
@@ -642,6 +670,8 @@ export interface components {
              * @default []
              */
             review_reasons: components["schemas"]["ReviewReason"][];
+            /** Edited At */
+            edited_at?: string | null;
         };
         /** KnowledgeItemDisplay */
         KnowledgeItemDisplay: {
@@ -684,6 +714,41 @@ export interface components {
             locator: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * KnowledgeItemUpdateRequest
+         * @description A reviewer's in-place correction of a ``needs_review`` item (Epic 22.2).
+         *
+         *     Every field is optional and read with ``exclude_unset`` semantics: absent
+         *     means "leave it alone", explicit ``null`` means "clear it". Clearing a
+         *     summary or a yield is a real operation, so the two cannot be conflated.
+         *
+         *     The two lists are **whole-array replacement** — what a form submits — which
+         *     is what makes add, remove and reorder fall out for free.
+         *
+         *     Only the fields a human can meaningfully author are here. ``confidence``,
+         *     ``source_span_ids``, ``schema``, ``item_type`` and ``warnings`` are
+         *     machine-owned provenance and are not client-writable; the per-ingredient
+         *     parse (``quantity_value``, ``unit_normalized``, …) is nulled on an edited
+         *     line rather than maintained by hand.
+         */
+        KnowledgeItemUpdateRequest: {
+            /** Title */
+            title?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Yield */
+            yield?: string | null;
+            /** Prep Time */
+            prep_time?: string | null;
+            /** Cook Time */
+            cook_time?: string | null;
+            /** Total Time */
+            total_time?: string | null;
+            /** Ingredients */
+            ingredients?: string[] | null;
+            /** Steps */
+            steps?: string[] | null;
         };
         /** MatchedChunk */
         MatchedChunk: {
@@ -799,6 +864,8 @@ export interface components {
             extraction: components["schemas"]["ReviewItemExtraction"];
             /** Flags */
             flags: components["schemas"]["ReviewReason"][];
+            /** Edited At */
+            edited_at?: string | null;
         };
         /** ReviewItemDocument */
         ReviewItemDocument: {
@@ -1303,6 +1370,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_knowledge_item_api_v1_knowledge_items__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeItemUpdateRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
