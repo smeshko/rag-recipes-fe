@@ -78,7 +78,9 @@ export function Dropzone() {
         <button
           type="button"
           disabled={upload.isPending}
-          className="ml-auto flex-none rounded-pill bg-accent px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-strong disabled:opacity-60"
+          /* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
+             Ask button for the measured pairs (plan D12). */
+          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */
