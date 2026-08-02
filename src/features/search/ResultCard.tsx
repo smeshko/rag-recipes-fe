@@ -1,25 +1,22 @@
-import { Link } from "react-router";
-import type { SearchMode } from "../../api/search";
+import { Link, useLocation } from "react-router";
 import type { KnowledgeItemResult } from "../../api/types";
-import { Card, Pill } from "../../ui";
+import { Card, Pill, withReturnTo } from "../../ui";
 import { accentFor } from "./accent";
 
 export interface ResultCardProps {
   result: KnowledgeItemResult;
-  /* {q, mode} exactly — 2.2's crumb destructures both by name, and mode
-     changes the result set, so a back link from q alone would return a
-     vector-mode searcher to hybrid results. */
-  q: string;
-  mode: SearchMode;
 }
 
-export function ResultCard({ result, q, mode }: ResultCardProps) {
+export function ResultCard({ result }: ResultCardProps) {
   const ingredients = result.structured_preview?.top_ingredients ?? [];
+  /* The whole current URL is the provenance, q and mode and anything else the
+     searcher had committed — reconstructing it from props is the duplication
+     the `?from=` contract exists to remove. */
+  const location = useLocation();
 
   return (
     <Link
-      to={`/recipes/${result.item.id}`}
-      state={{ q, mode }}
+      to={withReturnTo(`/recipes/${result.item.id}`, location)}
       className="group flex"
     >
       <Card

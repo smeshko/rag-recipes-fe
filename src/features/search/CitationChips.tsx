@@ -1,7 +1,7 @@
 import { Fragment } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { AnswerCitation } from "../../api";
-import type { SearchMode } from "../../api/search";
+import { withReturnTo } from "../../ui";
 import {
   type AnswerBlock,
   type InlineSegment,
@@ -10,15 +10,10 @@ import {
 
 export type CitationMap = Map<string, AnswerCitation>;
 
-function Chip({
-  citation,
-  q,
-  mode,
-}: {
-  citation: AnswerCitation;
-  q: string;
-  mode: SearchMode;
-}) {
+function Chip({ citation }: { citation: AnswerCitation }) {
+  /* Every chip on this page captures the same URL. That is correct — the
+     provenance is where the reader was, not which chip they took. */
+  const location = useLocation();
   /* The visible label is a page reference ("pp. 33–35") but the destination
      is the recipe record — the backend has no source-page endpoint yet
      (ARCHITECTURE.md open question 4). Name the destination explicitly so the
@@ -27,8 +22,7 @@ function Chip({
   const destination = `${citation.label} — open recipe`;
   return (
     <Link
-      to={`/recipes/${citation.knowledge_item_id}`}
-      state={{ q, mode }}
+      to={withReturnTo(`/recipes/${citation.knowledge_item_id}`, location)}
       aria-label={destination}
       title={destination}
       className="mx-0.5 inline-block rounded-chip bg-apricot-soft px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-apricot transition-colors hover:bg-apricot hover:text-white"
@@ -41,13 +35,9 @@ function Chip({
 function Segments({
   segments,
   map,
-  q,
-  mode,
 }: {
   segments: InlineSegment[];
   map: CitationMap;
-  q: string;
-  mode: SearchMode;
 }) {
   return (
     <>
@@ -61,26 +51,14 @@ function Segments({
         }
         const citation = map.get(segment.id);
         /* Unresolvable ids degrade silently. */
-        return citation ? (
-          <Chip key={key} citation={citation} q={q} mode={mode} />
-        ) : null;
+        return citation ? <Chip key={key} citation={citation} /> : null;
       })}
     </>
   );
 }
 
 /** answer.text rendered with inline cite substitution. */
-export function AnswerText({
-  text,
-  map,
-  q,
-  mode,
-}: {
-  text: string;
-  map: CitationMap;
-  q: string;
-  mode: SearchMode;
-}) {
+export function AnswerText({ text, map }: { text: string; map: CitationMap }) {
   const blocks = parseAnswerText(text);
   const rendered: React.ReactNode[] = [];
   let listBuffer: AnswerBlock[] = [];
@@ -97,7 +75,7 @@ export function AnswerText({
               // biome-ignore lint/suspicious/noArrayIndexKey: static parse result
               key={i}
             >
-              <Segments segments={item.segments} map={map} q={q} mode={mode} />
+              <Segments segments={item.segments} map={map} />
             </li>
           ))}
         </ol>,
@@ -113,7 +91,7 @@ export function AnswerText({
       flushList();
       rendered.push(
         <p key={`p-${rendered.length}`} className="mt-[0.8em] first:mt-0">
-          <Segments segments={block.segments} map={map} q={q} mode={mode} />
+          <Segments segments={block.segments} map={map} />
         </p>,
       );
     }
@@ -133,13 +111,9 @@ export function AnswerText({
 export function TrailingChips({
   citations,
   inlineIds,
-  q,
-  mode,
 }: {
   citations: AnswerCitation[];
   inlineIds: string[];
-  q: string;
-  mode: SearchMode;
 }) {
   const seen = new Set<string>();
   const remaining = citations.filter((c) => {
@@ -156,12 +130,7 @@ export function TrailingChips({
     <p className="mt-5 text-[12px] font-bold tracking-[0.06em] text-ink-faint uppercase">
       Cited pages{" "}
       {remaining.map((citation) => (
-        <Chip
-          key={citation.citation_id}
-          citation={citation}
-          q={q}
-          mode={mode}
-        />
+        <Chip key={citation.citation_id} citation={citation} />
       ))}
     </p>
   );

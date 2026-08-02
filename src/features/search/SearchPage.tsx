@@ -51,8 +51,6 @@ function ShelfStatsLine() {
 /* The answer slot's four arms in one place so SearchPage stays readable. */
 function AnswerSection({
   answer,
-  q,
-  mode,
   onRephrase,
   onRetry,
 }: {
@@ -64,8 +62,6 @@ function AnswerSection({
     data: AnswerResponse | undefined;
     error: unknown;
   };
-  q: string;
-  mode: SearchMode;
   onRephrase: () => void;
   onRetry: () => void;
 }) {
@@ -88,7 +84,7 @@ function AnswerSection({
         />
       );
     }
-    return <AnswerCard answer={answer.data} q={q} mode={mode} />;
+    return <AnswerCard answer={answer.data} />;
   }
   return null;
 }
@@ -146,7 +142,7 @@ export function SearchPage() {
        one site covers Enter, Ask and the mode chips alike. Emptying a
        committed query deliberately forgets the remembered search: an emptied
        box must not resurrect through the Cook pill. Guarded on the previous
-       q: on the bare / (Back to the initial entry, the Crumb's "Back to
+       q: on the bare / (Back to the initial entry, the BackLink's "Back to
        Cook") a mode-chip click also commits an empty q, and that must not
        wipe a search the user never had on screen (review #1.1). */
     if (nextQ) {
@@ -292,8 +288,6 @@ export function SearchPage() {
           that produced it can address that entry. */}
       <AnswerSection
         answer={answer}
-        q={q}
-        mode={mode}
         onRephrase={rephrase}
         onRetry={() => {
           if (liveAsk !== null) {
@@ -311,7 +305,6 @@ export function SearchPage() {
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
           results={fallbackData.results}
-          q={q}
           /* answerMatchesSearch gates this grid, so the ask's mode and the
              URL's are the same one here. */
           mode={mode}
@@ -347,7 +340,6 @@ export function SearchPage() {
       ) : (
         <ResultsGrid
           results={results}
-          q={q}
           mode={resultsMode}
           dimmed={search.isPlaceholderData}
           /* The default subline hard-codes "needs-review excluded", which is

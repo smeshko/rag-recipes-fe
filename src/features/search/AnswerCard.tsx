@@ -1,21 +1,14 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import type { AnswerResponse } from "../../api";
-import type { SearchMode } from "../../api/search";
-import { Bloom, Eyebrow } from "../../ui";
+import { Bloom, Eyebrow, withReturnTo } from "../../ui";
 import { inlineCiteOccurrences } from "./answerText";
 import { AnswerText, type CitationMap, TrailingChips } from "./CitationChips";
 
 const NUMERALS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
 
-export function AnswerCard({
-  answer,
-  q,
-  mode,
-}: {
-  answer: AnswerResponse;
-  q: string;
-  mode: SearchMode;
-}) {
+export function AnswerCard({ answer }: { answer: AnswerResponse }) {
+  /* Picks and chips capture the same URL — same page, same provenance. */
+  const location = useLocation();
   const map: CitationMap = new Map(
     answer.citations.map((c) => [c.citation_id, c]),
   );
@@ -41,14 +34,9 @@ export function AnswerCard({
             {chipCount === 1 ? "" : "s"}
           </Eyebrow>
           <div className="mt-5">
-            <AnswerText text={answer.answer.text} map={map} q={q} mode={mode} />
+            <AnswerText text={answer.answer.text} map={map} />
           </div>
-          <TrailingChips
-            citations={answer.citations}
-            inlineIds={inline}
-            q={q}
-            mode={mode}
-          />
+          <TrailingChips citations={answer.citations} inlineIds={inline} />
         </div>
         <aside
           className="flex flex-col gap-3.5 border-l border-line p-[30px] max-[960px]:border-t max-[960px]:border-l-0"
@@ -60,8 +48,7 @@ export function AnswerCard({
           {answer.recommendations.map((pick, index) => (
             <Link
               key={pick.knowledge_item_id}
-              to={`/recipes/${pick.knowledge_item_id}`}
-              state={{ q, mode }}
+              to={withReturnTo(`/recipes/${pick.knowledge_item_id}`, location)}
               className="flex items-start gap-3 rounded-reco border border-line bg-card px-4 py-3.5 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-card"
             >
               <span className="pt-px font-display text-[15px] font-semibold text-apricot italic">

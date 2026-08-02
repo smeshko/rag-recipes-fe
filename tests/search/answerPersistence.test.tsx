@@ -91,8 +91,8 @@ describe("an answer survives a detour through a recipe", () => {
   });
 
   it("comes back through the recipe's own crumb link", async () => {
-    /* The crumb rebuilds `/?q=…` from link state rather than replaying a
-       history entry, so it is a second, independent way back in. */
+    /* The back link replays the URL captured in `?from=` rather than stepping
+       a history entry, so it is a second, independent way back in. */
     server.use(answersHandler(groundedAnswerFixture));
     const user = userEvent.setup();
     renderAt("/?q=breakfast");

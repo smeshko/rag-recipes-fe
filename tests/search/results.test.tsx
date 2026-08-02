@@ -85,19 +85,22 @@ describe("results grid", () => {
     }
   });
 
-  it("links each card to /recipes/:id carrying {q, mode} state", async () => {
+  it("links each card to /recipes/:id carrying ?from= the search URL", async () => {
     const router = renderAt("/?q=frittata&mode=vector");
     const title = await screen.findByText(first.item.title);
     const link = title.closest("a") as HTMLAnchorElement;
-    expect(link.getAttribute("href")).toBe(`/recipes/${first.item.id}`);
+    expect(link.getAttribute("href")).toBe(
+      `/recipes/${first.item.id}?from=%2F%3Fq%3Dfrittata%26mode%3Dvector`,
+    );
     link.click();
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/recipes/${first.item.id}`),
     );
-    expect(router.state.location.state).toEqual({
-      q: "frittata",
-      mode: "vector",
-    });
+    /* The whole previous URL, decoded symmetrically by URLSearchParams — the
+       back link replays it rather than rebuilding it from q and mode. */
+    expect(new URLSearchParams(router.state.location.search).get("from")).toBe(
+      "/?q=frittata&mode=vector",
+    );
   });
 
   it("keeps the producing mode on held-over cards during a mode change", async () => {
@@ -123,7 +126,7 @@ describe("results grid", () => {
     await user.click(screen.getByRole("button", { name: "Vector only" }));
 
     /* Vector is selected in the URL, but the grid still holds hybrid results:
-       it must say so, and must not hand them a vector back-link. */
+       the subline must say so. */
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata&mode=vector"),
     );
@@ -131,15 +134,17 @@ describe("results grid", () => {
       screen.getByText(/ranked by hybrid score · needs-review excluded/),
     ).toBeInTheDocument();
 
+    /* The back link is the URL the reader was standing on, not the mode that
+       produced the cards: ?from= captures provenance, and coming back to
+       ?mode=vector returns them to the search they had actually committed. */
     const link = screen.getByText(first.item.title).closest("a");
     (link as HTMLAnchorElement).click();
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/recipes/${first.item.id}`),
     );
-    expect(router.state.location.state).toEqual({
-      q: "frittata",
-      mode: "hybrid",
-    });
+    expect(new URLSearchParams(router.state.location.search).get("from")).toBe(
+      "/?q=frittata&mode=vector",
+    );
 
     releaseVector();
   });

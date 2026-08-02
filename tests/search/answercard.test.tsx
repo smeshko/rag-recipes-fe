@@ -60,14 +60,16 @@ describe("answer card", () => {
     expect(bolded).toBeInTheDocument();
     expect(card.querySelectorAll("ol > li").length).toBe(3);
 
-    /* Inline chips consumed their brackets and link with {q, mode} state.
+    /* Inline chips consumed their brackets and carry ?from= the search URL.
        The visible text is the page label; the accessible name also states the
        destination, because the chip goes to the recipe, not to the page. */
     const chip = within(card).getByRole("link", {
       name: "pp. 33–35 — open recipe",
     });
     expect(chip).toHaveTextContent("pp. 33–35");
-    expect(chip.getAttribute("href")).toBe("/recipes/item_frenchtoast");
+    expect(chip.getAttribute("href")).toBe(
+      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector",
+    );
 
     /* Picks sidebar. */
     const picks = within(card).getByText("Tonight's picks")
@@ -76,14 +78,14 @@ describe("answer card", () => {
     expect(pickLinks).toHaveLength(3);
     expect(pickLinks[0]).toHaveTextContent("Fruit-Stuffed French Toast");
     expect(pickLinks[0]?.getAttribute("href")).toBe(
-      "/recipes/item_frenchtoast",
+      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector",
     );
     expect(pickLinks[1]).toHaveTextContent(
       "Makes 12 — the memorable centerpiece.",
     );
   });
 
-  it("carries {q, mode} state on pick navigation", async () => {
+  it("carries ?from= the search URL on pick navigation", async () => {
     const router = renderAsked();
     await ask();
     const card = (await screen.findByText(/Grounded in your books/)).closest(
@@ -94,10 +96,9 @@ describe("answer card", () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/recipes/item_frenchtoast"),
     );
-    expect(router.state.location.state).toEqual({
-      q: "breakfast",
-      mode: "vector",
-    });
+    expect(new URLSearchParams(router.state.location.search).get("from")).toBe(
+      "/?q=breakfast&mode=vector",
+    );
   });
 
   it("renders parenthesised inline cites and the rest in the trailing row", async () => {

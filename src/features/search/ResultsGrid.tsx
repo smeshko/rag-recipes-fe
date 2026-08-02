@@ -8,7 +8,7 @@ export interface ResultsGridProps {
   /* Results arrive as a prop — no hooks in here. 2.3 renders this same grid
      from a mutation; an internal useSearch would fire a rogue query there. */
   results: KnowledgeItemResult[];
-  q: string;
+  /** Labels the default subline only — cards capture provenance from the URL. */
   mode: SearchMode;
   /** Dim while a mode re-query is in flight (isPlaceholderData). */
   dimmed?: boolean;
@@ -20,7 +20,6 @@ export interface ResultsGridProps {
 
 export function ResultsGrid({
   results,
-  q,
   mode,
   dimmed = false,
   heading,
@@ -51,7 +50,7 @@ export function ResultsGrid({
             base={bloomBase}
             className="flex"
           >
-            <ResultCard result={result} q={q} mode={mode} />
+            <ResultCard result={result} />
           </Bloom>
         ))}
       </div>

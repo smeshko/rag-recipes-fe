@@ -1,3 +1,4 @@
+export { BackLink } from "./BackLink";
 export type { BloomProps } from "./Bloom";
 export { Bloom } from "./Bloom";
 export type { CardAccent, CardProps } from "./Card";
