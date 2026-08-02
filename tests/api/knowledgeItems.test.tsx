@@ -467,7 +467,7 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       message: SOFT_WARNING_MESSAGES.no_ingredients,
     });
     /* The codes it already carried are still there, in their original order. */
-    expect(after.structured_data.warnings.slice(0, 2)).toEqual([
+    expect((after.structured_data.warnings ?? []).slice(0, 2)).toEqual([
       "low_boundary_confidence",
       "low_normalization_confidence",
     ]);

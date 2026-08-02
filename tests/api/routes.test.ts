@@ -1,4 +1,8 @@
-import type { KnowledgeItemUpdateRequest } from "../../src/api";
+import type {
+  KnowledgeItemUpdateRequest,
+  ReviewItem,
+  ReviewListResponse,
+} from "../../src/api";
 import { request, route } from "../../src/api";
 
 /* The @ts-expect-error lines below are the negative half of this suite: they
@@ -211,6 +215,22 @@ describe("KnowledgeItemUpdateRequest typing (compile-time)", () => {
         nulledTitle,
         wrapped,
       ];
+    };
+    expect(checks).toBeTypeOf("function");
+  });
+});
+
+/* D4's `edited_at` has to be reachable where the queue is actually read —
+   through the LIST response every consumer goes through, not only through the
+   standalone `ReviewItem` alias. This case fails to compile if
+   `ReviewListResponse` ever falls back to the generated container. */
+describe("ReviewListResponse typing (compile-time)", () => {
+  it("carries edited_at on the items the queue reads", () => {
+    const checks = () => {
+      const list: ReviewListResponse = { review_items: [] };
+      const stamp: string | null | undefined = list.review_items[0]?.edited_at;
+      const item: ReviewItem | undefined = list.review_items[0];
+      return [stamp, item];
     };
     expect(checks).toBeTypeOf("function");
   });

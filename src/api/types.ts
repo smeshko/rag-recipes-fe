@@ -325,8 +325,16 @@ export type ReviewItem = components["schemas"]["ReviewItem"] & {
   edited_at?: string | null;
 };
 
-export type ReviewListResponse =
-  components["schemas"]["ReviewItemListResponse"];
+/* The container carries the AUGMENTED item, not the generated one. Nothing
+   reads the queue through the `ReviewItem` alias — every consumer goes through
+   `useReviewItems().data.review_items` (ReviewPage, ReviewItemCard's optimistic
+   snapshot) — so without this re-typing the `edited_at` above would be
+   unreachable on the exact path 5.4's edited marker needs. Deleted with the
+   intersection when typegen catches up. */
+export type ReviewListResponse = Omit<
+  components["schemas"]["ReviewItemListResponse"],
+  "review_items"
+> & { review_items: ReviewItem[] };
 
 export type ReviewDecision = components["schemas"]["ReviewDecision"];
 
