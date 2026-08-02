@@ -6,6 +6,16 @@
    must move with it, or the mockups silently rejoin the build (no error). */
 @source not "../design";
 
+/* Rebinds Tailwind's built-in `dark` variant from `prefers-color-scheme: dark`
+   to the RESOLVED theme stamped on <html> — the OS preference is resolved in
+   JS (src/ui/theme/themeStore.ts), so CSS only ever sees "light" or "dark".
+   The :where() keeps the variant's specificity contribution at zero, so
+   `dark:bg-x` and `bg-x` stay in their normal utility-order relationship.
+   Almost nothing needs it: the palette below re-themes every colour utility
+   by value, so `dark:` is reserved for the handful of places where dark wants
+   a DIFFERENT token rather than a different value. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
    --color-sage is #5c6b4c (the value the mockups actually paint), not the dead
    #7C8A6E declaration; see the plan's DECISIONS.md D4.
@@ -36,6 +46,7 @@
   /* --- Accent --- */
   --color-accent: #c96f3b; /* primary action and emphasis */
   --color-accent-strong: #b25e2e; /* accent hover / pressed */
+  --color-accent-pressed: #9a4f26; /* one step below -strong; solid-button hover */
   --color-accent-fill: #f7e8dc; /* accent tint background, and the focus ring */
 
   /* --- Lines --- */
@@ -96,14 +107,87 @@
     0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-accent-fill);
 }
 
+/* The dark palette — VALUES ONLY, same token names as @theme above, so the
+   ~250 utility call sites re-theme without a single class change (a colour
+   utility compiles to `var(--color-*)`, which this block redefines).
+
+   Two independent reasons this wins over Tailwind's `:root` block, and the
+   reason not to "simplify" the selector: the rule is UNLAYERED, so it beats
+   everything inside Tailwind's `@layer theme` outright regardless of source
+   order, AND `html[data-theme="dark"]` scores (0,1,1) against `:root`'s
+   (0,1,0), so it would still win if anyone ever moved it into a layer or
+   folded it into @theme. A bare `[data-theme="dark"]` only TIES at (0,1,0)
+   and would then depend on source order. Keep the `html` prefix.
+
+   Deliberately absent: the four --shadow-* values. Tailwind v4 inlines an
+   @theme shadow into --tw-shadow at build time (`grep -c 'var(--shadow'` over
+   the built CSS is 0), so overriding them here would be dead CSS that reviews
+   perfectly. TASK-008 routes their colours through tint properties; TASK-004
+   gives those tints dark values. Until then the focus ring — which embeds
+   var(--color-accent-fill), now a dark tint — is expected to look wrong in
+   dark. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --color-surface: #16110c; /* the page wash */
+  --color-surface-inset: #2a2118; /* inset fill sitting ON a raised surface */
+  --color-surface-raised: #201811; /* cards, panels, the search bar */
+  --color-surface-inverted: #f0e6d6; /* solid pill / chip fill */
+  --color-surface-warm: #241b13; /* warm aside fill, light stop */
+  --color-surface-warm-strong: #1e1710; /* warm aside fill, deep stop */
+  --color-surface-glow: #2a1e12; /* the body wash's radial highlight */
+
+  /* --- Foregrounds --- */
+  --color-fg: #f3eadc; /* body text on a dark surface */
+  --color-fg-muted: #c3b39a; /* secondary text, labels */
+  --color-fg-subtle: #9b8c76; /* tertiary text, meta, placeholders */
+  --color-fg-inverted: #16110c; /* text on --color-surface-inverted */
+  --color-fg-on-accent: #1e1509; /* text on an accent or danger solid */
+
+  /* --- Accent --- */
+  --color-accent: #e8975e; /* primary action and emphasis */
+  --color-accent-strong: #f5b481; /* accent hover / pressed */
+  --color-accent-pressed: #d8863f; /* one step below -strong; solid-button hover */
+  --color-accent-fill: #3b2617; /* accent tint background, and the focus ring */
+
+  /* --- Lines --- */
+  --color-border: #372c20; /* every hairline border */
+  --color-border-strong: #4a3b2b; /* the dropzone's dashed edge */
+  --color-skeleton: #382c20; /* loading placeholder blocks */
+
+  /* --- Status --- */
+  --color-success: #7fbf8e; /* success ink */
+  --color-success-fill: #1e2e22; /* success tint background */
+  --color-warning: #e3be6a; /* warning ink */
+  --color-warning-fill: #2e2617; /* warning tint background */
+  --color-warning-border: #4e4028; /* warning outline */
+  --color-danger: #f08b6b; /* danger ink and solid fill */
+  --color-danger-fill: #33201a; /* danger tint background */
+  --color-danger-border: #563328; /* danger outline */
+
+  /* --- Book accents (categorical — the name IS the role) --- */
+  --color-sage: #a9be92; /* book accent 1, ink */
+  --color-sage-fill: #262c1e; /* book accent 1, tint */
+  --color-terra: #e0a176; /* book accent 2, ink */
+  --color-terra-fill: #33241a; /* book accent 2, tint */
+  --color-butter: #e2c578; /* book accent 3, ink */
+  --color-butter-fill: #2f2818; /* book accent 3, tint */
+}
+
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
    baseline is Figtree 15px/1.55 on the radial page wash
    (--color-surface, highlit by --color-surface-glow). */
 @layer base {
-  body {
-    /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
-       widgets (scrollbars, input chrome, autofill) against the light wash. */
+  /* The resolved theme owns the UA chrome (scrollbars, input chrome,
+     autofill). Light is the default; the unlayered dark block above flips it
+     to `dark`. The pre-paint script in index.html sets the same value inline
+     so the very first paint is already correct. */
+  html {
     color-scheme: light;
+  }
+
+  body {
     background:
       radial-gradient(
         1000px 500px at 50% -160px,
