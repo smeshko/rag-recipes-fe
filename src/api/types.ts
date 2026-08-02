@@ -264,9 +264,10 @@ export interface KnowledgeItemResponse {
        the generated KnowledgeItemDetail declares it, this hand-written type
        simply never did. Declaring it here is a fix, not a forward bet. */
     review_reasons: ReviewFlag[];
-    /* Optional until backend 22.2 is deployed everywhere — the live responses
-       this type describes today do not carry it, and a required field would
-       make every one of them a type-level lie. */
+    /* Optional because the generated `KnowledgeItemDetail` declares it
+       optional — `edited_at` is absent from that schema's `required` set, so
+       an unedited item may omit the key entirely. The `?` matches the wire,
+       it is not a hedge. */
     edited_at?: string | null;
   };
   display: { title: string; subtitle: string | null };
@@ -292,7 +293,18 @@ export interface KnowledgeItemResponse {
    Fields absent from this type are absent on purpose: `status`, `confidence`,
    `source_span_ids`, `schema`, `item_type` and `warnings` are not
    client-writable, and the backend's `extra="forbid"` turns sending one into
-   a 422. This type is the compile-time twin of that rejection. */
+   a 422. This type is the compile-time twin of that rejection.
+
+   NOT aliased to `components["schemas"]["KnowledgeItemUpdateRequest"]` — the
+   one place this file deliberately disagrees with the generated schema. The
+   generated request type is `title?: string | null`, `ingredients?: string[] |
+   null`, `steps?: string[] | null`, because the non-null rule is a Pydantic
+   `field_validator` and OpenAPI has no way to express it; the live endpoint
+   answers 422 to all three. So this type is a deliberate NARROWING of the
+   generated one, and it has to be hand-written. The pairing is held by the
+   two-half tripwire in tests/api/routes.test.ts: half (a) proves this type
+   stays assignable to the generated one, half (b) proves no key here has been
+   orphaned by a rename or removal upstream. */
 export interface KnowledgeItemUpdateRequest {
   title?: string;
   summary?: string | null;
@@ -315,26 +327,11 @@ export interface KnowledgeItemUpdateRequest {
 /** `code` is a backend-owned enum treated as an opaque string; `message` is backend-authored copy rendered verbatim. */
 export type ReviewFlag = components["schemas"]["ReviewReason"];
 
-/* `flags` is non-empty by definition — an unflagged item is not in this list.
-   The `edited_at` intersection is an ADDITIVE pending field, not a divergence:
-   backend 22.2 stamps it but the committed schema.d.ts predates the
-   regeneration, and the alias cannot be hand-edited. It is its own tripwire —
-   once typegen emits the generated field the `& { … }` is provably redundant,
-   and phase 5.4 deletes it. */
-export type ReviewItem = components["schemas"]["ReviewItem"] & {
-  edited_at?: string | null;
-};
+/* `flags` is non-empty by definition — an unflagged item is not in this list. */
+export type ReviewItem = components["schemas"]["ReviewItem"];
 
-/* The container carries the AUGMENTED item, not the generated one. Nothing
-   reads the queue through the `ReviewItem` alias — every consumer goes through
-   `useReviewItems().data.review_items` (ReviewPage, ReviewItemCard's optimistic
-   snapshot) — so without this re-typing the `edited_at` above would be
-   unreachable on the exact path 5.4's edited marker needs. Deleted with the
-   intersection when typegen catches up. */
-export type ReviewListResponse = Omit<
-  components["schemas"]["ReviewItemListResponse"],
-  "review_items"
-> & { review_items: ReviewItem[] };
+export type ReviewListResponse =
+  components["schemas"]["ReviewItemListResponse"];
 
 export type ReviewDecision = components["schemas"]["ReviewDecision"];
 

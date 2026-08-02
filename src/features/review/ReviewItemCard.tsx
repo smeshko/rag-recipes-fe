@@ -66,8 +66,15 @@ export function ReviewItemCard({
   /** Record (or clear, with null) this item's failure message on the page. */
   onDecisionError: (itemId: string, message: string | null) => void;
 }) {
-  /* `flags` is non-empty by contract — an unflagged item is not in the queue. */
+  /* NOT "non-empty by contract" — 5.4 TASK-008 observed the opposite on the
+     live dev shelf. Editing recomputes the warnings server-side, so a repair
+     that clears the last flag leaves an item that is still `needs_review`
+     (nobody has decided it) and still in the queue with `flags: []`. The
+     unguarded `flags[0]` read that assumption used to allow took the whole
+     /review route down to React Router's error boundary — one repaired item
+     hid every other card. */
   const [lead, ...secondaries] = item.flags;
+  const cleared = lead === undefined;
   const span = pageSpan(item.source_pages);
 
   const queryClient = useQueryClient();
@@ -110,15 +117,34 @@ export function ReviewItemCard({
 
   return (
     <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
-      <p
-        data-testid="review-flag-lead"
-        className="text-[13px] font-semibold text-danger"
-      >
-        {flagText(lead)}
-      </p>
+      {/* Success tone, not danger, and an explicit line rather than nothing:
+          a card that simply loses its flag line is indistinguishable from one
+          that never had flags, and "the reviewer sees which warnings their fix
+          cleared" is the point of the epic. Same voice as the read page's
+          `ReviewCallout` cleared arm, which already carried this state — the
+          two surfaces stay deliberately separate components (they differ in
+          chrome and tone) but must not disagree about the words. */}
+      {cleared ? (
+        <p
+          data-testid="review-flag-cleared"
+          className="text-[13px] font-semibold text-success"
+        >
+          Nothing is flagged any more — approve it to put it on the shelf.
+        </p>
+      ) : (
+        <p
+          data-testid="review-flag-lead"
+          className="text-[13px] font-semibold text-danger"
+        >
+          {flagText(lead)}
+        </p>
+      )}
+      {/* Code AND message: the backend's `llm_warning` fallback envelope is
+          the code for EVERY unmodelled warning, so two of those on one item
+          collide on `code` alone. Same key rule as `ReviewCallout`. */}
       {secondaries.map((flag) => (
         <p
-          key={flag.code}
+          key={`${flag.code}:${flag.message}`}
           data-testid="review-flag-secondary"
           className="mt-1 text-[12px] font-semibold text-danger/80"
         >
@@ -131,6 +157,20 @@ export function ReviewItemCard({
       </h3>
       <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
         {span ? `${item.document.title} · ${span}` : item.document.title}
+        {/* The edited marker (5.4 D9) rides on the provenance line at the same
+            `text-fg-subtle` weight, not as a Pill or a tone of its own: it is
+            provenance — someone has already corrected this — not a flag. The
+            timestamp lives in `dateTime` and the visible text stays "Edited";
+            formatting it would be a second source of truth about when, for no
+            reviewer benefit. Same shape as the read page's marker. */}
+        {item.edited_at ? (
+          <>
+            {" · "}
+            <time data-testid="review-edited-marker" dateTime={item.edited_at}>
+              Edited
+            </time>
+          </>
+        ) : null}
       </small>
       {item.summary && (
         <p
@@ -145,11 +185,9 @@ export function ReviewItemCard({
           with a ragged gap once the row wraps, so the phone tier stacks it
           instead: link on its own line, controls beneath.
 
-          Deliberately sized for FOUR controls though only three exist today —
-          phase 5.4 adds an Edit button beside Approve and Reject (and an
-          "edited" marker), and a stack built for three would need relaying
-          out the moment it lands. Verified by temporarily rendering a fourth
-          control; see the plan's TASK-005. */}
+          Sized for FOUR controls, which is what it now holds: the View link
+          plus Edit, Approve and Reject (5.4 TASK-006 landed the fourth the
+          responsive pass had only simulated). */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-3">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
@@ -186,10 +224,28 @@ export function ReviewItemCard({
             </button>
           </div>
         ) : (
-          /* Approve + Reject stay side by side even on a phone — together
-             they measure ~160px, and with 5.4's Edit and the View link
-             hoisted in they are still inside 335px. */
+          /* Edit + Approve + Reject stay side by side even on a phone —
+             together they measure ~205px, and with the View link on its own
+             line above they are still inside 335px. */
           <div className="flex items-center gap-2 max-[560px]:justify-end">
+            {/* First in the cluster, and a <Link> rather than a <button>:
+                it navigates, so middle-click, ⌘-click and the queue's own
+                focus ring all keep working. `withReturnTo(location)` is the
+                same call the View link makes one line up — the queue's whole
+                URL (`?document=` and any `?from=` of its own) rides along, so
+                the editor's BackLink says "← Back to review queue" with no
+                navigation code here at all.
+
+                Deliberately NOT disabled while a decision is pending: leaving
+                an in-flight approve is the reviewer's business, and the
+                optimistic removal unmounts this card anyway. Neutral outline,
+                so the danger outline stays unique to Reject. */}
+            <Link
+              to={withReturnTo(`/recipes/${item.id}/edit`, location)}
+              className="inline-flex items-center rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:text-fg"
+            >
+              Edit
+            </Link>
             <button
               type="button"
               disabled={decide.isPending}
