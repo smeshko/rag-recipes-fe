@@ -92,6 +92,28 @@
   --radius-panel: 22px;
   --radius-pill: 999px;
 
+  /* Shadow TINT, not shadow geometry — and the reason the four shadows below
+     carry no literal colour of their own. Tailwind v4 resolves an @theme
+     shadow's VALUE into --tw-shadow at build time (it has to, so a
+     shadow-colour utility can rewrite it), which is why grep for
+     `var(--shadow` over the built CSS finds 0 and why redeclaring
+     --shadow-card in the dark block below would be dead CSS that reviews
+     perfectly. What Tailwind DOES preserve is a var() COLOUR inside a shadow,
+     so these are the only part of a shadow that can be re-toned at runtime.
+     Do not fold them back into the shadow literals. The values are light's
+     previous literals exactly — the indirection is a zero-pixel refactor. */
+  --shadow-tint: rgba(94, 74, 44, 0.08); /* --shadow-card, wide pass */
+  --shadow-tint-soft: rgba(94, 74, 44, 0.05); /* --shadow-card, tight pass */
+  --shadow-tint-row: rgba(94, 74, 44, 0.13); /* the BookRow lift */
+  --shadow-tint-strong: rgba(94, 74, 44, 0.14); /* card lift + focus glow */
+
+  /* The focus ring's 4px halo, split out of --color-accent-fill (plan D13).
+     That token is a tint BACKGROUND everywhere else and inverts to a dark
+     tint in dark, where it would make the ring invisible; the ring wants a
+     light translucent accent. Light keeps accent-fill verbatim, so nothing
+     moves. Deliberately not a --color-* token: it has no utility to mint. */
+  --ring-tint: var(--color-accent-fill);
+
   /* Names are TASK-002's. Which mockup surface each one belongs to, since the
      pair reads as one surface's rest/hover state but is not: --shadow-card is
      the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
@@ -100,11 +122,11 @@
      surface again, deeper than --shadow-card and shallower than
      --shadow-card-hover. */
   --shadow-card:
-    0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
-  --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
-  --shadow-row-hover: 0 16px 40px rgba(94, 74, 44, 0.13);
+    0 10px 30px var(--shadow-tint), 0 2px 6px var(--shadow-tint-soft);
+  --shadow-card-hover: 0 18px 44px var(--shadow-tint-strong);
+  --shadow-row-hover: 0 16px 40px var(--shadow-tint-row);
   --shadow-focus:
-    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-accent-fill);
+    0 14px 40px var(--shadow-tint-strong), 0 0 0 4px var(--ring-tint);
 }
 
 /* The dark palette — VALUES ONLY, same token names as @theme above, so the
@@ -119,13 +141,13 @@
    folded it into @theme. A bare `[data-theme="dark"]` only TIES at (0,1,0)
    and would then depend on source order. Keep the `html` prefix.
 
-   Deliberately absent: the four --shadow-* values. Tailwind v4 inlines an
-   @theme shadow into --tw-shadow at build time (`grep -c 'var(--shadow'` over
-   the built CSS is 0), so overriding them here would be dead CSS that reviews
-   perfectly. TASK-008 routes their colours through tint properties; TASK-004
-   gives those tints dark values. Until then the focus ring — which embeds
-   var(--color-accent-fill), now a dark tint — is expected to look wrong in
-   dark. */
+   Deliberately absent, and never to be added: the four --shadow-* values.
+   Tailwind v4 inlines an @theme shadow into --tw-shadow at build time, so
+   overriding them HERE would be dead CSS that reviews perfectly. The
+   overridable part is the --shadow-tint-* / --ring-tint properties the @theme
+   block routes them through; TASK-004 gives those dark values. Until it does,
+   the shadows and the focus ring still carry their light tints in dark and
+   are expected to look wrong. */
 html[data-theme="dark"] {
   color-scheme: dark;
 
