@@ -4,6 +4,39 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      /* Runs before first paint — a module (main.tsx) runs after it, so the
+         theme must be stamped here or every dark load flashes cream. The two
+         hexes below are --color-surface's light and dark values, duplicated
+         from src/theme.css on purpose: in dev, Vite injects the stylesheet
+         from a JS module *after* first paint, so the attribute alone is not
+         enough. Keep them in sync with theme.css and
+         src/ui/theme/themeStore.ts (PAGE_COLOR).
+
+         Deliberately not a module, not deferred, not async — any of those
+         would push it past first paint and reinstate the flash. Keep it
+         ES5-shaped: this is the one script in the repo with no build step. */
+      // biome-ignore lint/complexity/useArrowFunction: deliberately ES5 — this script is never transpiled.
+      (function () {
+        var choice = "system";
+        var stored = null;
+        try {
+          stored = localStorage.getItem("sk:theme");
+        } catch (_e) {
+          /* Storage disabled (private window) — follow the OS. */
+        }
+        if (stored === "light" || stored === "dark") choice = stored;
+        var dark =
+          choice === "dark" ||
+          (choice === "system" &&
+            typeof matchMedia === "function" &&
+            matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.dataset.theme = dark ? "dark" : "light";
+        root.style.colorScheme = dark ? "dark" : "light";
+        root.style.backgroundColor = dark ? "#16110C" : "#FBF7EF";
+      })();
+    </script>
     <title>Stove — your private shelf</title>
   </head>
   <body>

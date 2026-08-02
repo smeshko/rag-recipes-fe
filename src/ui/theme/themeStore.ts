@@ -27,9 +27,10 @@ export interface ThemeState {
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-/* The page wash per palette. index.html's pre-paint script writes the same two
-   hexes before any stylesheet exists, so these are a synced pair — change one,
-   change the other. They are the only colours outside theme.css. */
+/* The page wash per palette. The pre-paint script in `index.html`'s <head>
+   writes the same two hexes before any stylesheet exists, so these are a synced
+   pair — change one, change the other (and theme.css's --color-surface with
+   them). They are the only colours outside theme.css. */
 const PAGE_COLOR: Record<ResolvedTheme, string> = {
   light: "#FBF7EF",
   dark: "#16110C",
