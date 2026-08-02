@@ -14,15 +14,6 @@ export function isReviewIncluded(params: URLSearchParams): boolean {
   return params.get(REVIEW_PARAM) === REVIEW_INCLUDED;
 }
 
-/**
- * The writer half, kept beside the reader so the param's spelling still
- * lives once: `lastSearchUrl` re-arms a remembered armed landing with it
- * when building the Cook pill's URL.
- */
-export function setReviewIncluded(params: URLSearchParams): void {
-  params.set(REVIEW_PARAM, REVIEW_INCLUDED);
-}
-
 /** Books that show a counts row: processing is done enough to have items. */
 export function isReadyIsh(status: DocumentStatus): boolean {
   return status === "ready" || status === "needs_review";

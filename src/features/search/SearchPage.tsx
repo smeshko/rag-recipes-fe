@@ -21,6 +21,7 @@ import { ModeChips } from "./ModeChips";
 import { parseMode } from "./mode";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
+import { nextSearchParams, searchUrl } from "./searchUrl";
 
 function ShelfStatsLine() {
   const { cookbookCount, readyRecipes, partial, unavailable } = useShelfStats();
@@ -113,48 +114,33 @@ export function SearchPage() {
       ? { query: q, mode, reviewIncluded }
       : null;
 
-  /* Functional updater so unknown params (e.g. epic 03's review=included)
-     survive every write; hybrid stays out of the URL (D1). */
+  /* The single URL-commit choke point. Every param rule — unknown params
+     survive, hybrid stays out of the URL, `asked` only where it still
+     describes the question — lives in nextSearchParams, called twice with the
+     same commit: once inside the functional updater (which stays pure) and
+     once against this render's params to build the string to remember. Same
+     function, so the two cannot describe different searches (D12). */
   const writeParams = (
     nextQ: string,
     nextMode: SearchMode,
     options?: { asked?: boolean },
   ) => {
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (nextQ) {
-        params.set("q", nextQ);
-      } else {
-        params.delete("q");
-      }
-      if (nextMode !== "hybrid") {
-        params.set("mode", nextMode);
-      } else {
-        params.delete("mode");
-      }
-      /* Ask arms the entry it commits. Every other write may only carry the
-         arming along while it still describes the same question: the ask is
-         {q, mode, corpus}, so a new query or a mode chip addresses a cache
-         entry nobody asked for, and leaving `asked=1` on it would claim an
-         answer that cannot exist (D9). The answer is not lost — the entry
-         holding it is one Back away, and it is still in the cache. */
-      if (options?.asked) {
-        params.set("asked", "1");
-      } else if (nextQ !== q || nextMode !== mode) {
-        params.delete("asked");
-      }
-      return params;
-    });
+    const commit = {
+      q: nextQ,
+      mode: nextMode,
+      asked: options?.asked === true,
+    };
+    setSearchParams((prev) => nextSearchParams(prev, commit));
     /* Beside the setSearchParams call, not inside its updater — the updater
-       stays pure. writeParams is the single URL-commit choke point, so this
-       one site covers Enter, Ask and the mode chips alike. Emptying a
-       committed query deliberately forgets the remembered search: an emptied
-       box must not resurrect through the Cook pill. Guarded on the previous
-       q: on the bare / (Back to the initial entry, the BackLink's "Back to
-       Cook") a mode-chip click also commits an empty q, and that must not
-       wipe a search the user never had on screen (review #1.1). */
+       stays pure and React may invoke it more than once. This one site covers
+       Enter, Ask and the mode chips alike. Emptying a committed query
+       deliberately forgets the remembered search: an emptied box must not
+       resurrect through the Cook pill. Guarded on the previous q: on the bare
+       / (Back to the initial entry, the BackLink's "Back to Cook") a mode-chip
+       click also commits an empty q, and that must not wipe a search the user
+       never had on screen (review #1.1). */
     if (nextQ) {
-      saveLastSearch(nextQ, nextMode, reviewIncluded);
+      saveLastSearch(searchUrl(nextSearchParams(searchParams, commit)));
     } else if (q !== "") {
       clearLastSearch();
     }
