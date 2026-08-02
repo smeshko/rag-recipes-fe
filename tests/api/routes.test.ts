@@ -1,3 +1,4 @@
+import type { KnowledgeItemUpdateRequest } from "../../src/api";
 import { request, route } from "../../src/api";
 
 /* The @ts-expect-error lines below are the negative half of this suite: they
@@ -121,6 +122,17 @@ describe("route", () => {
     expect(endpoint.path).toBe("/knowledge-items/item_9f3c/review");
     expect(endpoint.method).toBe("POST");
   });
+
+  /* The edit route (5.2). `patch` is not in the generated schema yet — it
+     comes from the src/api/edit-schema.d.ts overlay, which phase 5.4 deletes
+     once `just typegen` emits the real operation. */
+  it("interpolates the knowledge-item edit route", () => {
+    const endpoint = route("/knowledge-items/{item_id}", "patch", {
+      params: { item_id: "item_warned" },
+    });
+    expect(endpoint.path).toBe("/knowledge-items/item_warned");
+    expect(endpoint.method).toBe("PATCH");
+  });
 });
 
 /* Each body below is declared but never invoked — the compiler is the
@@ -152,6 +164,53 @@ describe("route typing (compile-time)", () => {
       route("/review-items", "get", { query: { documentId: "d" } });
       // @ts-expect-error — the review decision route needs its item_id
       route("/knowledge-items/{item_id}/review", "post");
+      // @ts-expect-error — the overlay adds patch only; put stays undeclared
+      route("/knowledge-items/{item_id}", "put", { params: { item_id: "a" } });
+      // @ts-expect-error — the overlay must not leak patch onto other routes
+      route("/documents", "patch");
+    };
+    expect(checks).toBeTypeOf("function");
+  });
+});
+
+/* The patch body is not checked by route() — routes.ts reads only
+   parameters.path/query and request() takes a raw BodyInit. Its type safety
+   comes from annotating the literal, which is what these cases pin. */
+describe("KnowledgeItemUpdateRequest typing (compile-time)", () => {
+  it("accepts partial edits and rejects the not-writable set", () => {
+    const checks = () => {
+      const titleOnly: KnowledgeItemUpdateRequest = { title: "Maple Cutouts" };
+      const clearedSummary: KnowledgeItemUpdateRequest = { summary: null };
+      const lines: KnowledgeItemUpdateRequest = {
+        ingredients: ["1 cup maple syrup"],
+      };
+      /* Each directive sits on the offending property, not on the `const`,
+         so the formatter cannot move the error off the line guarding it. */
+      const withStatus: KnowledgeItemUpdateRequest = {
+        // @ts-expect-error — status is not writable (backend extra="forbid")
+        status: "ready",
+      };
+      const withConfidence: KnowledgeItemUpdateRequest = {
+        // @ts-expect-error — confidence is not client-writable
+        confidence: null,
+      };
+      const nulledTitle: KnowledgeItemUpdateRequest = {
+        // @ts-expect-error — an explicit null title is a 422, not a clear
+        title: null,
+      };
+      const wrapped: KnowledgeItemUpdateRequest = {
+        // @ts-expect-error — lines are bare strings on the wire, not objects
+        ingredients: [{ raw_text: "1 cup maple syrup" }],
+      };
+      return [
+        titleOnly,
+        clearedSummary,
+        lines,
+        withStatus,
+        withConfidence,
+        nulledTitle,
+        wrapped,
+      ];
     };
     expect(checks).toBeTypeOf("function");
   });

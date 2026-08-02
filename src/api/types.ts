@@ -260,9 +260,48 @@ export interface KnowledgeItemResponse {
     source_span_ids: string[];
     confidence: ItemConfidence | null;
     structured_data: RecipeStructuredData;
+    /* Required: the backend has sent it (defaulting to []) since epic 21.1 —
+       the generated KnowledgeItemDetail declares it, this hand-written type
+       simply never did. Declaring it here is a fix, not a forward bet. */
+    review_reasons: ReviewFlag[];
+    /* Optional until backend 22.2 is deployed everywhere — the live responses
+       this type describes today do not carry it, and a required field would
+       make every one of them a type-level lie. */
+    edited_at?: string | null;
   };
   display: { title: string; subtitle: string | null };
   source_citations: SourceCitation[];
+}
+
+/* PATCH /knowledge-items/{item_id} body — see docs/edit-api-contract.md §1.
+
+   Every key is optional and the three states are distinct: an ABSENT key is
+   left unchanged (the backend reads the body with `exclude_unset`), an
+   explicit `null` CLEARS the field, and a present value replaces it. `title`
+   is `string` rather than `string | null` because the backend answers 422 to
+   an explicit null or whitespace-only title — a title cannot be cleared, only
+   rewritten.
+
+   The two line lists are WHOLE-ARRAY REPLACEMENT, not a merge: the array sent
+   is the new list in its new order, `[]` empties the section, and an explicit
+   `null` is a 422 (send `[]`). Lines are bare strings — the text is the line
+   identity, and the backend matches submitted lines back to existing rows by
+   text rather than by position, so there is no per-line wrapper object to
+   declare.
+
+   Fields absent from this type are absent on purpose: `status`, `confidence`,
+   `source_span_ids`, `schema`, `item_type` and `warnings` are not
+   client-writable, and the backend's `extra="forbid"` turns sending one into
+   a 422. This type is the compile-time twin of that rejection. */
+export interface KnowledgeItemUpdateRequest {
+  title?: string;
+  summary?: string | null;
+  yield?: string | null;
+  prep_time?: string | null;
+  cook_time?: string | null;
+  total_time?: string | null;
+  ingredients?: string[];
+  steps?: string[];
 }
 
 /* ---------- review (4.2, generated since 4.4) ---------- */
@@ -276,8 +315,15 @@ export interface KnowledgeItemResponse {
 /** `code` is a backend-owned enum treated as an opaque string; `message` is backend-authored copy rendered verbatim. */
 export type ReviewFlag = components["schemas"]["ReviewReason"];
 
-/** `flags` is non-empty by definition — an unflagged item is not in this list. */
-export type ReviewItem = components["schemas"]["ReviewItem"];
+/* `flags` is non-empty by definition — an unflagged item is not in this list.
+   The `edited_at` intersection is an ADDITIVE pending field, not a divergence:
+   backend 22.2 stamps it but the committed schema.d.ts predates the
+   regeneration, and the alias cannot be hand-edited. It is its own tripwire —
+   once typegen emits the generated field the `& { … }` is provably redundant,
+   and phase 5.4 deletes it. */
+export type ReviewItem = components["schemas"]["ReviewItem"] & {
+  edited_at?: string | null;
+};
 
 export type ReviewListResponse =
   components["schemas"]["ReviewItemListResponse"];

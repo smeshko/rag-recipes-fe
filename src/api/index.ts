@@ -59,6 +59,7 @@ export type {
   Ingredient,
   ItemConfidence,
   KnowledgeItemResponse,
+  KnowledgeItemUpdateRequest,
   RecipeStructuredData,
   Recommendation,
   ReprocessResponse,

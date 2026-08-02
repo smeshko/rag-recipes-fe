@@ -1,4 +1,6 @@
-import type { paths } from "./schema";
+/* `./edit-schema` is the generated `paths` plus the not-yet-generated PATCH
+   on /knowledge-items/{item_id}; phase 5.4 reverts this line to `./schema`. */
+import type { ApiPaths as paths } from "./edit-schema";
 
 /* Path/method/param helpers derived from the generated schema. Feature code
    imports these, never `schema.d.ts` itself: a misspelled route, a method the
