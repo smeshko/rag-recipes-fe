@@ -37,7 +37,13 @@ import { matchPath } from "react-router";
  *   would take the first.
  */
 
-/** The four real routes from `src/routes.tsx`, minus the `*` catch-all. */
+/**
+ * The real routes from `src/routes.tsx`, minus two deliberate exclusions: the
+ * `*` catch-all, which would accept every string on earth, and
+ * `/recipes/:id/edit` — a back link that returns a user to a form they
+ * abandoned is wrong, and admitting the path would let a hand-edited
+ * `?from=/recipes/x/edit` aim a recipe page's back link into the editor.
+ */
 export const RETURN_TO_ROUTES = [
   "/",
   "/recipes/:id",
