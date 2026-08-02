@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import {
   type AnswerAsk,
   type AnswerResponse,
@@ -91,6 +91,7 @@ function AnswerSection({
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const q = searchParams.get("q") ?? "";
   const mode = parseMode(searchParams.get("mode"));
   /* Armed by the library's "Open review queue →" link-out; read-only in v1
@@ -176,11 +177,26 @@ export function SearchPage() {
   const search = useSearch(q, mode, reviewIncluded);
   /* Render what the data says, not what the URL says: during a mode change
      the grid still holds the previous mode's results (D7's placeholder), so
-     the header label and every card's router state must use the mode that
+     the header label and every card's return target must use the mode that
      produced them. Falls back to the URL's mode only when there is no data
      to describe. */
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
+
+  /* The search those held-over cards actually came out of (review #2.2). The
+     same nextSearchParams rule that writes the URL, with the producing mode
+     substituted for the URL's — so this is the URL verbatim whenever the two
+     agree (every render but the in-flight window of a mode change), and never
+     a second hand-rolled spelling of the param rules. */
+  const resultsParams = nextSearchParams(searchParams, {
+    q,
+    mode: resultsMode,
+    asked: searchParams.get("asked") === "1",
+  });
+  const resultsFrom = {
+    pathname: location.pathname,
+    search: resultsParams.toString() === "" ? "" : `?${resultsParams}`,
+  };
 
   /* Reads the cache for `ask` and never fetches by itself, so a remount — Back
      from a recipe, Forward across the Ask click, a bookmarked ?asked=1 — reads
@@ -314,8 +330,10 @@ export function SearchPage() {
         <ResultsGrid
           results={fallbackData.results}
           /* The ask is read from this URL, so its mode and the URL's are the
-             same one here. */
+             same one here — and nothing is held over, so the URL the reader is
+             standing on IS the search that produced these. */
           mode={mode}
+          from={location}
           bloomBase={0.24}
           heading={
             <>
@@ -349,6 +367,7 @@ export function SearchPage() {
         <ResultsGrid
           results={results}
           mode={resultsMode}
+          from={resultsFrom}
           dimmed={search.isPlaceholderData}
           /* The default subline hard-codes "needs-review excluded", which is
              a lie once the library's link-out has armed the filter. */

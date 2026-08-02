@@ -134,16 +134,20 @@ describe("results grid", () => {
       screen.getByText(/ranked by hybrid score · needs-review excluded/),
     ).toBeInTheDocument();
 
-    /* The back link is the URL the reader was standing on, not the mode that
-       produced the cards: ?from= captures provenance, and coming back to
-       ?mode=vector returns them to the search they had actually committed. */
+    /* And the return target names the mode that produced them, not the one
+       the URL has already moved on to (review #2.2): a card carrying
+       ?mode=vector would send the reader back to a result set the card they
+       clicked need not even be in. */
     const link = screen.getByText(first.item.title).closest("a");
+    expect(link?.getAttribute("href")).toBe(
+      `/recipes/${first.item.id}?from=%2F%3Fq%3Dfrittata`,
+    );
     (link as HTMLAnchorElement).click();
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/recipes/${first.item.id}`),
     );
     expect(new URLSearchParams(router.state.location.search).get("from")).toBe(
-      "/?q=frittata&mode=vector",
+      "/?q=frittata",
     );
 
     releaseVector();
