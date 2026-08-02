@@ -69,6 +69,22 @@ function declaredNames(body: string): Set<string> {
 const light = declaredNames(blockBody(THEME_CSS, "@theme"));
 const dark = declaredNames(blockBody(THEME_CSS, 'html[data-theme="dark"]'));
 
+/* Custom-property VALUES, for the one token whose value is duplicated outside
+   this file. */
+function declaredValue(body: string, name: string): string {
+  const match = body.match(
+    new RegExp(String.raw`(?:^|[;{])[^\S\n]*${name}\s*:\s*([^;]+);`, "m"),
+  );
+  if (match?.[1] === undefined) throw new Error(`no \`${name}\` declaration`);
+  return match[1].trim().toLowerCase();
+}
+
+function hexes(source: string): string[] {
+  return Array.from(source.matchAll(/#[0-9a-fA-F]{6}\b/g), (m) =>
+    m[0].toLowerCase(),
+  );
+}
+
 describe("theme.css token parity", () => {
   it("parses both blocks", () => {
     // Guards the guard: a regex that silently matches nothing would make the
@@ -121,5 +137,41 @@ describe("theme.css token parity", () => {
 
     expect(shadows.length).toBeGreaterThan(0);
     expect(shadows.filter((s) => s.literalColour)).toEqual([]);
+  });
+});
+
+/* The page wash is the one token whose value is duplicated outside theme.css:
+   the pre-paint script in index.html has to paint it before any stylesheet
+   exists, and themeStore's stamp() has to repaint it when the theme changes.
+   Plan D10 accepts the duplication and asks for the three to be kept in sync by
+   comment. Comments do not fail builds — and drift here is silent in every way
+   that matters: CSS still compiles, the suite still passes, and the only
+   symptom is a flash of the wrong colour on a COLD load, which no warm-cache
+   dev session ever shows. Hence this guard. */
+describe("page wash hexes stay in sync outside theme.css", () => {
+  const expected = [
+    declaredValue(blockBody(THEME_CSS, "@theme"), "--color-surface"),
+    declaredValue(
+      blockBody(THEME_CSS, 'html[data-theme="dark"]'),
+      "--color-surface",
+    ),
+  ].sort();
+
+  it("matches the pre-paint script in index.html", () => {
+    const script = readFileSync(join(process.cwd(), "index.html"), "utf8")
+      /* Comments carry the hexes as prose too — strip them, or the assertion
+         passes on the documentation rather than on the code. */
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+
+    expect([...new Set(hexes(script))].sort()).toEqual(expected);
+  });
+
+  it("matches PAGE_COLOR in themeStore", () => {
+    const store = readFileSync(
+      join(process.cwd(), "src/ui/theme/themeStore.ts"),
+      "utf8",
+    ).replace(/\/\*[\s\S]*?\*\//g, "");
+
+    expect([...new Set(hexes(store))].sort()).toEqual(expected);
   });
 });
