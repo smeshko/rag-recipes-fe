@@ -279,7 +279,13 @@ export function SearchPage() {
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
-      <Bloom duration={0.7} delay={0.06} className="pt-16 pb-5 text-center">
+      {/* 64px of dead space above the fold is a desktop luxury: on a phone it
+          pushes the search field itself below the first screen. */}
+      <Bloom
+        duration={0.7}
+        delay={0.06}
+        className="pt-16 pb-5 text-center max-[560px]:pt-8"
+      >
         <h1 className="font-display text-[clamp(32px,4.4vw,46px)] font-medium leading-[1.2] tracking-[-0.01em]">
           Good morning.{" "}
           <em className="text-accent italic">What are we cooking?</em>
