@@ -145,9 +145,11 @@
    Tailwind v4 inlines an @theme shadow into --tw-shadow at build time, so
    overriding them HERE would be dead CSS that reviews perfectly. The
    overridable part is the --shadow-tint-* / --ring-tint properties the @theme
-   block routes them through; TASK-004 gives those dark values. Until it does,
-   the shadows and the focus ring still carry their light tints in dark and
-   are expected to look wrong. */
+   block routes them through, and those are what the "Depth cues" group at the
+   bottom of this block re-tones. If a later refactor moves near-black values
+   back here as `--shadow-card: …`, the shadows silently stop tracking the
+   theme and nothing fails — `grep -c 'var(--shadow-tint' dist/assets/*.css`
+   is the guard. */
 html[data-theme="dark"] {
   color-scheme: dark;
 
@@ -195,6 +197,34 @@ html[data-theme="dark"] {
   --color-terra-fill: #33241a; /* book accent 2, tint */
   --color-butter: #e2c578; /* book accent 3, ink */
   --color-butter-fill: #2f2818; /* book accent 3, tint */
+
+  /* --- Depth cues --- */
+  /* The shadow TINTS, never the --shadow-* tokens: Tailwind inlines an
+     @theme shadow's value at build time, so a --shadow-card override here
+     would be dead CSS (tests/theme/tokens.test.ts guards the indirection).
+     Near-black rather than a deeper brown on purpose — a brown shadow on a
+     brown page is a hue shift, not a shadow. Dark's warmth comes from the
+     surfaces and the wash above; the shadows only have to read as depth,
+     and need far more opacity to do it against a dark backdrop. */
+  --shadow-tint: rgba(0, 0, 0, 0.45); /* --shadow-card, wide pass */
+  --shadow-tint-soft: rgba(0, 0, 0, 0.35); /* --shadow-card, tight pass */
+  --shadow-tint-row: rgba(0, 0, 0, 0.55); /* the BookRow lift */
+  --shadow-tint-strong: rgba(0, 0, 0, 0.55); /* card lift + focus glow */
+
+  /* The focus ring is the one thing that must NOT follow --color-accent-fill
+     (plan D13): that token is a dark tint here, so a ring made of it is a
+     near-black halo on a near-black card — invisible, and the criterion
+     --shadow-focus exists to satisfy. A translucent pass of dark's own
+     accent (#e8975e) keeps it apricot and visible on every surface. */
+  --ring-tint: rgba(232, 151, 94, 0.35);
+
+  /* The one whole-value gradient override in this block, and legitimately so:
+     unlike a shadow, --gradient-progress survives to the built CSS (it is read
+     through an inline style at IngestionProgress.tsx:98), so redeclaring it
+     here actually lands. Light's #e8b08a stop is a pale peach that reads as a
+     blown-out streak on a dark track; #8a542f keeps the same dark→accent sweep
+     direction light has, against a --color-surface-inset track. */
+  --gradient-progress: linear-gradient(90deg, #8a542f, var(--color-accent));
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
