@@ -43,7 +43,7 @@ function errorCopy(item: UploadOutcomeItem): string {
 
 function CalmLine({ children }: { children: React.ReactNode }) {
   return (
-    <p role="status" className="mt-3 text-[13.5px] text-ink-soft">
+    <p role="status" className="mt-3 text-[13.5px] text-fg-muted">
       {children}
     </p>
   );
@@ -116,7 +116,7 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   const refused = errored.filter(({ item }) => !isUnconfirmedFailure(item));
   return (
     <div className="mt-3 text-[13.5px]">
-      <p role="status" className="text-ink-soft">
+      <p role="status" className="text-fg-muted">
         {summary.created} added · {summary.duplicates} already on the shelf ·{" "}
         {refused.length} failed
         {unconfirmed.length > 0 && ` · ${unconfirmed.length} unconfirmed`}
@@ -134,7 +134,7 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
         </ul>
       )}
       {unconfirmed.length > 0 && (
-        <ul className="mt-1 list-none text-ink-soft">
+        <ul className="mt-1 list-none text-fg-muted">
           {unconfirmed.map(({ item, index }) => (
             <li key={`${index}-${item.filename}`}>
               {item.filename} — {errorCopy(item)}

@@ -59,15 +59,15 @@ describe("statusPill", () => {
 
 describe("spineAccent", () => {
   it("overrides with apricot while working and danger when failed", () => {
-    expect(spineAccent("queued", "any-id")).toBe("bg-apricot");
-    expect(spineAccent("embedding_chunks", "any-id")).toBe("bg-apricot");
+    expect(spineAccent("queued", "any-id")).toBe("bg-accent");
+    expect(spineAccent("embedding_chunks", "any-id")).toBe("bg-accent");
     expect(spineAccent("failed", "any-id")).toBe("bg-danger");
   });
 
   it("picks a stable accent from the rotation by document id", () => {
     const first = spineAccent("ready", "book-one-pan");
     expect(first).toBe(spineAccent("ready", "book-one-pan"));
-    expect(["bg-sage", "bg-terra-ink", "bg-butter-ink"]).toContain(first);
+    expect(["bg-sage", "bg-terra", "bg-butter"]).toContain(first);
   });
 });
 

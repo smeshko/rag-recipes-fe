@@ -67,7 +67,7 @@ function CountCell({
       >
         {value ?? "—"}
       </b>
-      <small className="text-[11.5px] font-bold tracking-[0.06em] text-ink-faint uppercase">
+      <small className="text-[11.5px] font-bold tracking-[0.06em] text-fg-subtle uppercase">
         {label}
       </small>
     </div>
@@ -94,7 +94,7 @@ function CountsRow({
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-11 w-14 animate-pulse rounded-md bg-line/70"
+            className="h-11 w-14 animate-pulse rounded-md bg-skeleton/70"
           />
         ))}
       </div>
@@ -148,7 +148,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
 
   return (
     <Bloom index={index} base={0.18} step={0.04} className="mb-4">
-      <article className="grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-line bg-card shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_16px_40px_rgba(94,74,44,0.13)] max-[880px]:grid-cols-[6px_1fr]">
+      <article className="grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-border bg-surface-raised shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-[0_16px_40px_rgba(94,74,44,0.13)] max-[880px]:grid-cols-[6px_1fr]">
         <span
           aria-hidden="true"
           className={`self-stretch ${spineAccent(doc.status, doc.id)}`}
@@ -157,7 +157,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
             {doc.title}
           </h3>
-          <small className="mt-1 block text-[12.5px] font-semibold text-ink-faint">
+          <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
             {subtitleFor(doc, detail)}
           </small>
         </div>
@@ -166,7 +166,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
         ) : doc.status === "failed" ? (
           /* Honest failure copy: names NO cause — status is only "failed"
              and progress.message is null today; prefer it if it ever lands. */
-          <div className="py-5 text-[13px] text-ink-soft max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
+          <div className="py-5 text-[13px] text-fg-muted max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5">
             <b className="text-danger">Ingestion failed.</b>{" "}
             {ingest.data?.progress.message ??
               "The API doesn't expose the reason yet."}
@@ -186,7 +186,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           {(counts?.needs_review_items ?? 0) > 0 && (
             <Link
               to={withReturnTo(reviewQueueUrl(doc.id), location)}
-              className="mt-2 block text-[12.5px] font-bold text-apricot hover:underline"
+              className="mt-2 block text-[12.5px] font-bold text-accent hover:underline"
             >
               Open review queue →
             </Link>
@@ -196,7 +196,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               type="button"
               disabled={reprocess.isPending}
               onClick={() => reprocess.mutate()}
-              className="mt-2 block w-full text-right text-[12.5px] font-bold text-apricot hover:underline disabled:opacity-50 max-[880px]:text-left"
+              className="mt-2 block w-full text-right text-[12.5px] font-bold text-accent hover:underline disabled:opacity-50 max-[880px]:text-left"
             >
               {doc.status === "failed" ? "Retry ↻" : "Reprocess ↻"}
             </button>
