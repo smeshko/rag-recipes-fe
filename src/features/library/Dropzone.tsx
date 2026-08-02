@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { useUploadBooks } from "../../api";
 import { UploadOutcome } from "./UploadOutcome";
 
-/* Mockup-faithful surface (sk-library.html:71-102): dashed #DCCFB4 border,
-   translucent raised-surface bg, accent hover — deliberately NOT a Panel.
+/* Mockup-faithful surface (sk-library.html:71-102): dashed border-strong
+   edge, translucent surface-raised bg, accent hover — deliberately NOT a
+   Panel.
    The busy state and the outcome area below are declared design extensions;
    the mockup has neither. No `accept` filter on the input and no client-side
    type check: the server's magic-byte 415 is the authority. */
@@ -25,7 +26,7 @@ export function Dropzone() {
   const active = dragDepth > 0;
   const zoneLook = active
     ? "border-accent bg-surface-raised/85"
-    : "border-[#DCCFB4] bg-surface-raised/55 hover:border-accent hover:bg-surface-raised/85";
+    : "border-border-strong bg-surface-raised/55 hover:border-accent hover:bg-surface-raised/85";
 
   return (
     <div>

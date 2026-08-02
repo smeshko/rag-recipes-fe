@@ -39,7 +39,7 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <form
-      className="flex items-center gap-3.5 rounded-pill border border-border bg-surface-raised py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-[0_14px_40px_rgba(94,74,44,0.14),0_0_0_4px_var(--color-apricot-soft)]"
+      className="flex items-center gap-3.5 rounded-pill border border-border bg-surface-raised py-2 pr-2 pl-[26px] shadow-card transition-shadow duration-[250ms] focus-within:shadow-focus"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();

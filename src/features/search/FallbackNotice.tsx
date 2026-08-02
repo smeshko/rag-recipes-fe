@@ -20,7 +20,7 @@ export function FallbackNotice({
       >
         <span
           aria-hidden="true"
-          className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[rgba(143,106,30,0.12)]"
+          className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-warning/12"
         >
           <svg
             viewBox="0 0 24 24"
@@ -40,14 +40,14 @@ export function FallbackNotice({
           <p className="mt-2 text-[15px] text-fg-muted">{warnings.join(" ")}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {hasResults ? (
-              <code className="rounded-[6px] bg-[rgba(143,106,30,0.1)] px-2 py-1 font-body text-[11.5px] font-bold text-warning">
+              <code className="rounded-[6px] bg-warning/10 px-2 py-1 font-body text-[11.5px] font-bold text-warning">
                 warning: answer_fallback · retrieval still ran
               </code>
             ) : null}
             <button
               type="button"
               onClick={onRephrase}
-              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning transition-colors hover:bg-[rgba(143,106,30,0.08)]"
+              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning transition-colors hover:bg-warning/8"
             >
               Try rephrasing ↻
             </button>

@@ -90,10 +90,13 @@ export function IngestionProgress({
       >
         <span
           data-testid="progress-fill"
-          className={`progress-fill block h-full rounded-[4px] bg-[linear-gradient(90deg,#E8B08A,var(--color-apricot))] ${
+          className={`progress-fill block h-full rounded-[4px] ${
             determinate ? "" : "opacity-40"
           }`}
-          style={{ width: `${fillPct}%` }}
+          style={{
+            width: `${fillPct}%`,
+            background: "var(--gradient-progress)",
+          }}
         />
       </div>
       <ol
