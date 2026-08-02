@@ -21,3 +21,4 @@ export type { SearchInputProps } from "./SearchInput";
 export { SearchInput } from "./SearchInput";
 export type { ShellHandle } from "./Shell";
 export { Shell } from "./Shell";
+export { ThemeToggle } from "./theme/ThemeToggle";

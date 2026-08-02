@@ -1,3 +1,6 @@
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ThemeToggle } from "../../src/ui/theme/ThemeToggle";
 import {
   getThemeSnapshot,
   resetThemeStoreForTests,
@@ -113,5 +116,118 @@ describe("theme store", () => {
     const pinned = getThemeSnapshot();
 
     expect(getThemeSnapshot()).toBe(pinned);
+  });
+});
+
+/* The control announces the *choice*, so every assertion below is on
+   aria-checked over the three names — never on the resolved palette. */
+function segments(): HTMLElement[] {
+  const group = screen.getByRole("radiogroup", { name: "Theme" });
+  return within(group).getAllByRole("radio");
+}
+
+function names(): (string | null)[] {
+  return segments().map((segment) => segment.getAttribute("aria-label"));
+}
+
+function radio(name: string): HTMLElement {
+  return screen.getByRole("radio", { name });
+}
+
+describe("theme toggle", () => {
+  it("renders three named segments in light, dark, system order", () => {
+    render(<ThemeToggle />);
+
+    expect(names()).toEqual(["Light", "Dark", "System"]);
+    expect(radio("System")).toBeChecked();
+  });
+
+  it("clicking a segment pins the choice, persists it and stamps <html>", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+
+    await user.click(radio("Dark"));
+
+    expect(radio("Dark")).toBeChecked();
+    expect(radio("System")).not.toBeChecked();
+    expect(localStorage.getItem(THEME_KEY)).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    await user.click(radio("System"));
+
+    expect(radio("System")).toBeChecked();
+    expect(localStorage.getItem(THEME_KEY)).toBe("system");
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    /* Back on the OS leash: the fake matchMedia flips and the document
+       follows without another click. */
+    act(() => media.setMatches(true));
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("announces the choice, not the resolution: system stays checked on a dark OS", () => {
+    media.restore();
+    media = installMatchMedia(true);
+    resetThemeStoreForTests();
+
+    render(<ThemeToggle />);
+
+    expect(radio("System")).toBeChecked();
+    expect(radio("Dark")).not.toBeChecked();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("is a single tab stop and moves selection and focus with the arrows", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+
+    /* Roving tabindex: only the checked segment is reachable by Tab. */
+    expect(
+      segments().map((segment) => segment.getAttribute("tabindex")),
+    ).toEqual(["-1", "-1", "0"]);
+
+    await user.tab();
+    expect(radio("System")).toHaveFocus();
+
+    /* Wraps forwards off the end … */
+    await user.keyboard("{ArrowRight}");
+    expect(radio("Light")).toHaveFocus();
+    expect(radio("Light")).toBeChecked();
+
+    /* … and backwards off the start. */
+    await user.keyboard("{ArrowLeft}");
+    expect(radio("System")).toHaveFocus();
+    expect(radio("System")).toBeChecked();
+
+    await user.keyboard("{ArrowDown}");
+    expect(radio("Light")).toBeChecked();
+    await user.keyboard("{ArrowUp}");
+    expect(radio("System")).toBeChecked();
+
+    await user.keyboard("{Home}");
+    expect(radio("Light")).toHaveFocus();
+    expect(radio("Light")).toBeChecked();
+
+    await user.keyboard("{End}");
+    expect(radio("System")).toHaveFocus();
+    expect(radio("System")).toBeChecked();
+
+    /* One stop in, one stop out. */
+    await user.tab();
+    expect(document.body).toHaveFocus();
+  });
+
+  it("selects the focused segment with Space and Enter", async () => {
+    const user = userEvent.setup();
+    render(<ThemeToggle />);
+
+    radio("Dark").focus();
+    await user.keyboard(" ");
+    expect(radio("Dark")).toBeChecked();
+
+    radio("Light").focus();
+    await user.keyboard("{Enter}");
+    expect(radio("Light")).toBeChecked();
   });
 });
