@@ -58,7 +58,7 @@ describe("statusPill", () => {
 });
 
 describe("spineAccent", () => {
-  it("overrides with apricot while working and danger when failed", () => {
+  it("overrides with accent while working and danger when failed", () => {
     expect(spineAccent("queued", "any-id")).toBe("bg-accent");
     expect(spineAccent("embedding_chunks", "any-id")).toBe("bg-accent");
     expect(spineAccent("failed", "any-id")).toBe("bg-danger");
