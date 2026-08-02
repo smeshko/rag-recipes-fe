@@ -104,6 +104,20 @@ export function useUpdateKnowledgeItem<TContext = unknown>(
       }
       try {
         await options.onSettled?.(data, error, body, context);
+      } catch (callbackError) {
+        /* ISOLATED ON PURPOSE. This runs inside query-core's own lifecycle
+           await (mutation.js, the success path), so letting a caller's
+           rejection escape would drop into ITS catch: onError fires, THIS
+           callback runs a second time with (undefined, error), the mutation
+           dispatches `error` and mutateAsync rejects — reporting a failed
+           save for a PATCH the server already committed and the cache
+           already holds. 5.4 hangs async Save-and-approve here (D12), so a
+           failing approve must not retroactively fail the edit. The callback
+           owns its own errors; we only make sure they are not silent. */
+        console.error(
+          "useUpdateKnowledgeItem: onSettled callback rejected after a committed patch",
+          callbackError,
+        );
       } finally {
         void queryClient.invalidateQueries({ queryKey: ["review-items"] });
       }

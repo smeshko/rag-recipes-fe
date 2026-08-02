@@ -1027,6 +1027,49 @@ describe("useUpdateKnowledgeItem", () => {
     expect(seen).toBe(CORRECTED);
   });
 
+  /* The other half of the D12 seam: 5.4's Save-and-approve is an ASYNC caller
+     callback, and a failing approve must not retroactively fail an edit the
+     server already committed. Left unisolated, the rejection lands in
+     query-core's own catch — onError, a SECOND onSettled with (undefined,
+     error), and a rejected mutateAsync. */
+  it("keeps a committed patch successful when the caller's onSettled rejects", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["review-items", null], { review_items: [] });
+
+    const onError = vi.fn();
+    const boom = new Error("the approve that followed the save failed");
+    const onSettled = vi.fn().mockRejectedValue(boom);
+
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_short", { onError, onSettled }),
+      { wrapper },
+    );
+
+    const response = await result.current.mutateAsync({ title: CORRECTED });
+
+    expect(response.knowledge_item.title).toBe(CORRECTED);
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.isError).toBe(false);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    /* The settle work still completes, exactly once. */
+    expect(
+      queryClient.getQueryData(["knowledge-item", "item_edit_short"]),
+    ).toBe(response);
+    expect(
+      queryClient.getQueryState(["review-items", null])?.isInvalidated,
+    ).toBe(true);
+    /* Isolated, not swallowed. */
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("onSettled callback rejected"),
+      boom,
+    );
+    consoleError.mockRestore();
+  });
+
   it("fires caller onError once on a 404 and still does its settle work", async () => {
     const { queryClient, wrapper } = makeWrapper();
     queryClient.setQueryData(["review-items", null], { review_items: [] });
