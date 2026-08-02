@@ -1149,6 +1149,39 @@ describe("useUpdateKnowledgeItem", () => {
     consoleError.mockRestore();
   });
 
+  /* The seam's contract made runnable: the downstream failure stays
+     observable to UI code — it is rendered from the caller's own state, not
+     from the PATCH mutation's, because the PATCH did succeed. This is the
+     shape 5.4's Save-and-approve has to take. */
+  it("lets a caller render a failed follow-up while the save reads as saved", async () => {
+    const { wrapper } = makeWrapper();
+
+    const approve = vi
+      .fn()
+      .mockRejectedValue(new ApiError("review_not_pending", "gone", {}, 404));
+    let approveFailed: string | undefined;
+
+    const { result } = renderHook(
+      () =>
+        useUpdateKnowledgeItem("item_edit_short", {
+          onSettled: async () => {
+            try {
+              await approve();
+            } catch (error) {
+              approveFailed = (error as ApiError).code;
+            }
+          },
+        }),
+      { wrapper },
+    );
+
+    await result.current.mutateAsync({ title: CORRECTED });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(approve).toHaveBeenCalledTimes(1);
+    expect(approveFailed).toBe("review_not_pending");
+  });
+
   it("fires caller onError once on a 404 and still does its settle work", async () => {
     const { queryClient, wrapper } = makeWrapper();
     queryClient.setQueryData(["review-items", null], { review_items: [] });

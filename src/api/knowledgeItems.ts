@@ -36,6 +36,17 @@ export interface UseUpdateKnowledgeItemOptions<TContext = unknown> {
     body: KnowledgeItemUpdateRequest,
     context: TContext | undefined,
   ) => Promise<unknown> | unknown;
+  /* Runs after the ['knowledge-item', id] write and before the
+     ['review-items'] invalidation (D12).
+
+     IT OWNS ITS OWN FAILURES. A rejection here is caught by the hook and
+     logged, never turned into mutation error state: the PATCH has committed
+     and the cache holds the server's item, so reporting a failed save would
+     be a lie. A caller chaining async work off this seam — 5.4's
+     Save-and-approve is the case it exists for — must therefore try/catch
+     INSIDE the callback and render the downstream failure from its own
+     state (`approveFailed`, a toast, whatever), not from `isError` or a
+     rejected `mutateAsync`. */
   onSettled?: (
     data: KnowledgeItemResponse | undefined,
     error: Error | null,
