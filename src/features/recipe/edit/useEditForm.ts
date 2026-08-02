@@ -51,6 +51,26 @@ const norm = (value: string) => value.trim();
 const normList = (rows: LineRow[]) =>
   rows.map((row) => norm(row.text)).filter(Boolean);
 
+/* What actually goes on the wire, which is NOT `normList`. The backend matches
+   submitted lines back to existing rows *by text* and guarantees that
+   "untouched lines pass through byte-identical" (edit-api-contract §1) — so a
+   seeded row that the reviewer never touched must go out with its ORIGINAL
+   bytes. `ingredientLines`' structured arm maps `raw_text` without trimming, so
+   a padded line really can reach the form; normalizing it would fail the
+   backend's match and demote an untouched row to human-authored, nulling its
+   parse and its source spans. Only rows the reviewer actually changed (and rows
+   they added) are normalized. Blank and whitespace-only rows still drop either
+   way — those are a 422 (D9). */
+const wireList = (rows: LineRow[], originals: Map<string, string>) =>
+  rows
+    .map((row) => {
+      const original = originals.get(row.id);
+      return original !== undefined && norm(original) === norm(row.text)
+        ? original
+        : norm(row.text);
+    })
+    .filter((text) => text.trim() !== "");
+
 const sameList = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
@@ -83,6 +103,9 @@ interface SeededState {
   id: string;
   form: EditForm;
   seed: Snapshot;
+  /** Row id → the row's text exactly as it arrived, before any normalization.
+      `wireList` reads it so an untouched row is resent byte-identical. */
+  originals: Map<string, string>;
 }
 
 function seedState(
@@ -120,11 +143,16 @@ function seedState(
     })),
   };
 
+  const originals = new Map<string, string>();
+  for (const row of [...form.ingredients, ...form.steps]) {
+    originals.set(row.id, row.text);
+  }
+
   /* The snapshot is the normalizer applied to the SEEDED ROWS, not to the
      payload (D8). Otherwise the blank row seeded above, and any payload line
      of " " (which survives `ingredientLines`' Boolean filter but not trim),
      would make an untouched form report dirty the moment it mounted. */
-  return { id: ki.id, form, seed: snapshotOf(form) };
+  return { id: ki.id, form, seed: snapshotOf(form), originals };
 }
 
 export interface UseEditForm {
@@ -188,7 +216,7 @@ export function useEditForm(item: KnowledgeItemResponse): UseEditForm {
     [mintId],
   );
 
-  const { form, seed } = current;
+  const { form, seed, originals } = current;
   const live = snapshotOf(form);
   const ingredientsDirty = !sameList(live.ingredients, seed.ingredients);
   const stepsDirty = !sameList(live.steps, seed.steps);
@@ -214,10 +242,10 @@ export function useEditForm(item: KnowledgeItemResponse): UseEditForm {
        empty would read as "unchanged" and silently discard the deletion, and
        an explicit `null` is a 422. */
     if (ingredientsDirty) {
-      body.ingredients = live.ingredients;
+      body.ingredients = wireList(form.ingredients, originals);
     }
     if (stepsDirty) {
-      body.steps = live.steps;
+      body.steps = wireList(form.steps, originals);
     }
     return body;
   };

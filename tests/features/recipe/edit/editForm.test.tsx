@@ -233,6 +233,72 @@ describe("useEditForm patch derivation", () => {
     expect(result.current.patchBody()).toEqual({});
   });
 
+  /* The backend matches submitted lines back to existing rows BY TEXT and
+     promises untouched lines pass through byte-identical (edit-api-contract
+     §1). `ingredientLines`' structured arm maps `raw_text` without trimming, so
+     padding really does reach the form — and trimming it on the way out would
+     demote an untouched row to human-authored, nulling its parse and its source
+     spans (review #1.1). */
+  const paddedItem = asItem({
+    ...needsReviewItemFixture,
+    knowledge_item: {
+      ...needsReviewItemFixture.knowledge_item,
+      id: "item_review_padded",
+      structured_data: {
+        ...sd,
+        ingredients: [
+          {
+            ...sd.ingredients[0],
+            raw_text: "  2 Tbsp extra virgin olive oil  ",
+          },
+          { ...sd.ingredients[1], raw_text: "   " },
+          sd.ingredients[2],
+        ],
+        steps: [
+          { ...sd.steps[0], text: "\tPreheat the oven to 375°F." },
+          sd.steps[1],
+          sd.steps[2],
+        ],
+      },
+    },
+  });
+
+  it("resends an untouched padded row with its original bytes", () => {
+    const { result } = mount(paddedItem);
+
+    /* Untouched, despite the padding — the compare is normalized (D8). */
+    expect(result.current.isDirty).toBe(false);
+
+    editRow(result, "ingredients", 2, "9 large eggs");
+
+    /* The padded row rides out untouched; the whitespace-only row drops,
+       because a blank element is itself a 422 (D9). */
+    const body = result.current.patchBody();
+    expect(body.ingredients).toEqual([
+      "  2 Tbsp extra virgin olive oil  ",
+      "9 large eggs",
+    ]);
+
+    editRow(result, "steps", 2, "Bake until puffy and just set.");
+    expect(result.current.patchBody().steps?.[0]).toBe(
+      "\tPreheat the oven to 375°F.",
+    );
+  });
+
+  it("normalizes a row the reviewer actually edited, and drops blanks", () => {
+    const { result } = mount(paddedItem);
+
+    /* A row the reviewer genuinely retyped goes out trimmed rather than
+       carrying their stray spacing — the byte-preservation is for UNTOUCHED
+       rows only. */
+    editRow(result, "ingredients", 0, "  3 Tbsp extra virgin olive oil  ");
+
+    expect(result.current.patchBody().ingredients).toEqual([
+      "3 Tbsp extra virgin olive oil",
+      "8 large eggs",
+    ]);
+  });
+
   it("has no side effects — two calls agree and leave isDirty alone", () => {
     const { result } = mount();
 
