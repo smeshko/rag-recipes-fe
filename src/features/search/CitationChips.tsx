@@ -25,7 +25,14 @@ function Chip({ citation }: { citation: AnswerCitation }) {
       to={withReturnTo(`/recipes/${citation.knowledge_item_id}`, location)}
       aria-label={destination}
       title={destination}
-      className="mx-0.5 inline-block rounded-chip bg-accent-fill px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-accent transition-colors hover:bg-accent hover:text-fg-on-accent"
+      /* The hover fill is `accent-strong`, not `accent`: `fg-on-accent` on
+         light `accent` is 3.61:1 and this chip is the fourth of the four
+         solid-accent surfaces carrying `fg-on-accent` (plan D12). On
+         `accent-strong` it is 4.63:1 in light and 10.05:1 in dark. The chip's
+         REST state (`bg-accent-fill text-accent`, 3.01:1 in light) is one of
+         the seven light shortfalls deferred to the accessibility pass — see
+         RESEARCH.md's light table; do not "fix" it here. */
+      className="mx-0.5 inline-block rounded-chip bg-accent-fill px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-accent transition-colors hover:bg-accent-strong hover:text-fg-on-accent"
     >
       {citation.label}
     </Link>

@@ -5,6 +5,7 @@ import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { reviewItemsFixture, reviewScenario } from "../src/mocks/review";
 import { routes } from "../src/routes";
+import { resetThemeStoreForTests, THEME_KEY } from "../src/ui/theme/themeStore";
 import { libraryShelfHandlers } from "./msw/handlers";
 import { server } from "./msw/server";
 
@@ -95,5 +96,36 @@ describe("shell nav active state", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("search-page")).not.toBeInTheDocument();
     expect(currentPill()).toBe("Library");
+  });
+});
+
+describe("shell header theme toggle", () => {
+  /* The store is a module singleton and localStorage outlives a test, so the
+     pin this block sets must not leak into the nav cases above. */
+  afterEach(() => {
+    localStorage.removeItem(THEME_KEY);
+    resetThemeStoreForTests();
+  });
+
+  it("renders the theme radiogroup in the header banner", () => {
+    renderAt("/");
+    const header = screen.getByRole("banner");
+    expect(
+      within(header).getByRole("radiogroup", { name: "Theme" }),
+    ).toBeInTheDocument();
+  });
+
+  /* The bloom reveal is a CSS animation on the header element: if switching
+     theme replaced that node, every header animation would re-run. Node
+     identity is the assertion — nothing else proves it did not remount. */
+  it("does not remount the header when the theme changes", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+    const before = screen.getByRole("banner");
+
+    await user.click(within(before).getByRole("radio", { name: "Dark" }));
+
+    expect(within(before).getByRole("radio", { name: "Dark" })).toBeChecked();
+    expect(screen.getByRole("banner")).toBe(before);
   });
 });

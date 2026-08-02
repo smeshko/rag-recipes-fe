@@ -24,9 +24,17 @@ export function Dropzone() {
   };
 
   const active = dragDepth > 0;
+  /* The phase's only `dark:` utilities, and the reason @custom-variant dark
+     exists: every other surface re-themes by VALUE, but these two fills want a
+     different TOKEN. `surface-raised` is a translucent card colour lifted over
+     a light page; in dark it sits BELOW `surface-inset` on the ramp, so a 55%
+     pass of it over `surface` is very nearly the page itself and the zone
+     loses its fill entirely. `surface-inset` is the token that lifts in dark.
+     Keep the two arms' opacities in step — light and dark differ only in which
+     token they tint. */
   const zoneLook = active
-    ? "border-accent bg-surface-raised/85"
-    : "border-border-strong bg-surface-raised/55 hover:border-accent hover:bg-surface-raised/85";
+    ? "border-accent bg-surface-raised/85 dark:bg-surface-inset/85"
+    : "border-border-strong bg-surface-raised/55 hover:border-accent hover:bg-surface-raised/85 dark:bg-surface-inset/55 dark:hover:bg-surface-inset/85";
 
   return (
     <div>
@@ -70,7 +78,9 @@ export function Dropzone() {
         <button
           type="button"
           disabled={upload.isPending}
-          className="ml-auto flex-none rounded-pill bg-accent px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-strong disabled:opacity-60"
+          /* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
+             Ask button for the measured pairs (plan D12). */
+          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */

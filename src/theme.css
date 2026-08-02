@@ -6,6 +6,16 @@
    must move with it, or the mockups silently rejoin the build (no error). */
 @source not "../design";
 
+/* Rebinds Tailwind's built-in `dark` variant from `prefers-color-scheme: dark`
+   to the RESOLVED theme stamped on <html> — the OS preference is resolved in
+   JS (src/ui/theme/themeStore.ts), so CSS only ever sees "light" or "dark".
+   The :where() keeps the variant's specificity contribution at zero, so
+   `dark:bg-x` and `bg-x` stay in their normal utility-order relationship.
+   Almost nothing needs it: the palette below re-themes every colour utility
+   by value, so `dark:` is reserved for the handful of places where dark wants
+   a DIFFERENT token rather than a different value. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
    --color-sage is #5c6b4c (the value the mockups actually paint), not the dead
    #7C8A6E declaration; see the plan's DECISIONS.md D4.
@@ -36,6 +46,7 @@
   /* --- Accent --- */
   --color-accent: #c96f3b; /* primary action and emphasis */
   --color-accent-strong: #b25e2e; /* accent hover / pressed */
+  --color-accent-pressed: #9a4f26; /* one step below -strong; solid-button hover */
   --color-accent-fill: #f7e8dc; /* accent tint background, and the focus ring */
 
   /* --- Lines --- */
@@ -81,6 +92,28 @@
   --radius-panel: 22px;
   --radius-pill: 999px;
 
+  /* Shadow TINT, not shadow geometry — and the reason the four shadows below
+     carry no literal colour of their own. Tailwind v4 resolves an @theme
+     shadow's VALUE into --tw-shadow at build time (it has to, so a
+     shadow-colour utility can rewrite it), which is why grep for
+     `var(--shadow` over the built CSS finds 0 and why redeclaring
+     --shadow-card in the dark block below would be dead CSS that reviews
+     perfectly. What Tailwind DOES preserve is a var() COLOUR inside a shadow,
+     so these are the only part of a shadow that can be re-toned at runtime.
+     Do not fold them back into the shadow literals. The values are light's
+     previous literals exactly — the indirection is a zero-pixel refactor. */
+  --shadow-tint: rgba(94, 74, 44, 0.08); /* --shadow-card, wide pass */
+  --shadow-tint-soft: rgba(94, 74, 44, 0.05); /* --shadow-card, tight pass */
+  --shadow-tint-row: rgba(94, 74, 44, 0.13); /* the BookRow lift */
+  --shadow-tint-strong: rgba(94, 74, 44, 0.14); /* card lift + focus glow */
+
+  /* The focus ring's 4px halo, split out of --color-accent-fill (plan D13).
+     That token is a tint BACKGROUND everywhere else and inverts to a dark
+     tint in dark, where it would make the ring invisible; the ring wants a
+     light translucent accent. Light keeps accent-fill verbatim, so nothing
+     moves. Deliberately not a --color-* token: it has no utility to mint. */
+  --ring-tint: var(--color-accent-fill);
+
   /* Names are TASK-002's. Which mockup surface each one belongs to, since the
      pair reads as one surface's rest/hover state but is not: --shadow-card is
      the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
@@ -89,21 +122,124 @@
      surface again, deeper than --shadow-card and shallower than
      --shadow-card-hover. */
   --shadow-card:
-    0 10px 30px rgba(94, 74, 44, 0.08), 0 2px 6px rgba(94, 74, 44, 0.05);
-  --shadow-card-hover: 0 18px 44px rgba(94, 74, 44, 0.14);
-  --shadow-row-hover: 0 16px 40px rgba(94, 74, 44, 0.13);
+    0 10px 30px var(--shadow-tint), 0 2px 6px var(--shadow-tint-soft);
+  --shadow-card-hover: 0 18px 44px var(--shadow-tint-strong);
+  --shadow-row-hover: 0 16px 40px var(--shadow-tint-row);
   --shadow-focus:
-    0 14px 40px rgba(94, 74, 44, 0.14), 0 0 0 4px var(--color-accent-fill);
+    0 14px 40px var(--shadow-tint-strong), 0 0 0 4px var(--ring-tint);
+}
+
+/* The dark palette — VALUES ONLY, same token names as @theme above, so the
+   ~250 utility call sites re-theme without a single class change (a colour
+   utility compiles to `var(--color-*)`, which this block redefines).
+
+   Two independent reasons this wins over Tailwind's `:root` block, and the
+   reason not to "simplify" the selector: the rule is UNLAYERED, so it beats
+   everything inside Tailwind's `@layer theme` outright regardless of source
+   order, AND `html[data-theme="dark"]` scores (0,1,1) against `:root`'s
+   (0,1,0), so it would still win if anyone ever moved it into a layer or
+   folded it into @theme. A bare `[data-theme="dark"]` only TIES at (0,1,0)
+   and would then depend on source order. Keep the `html` prefix.
+
+   Deliberately absent, and never to be added: the four --shadow-* values.
+   Tailwind v4 inlines an @theme shadow into --tw-shadow at build time, so
+   overriding them HERE would be dead CSS that reviews perfectly. The
+   overridable part is the --shadow-tint-* / --ring-tint properties the @theme
+   block routes them through, and those are what the "Depth cues" group at the
+   bottom of this block re-tones. If a later refactor moves near-black values
+   back here as `--shadow-card: …`, the shadows silently stop tracking the
+   theme and nothing fails — `grep -c 'var(--shadow-tint' dist/assets/*.css`
+   is the guard. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --color-surface: #16110c; /* the page wash */
+  --color-surface-inset: #2a2118; /* inset fill sitting ON a raised surface */
+  --color-surface-raised: #201811; /* cards, panels, the search bar */
+  --color-surface-inverted: #f0e6d6; /* solid pill / chip fill */
+  --color-surface-warm: #241b13; /* warm aside fill, light stop */
+  --color-surface-warm-strong: #1e1710; /* warm aside fill, deep stop */
+  --color-surface-glow: #2a1e12; /* the body wash's radial highlight */
+
+  /* --- Foregrounds --- */
+  --color-fg: #f3eadc; /* body text on a dark surface */
+  --color-fg-muted: #c3b39a; /* secondary text, labels */
+  --color-fg-subtle: #9b8c76; /* tertiary text, meta, placeholders */
+  --color-fg-inverted: #16110c; /* text on --color-surface-inverted */
+  --color-fg-on-accent: #1e1509; /* text on an accent or danger solid */
+
+  /* --- Accent --- */
+  --color-accent: #e8975e; /* primary action and emphasis */
+  --color-accent-strong: #f5b481; /* accent hover / pressed */
+  --color-accent-pressed: #d8863f; /* one step below -strong; solid-button hover */
+  --color-accent-fill: #3b2617; /* accent tint background, and the focus ring */
+
+  /* --- Lines --- */
+  --color-border: #372c20; /* every hairline border */
+  --color-border-strong: #4a3b2b; /* the dropzone's dashed edge */
+  --color-skeleton: #382c20; /* loading placeholder blocks */
+
+  /* --- Status --- */
+  --color-success: #7fbf8e; /* success ink */
+  --color-success-fill: #1e2e22; /* success tint background */
+  --color-warning: #e3be6a; /* warning ink */
+  --color-warning-fill: #2e2617; /* warning tint background */
+  --color-warning-border: #4e4028; /* warning outline */
+  --color-danger: #f08b6b; /* danger ink and solid fill */
+  --color-danger-fill: #33201a; /* danger tint background */
+  --color-danger-border: #563328; /* danger outline */
+
+  /* --- Book accents (categorical — the name IS the role) --- */
+  --color-sage: #a9be92; /* book accent 1, ink */
+  --color-sage-fill: #262c1e; /* book accent 1, tint */
+  --color-terra: #e0a176; /* book accent 2, ink */
+  --color-terra-fill: #33241a; /* book accent 2, tint */
+  --color-butter: #e2c578; /* book accent 3, ink */
+  --color-butter-fill: #2f2818; /* book accent 3, tint */
+
+  /* --- Depth cues --- */
+  /* The shadow TINTS, never the --shadow-* tokens: Tailwind inlines an
+     @theme shadow's value at build time, so a --shadow-card override here
+     would be dead CSS (tests/theme/tokens.test.ts guards the indirection).
+     Near-black rather than a deeper brown on purpose — a brown shadow on a
+     brown page is a hue shift, not a shadow. Dark's warmth comes from the
+     surfaces and the wash above; the shadows only have to read as depth,
+     and need far more opacity to do it against a dark backdrop. */
+  --shadow-tint: rgba(0, 0, 0, 0.45); /* --shadow-card, wide pass */
+  --shadow-tint-soft: rgba(0, 0, 0, 0.35); /* --shadow-card, tight pass */
+  --shadow-tint-row: rgba(0, 0, 0, 0.55); /* the BookRow lift */
+  --shadow-tint-strong: rgba(0, 0, 0, 0.55); /* card lift + focus glow */
+
+  /* The focus ring is the one thing that must NOT follow --color-accent-fill
+     (plan D13): that token is a dark tint here, so a ring made of it is a
+     near-black halo on a near-black card — invisible, and the criterion
+     --shadow-focus exists to satisfy. A translucent pass of dark's own
+     accent (#e8975e) keeps it apricot and visible on every surface. */
+  --ring-tint: rgba(232, 151, 94, 0.35);
+
+  /* The one whole-value gradient override in this block, and legitimately so:
+     unlike a shadow, --gradient-progress survives to the built CSS (it is read
+     through an inline style at IngestionProgress.tsx:98), so redeclaring it
+     here actually lands. Light's #e8b08a stop is a pale peach that reads as a
+     blown-out streak on a dark track; #8a542f keeps the same dark→accent sweep
+     direction light has, against a --color-surface-inset track. */
+  --gradient-progress: linear-gradient(90deg, #8a542f, var(--color-accent));
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
    baseline is Figtree 15px/1.55 on the radial page wash
    (--color-surface, highlit by --color-surface-glow). */
 @layer base {
-  body {
-    /* Sunday Kitchen is light-only; without this a dark-OS user gets dark UA
-       widgets (scrollbars, input chrome, autofill) against the light wash. */
+  /* The resolved theme owns the UA chrome (scrollbars, input chrome,
+     autofill). Light is the default; the unlayered dark block above flips it
+     to `dark`. The pre-paint script in index.html sets the same value inline
+     so the very first paint is already correct. */
+  html {
     color-scheme: light;
+  }
+
+  body {
     background:
       radial-gradient(
         1000px 500px at 50% -160px,

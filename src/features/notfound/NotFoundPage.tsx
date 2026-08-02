@@ -10,9 +10,11 @@ export function NotFoundPage() {
         That page isn't on the shelf.
       </p>
       <p className="mt-5">
+        {/* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
+            Ask button for the measured pairs (plan D12). */}
         <Link
           to="/"
-          className="rounded-pill bg-accent px-[26px] py-[13px] text-sm font-bold text-fg-on-accent transition-colors hover:bg-accent-strong"
+          className="rounded-pill bg-accent-strong px-[26px] py-[13px] text-sm font-bold text-fg-on-accent transition-colors hover:bg-accent-pressed"
         >
           Back to the kitchen
         </Link>

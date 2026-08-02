@@ -134,7 +134,11 @@ export function RecipeEditForm({
           type="button"
           data-testid="edit-save"
           disabled={!isDirty || !isValid}
-          className="rounded-pill bg-accent px-5 py-2 text-[13px] font-bold text-fg-on-accent disabled:opacity-40"
+          /* accent-strong, not accent — the fifth solid-accent surface carrying
+             `fg-on-accent`, and one 5.6's D12 enumeration missed: white on light
+             `accent` measures 3.61:1, on `accent-strong` 4.63:1. Theme-agnostic
+             like its four siblings; see SearchInput's Ask button. */
+          className="rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold text-fg-on-accent disabled:opacity-40"
         >
           Save changes
         </button>

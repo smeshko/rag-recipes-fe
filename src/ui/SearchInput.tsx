@@ -71,7 +71,15 @@ export function SearchInput({
         onClick={onAsk}
         disabled={onAsk ? value.trim() === "" || asking : false}
         aria-busy={onAsk && asking ? true : undefined}
-        className="rounded-pill bg-accent px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-fg-on-accent transition-[background-color,transform] duration-[200ms] hover:bg-accent-strong active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+        /* accent-strong, not accent: `fg-on-accent` on light `accent`
+           measures 3.61:1 — the one light contrast failure phase 5.6's
+           criteria name. On `accent-strong` it is 4.63:1, hovering to
+           `accent-pressed` at 5.97:1. Theme-agnostic on purpose (no `dark:`
+           arm): in dark the same pair reads 10.05:1 hovering to 6.35:1, which
+           is also the right rest→hover direction for a dark solid. The hexes
+           behind those ratios live in src/theme.css; plan D12 and
+           RESEARCH.md's contrast tables carry the working. */
+        className="rounded-pill bg-accent-strong px-[26px] py-[13px] text-sm font-bold tracking-[0.02em] text-fg-on-accent transition-[background-color,transform] duration-[200ms] hover:bg-accent-pressed active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Ask
       </button>

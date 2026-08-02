@@ -1,5 +1,8 @@
 import { Outlet, useMatches } from "react-router";
 import { Nav } from "./Nav";
+/* Imported from the module, not from `./index`, for the same reason Nav is:
+   the barrel exports Shell, so going through it would close a runtime cycle. */
+import { ThemeToggle } from "./theme/ThemeToggle";
 
 /* One layout-route instance for every child route — per-route config comes
    from the route handle (children can't pass props up to a layout route). */
@@ -19,7 +22,10 @@ export function Shell() {
         <div className="font-display text-[23px] font-semibold">
           Stove<span className="text-accent">.</span>
         </div>
-        <Nav />
+        <div className="flex items-center gap-3">
+          <Nav />
+          <ThemeToggle />
+        </div>
       </header>
       <Outlet />
       {handle.footer ? (
