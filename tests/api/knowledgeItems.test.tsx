@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type {
   KnowledgeItemResponse,
@@ -12,16 +12,23 @@ import {
   route,
 } from "../../src/api";
 import { useDocument } from "../../src/api/documents";
-import { useKnowledgeItem } from "../../src/api/knowledgeItems";
+import {
+  useKnowledgeItem,
+  useUpdateKnowledgeItem,
+} from "../../src/api/knowledgeItems";
 import {
   decidedItemFixture,
   editableItemsFixture,
   editScenario,
+  emptyPatchEnvelope,
   ingestionAlreadyRunningEnvelope,
   knowledgeItemErrorHandler,
+  knowledgeItemNotFoundEnvelope,
   knowledgeItemPatchHandler,
   reviewItemStaleEnvelope,
+  reviewNotPendingEnvelope,
   SOFT_WARNING_MESSAGES,
+  unauthorizedEnvelope,
   unauthorizedPatchHandler,
   validationFailedEnvelope,
 } from "../../src/mocks/knowledgeItems";
@@ -37,6 +44,12 @@ function makeWrapper() {
   );
   return { queryClient, wrapper };
 }
+
+/* The zero-GET counter below subscribes to the server's lifecycle events;
+   those survive `resetHandlers()`, so drop them between tests. */
+afterEach(() => {
+  server.events.removeAllListeners();
+});
 
 describe("useKnowledgeItem", () => {
   it("returns the full fixture typed", async () => {
@@ -617,4 +630,377 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       );
     }
   });
+});
+
+/* The mocked edit HOOK (5.2 TASK-004). The block above proves the wire; this
+   one proves the cache choreography around it — a WRITE into
+   ['knowledge-item', id] (never an invalidation, PLAN D5), the ['review-items']
+   invalidation on settle and nothing else (D6), and the ordering the 5.4 seam
+   depends on: the write lands BEFORE the caller's onSettled, the invalidation
+   after it (D12). */
+describe("useUpdateKnowledgeItem", () => {
+  const pristine = (id: string): KnowledgeItemResponse => {
+    const found = editableItemsFixture.find(
+      (item) => item.knowledge_item.id === id,
+    );
+    if (!found) {
+      throw new Error(`No editable fixture '${id}'.`);
+    }
+    return found;
+  };
+
+  const CORRECTED = "Skillet Cornbread, corrected";
+
+  /** Counts GETs against one item id — `server.events` is the file-wide
+      idiom (tests/recipe/panels.test.tsx); the file's afterEach drops it. */
+  const itemGetCounter = (itemId: string) => {
+    let gets = 0;
+    server.events.on("request:start", ({ request: outgoing }) => {
+      if (
+        outgoing.method === "GET" &&
+        outgoing.url.includes(`/api/v1/knowledge-items/${itemId}`)
+      ) {
+        gets += 1;
+      }
+    });
+    return () => gets;
+  };
+
+  it("resolves the server's refreshed item", async () => {
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_noingredients"),
+      { wrapper },
+    );
+
+    const response = await result.current.mutateAsync({
+      title: "Maple Cutout Cookies, corrected",
+    });
+
+    expect(response.knowledge_item.title).toBe(
+      "Maple Cutout Cookies, corrected",
+    );
+    expect(response.knowledge_item.edited_at).toEqual(expect.any(String));
+    expect(response.knowledge_item.status).toBe("needs_review");
+  });
+
+  /* Two tests for the one criterion, because the two halves cannot be
+     asserted on the same cache entry: reference identity only survives when
+     the key is EMPTY (TanStack's structural sharing rebuilds the top-level
+     object when it merges over existing data), while "no refetch" is only
+     observable when the key is populated AND actively observed. */
+  it("writes the resolved response into ['knowledge-item', id], firing no GET", async () => {
+    server.use(...editScenario(editableItemsFixture));
+    const gets = itemGetCounter("item_edit_short");
+
+    const { queryClient, wrapper } = makeWrapper();
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_short"),
+      { wrapper },
+    );
+
+    let response: KnowledgeItemResponse | undefined;
+    await act(async () => {
+      response = await result.current.mutateAsync({ title: CORRECTED });
+      /* Long enough for an invalidation-driven refetch to have fired. */
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+
+    expect(
+      queryClient.getQueryData(["knowledge-item", "item_edit_short"]),
+    ).toBe(response);
+    expect(gets()).toBe(0);
+  });
+
+  /* The D5 criterion where it bites: an ACTIVE ['knowledge-item', id]
+     observer is mounted, so an invalidation (rather than a write) would
+     refire the GET and the counter would read 2. */
+  it("leaves an active reader on the patched item without refetching it", async () => {
+    server.use(...editScenario(editableItemsFixture));
+    const gets = itemGetCounter("item_edit_short");
+
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(
+      () => ({
+        read: useKnowledgeItem("item_edit_short"),
+        update: useUpdateKnowledgeItem("item_edit_short"),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.read.isSuccess).toBe(true));
+    expect(gets()).toBe(1);
+
+    await act(async () => {
+      await result.current.update.mutateAsync({ title: CORRECTED });
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+
+    expect(gets()).toBe(1);
+    expect(result.current.read.data?.knowledge_item.title).toBe(CORRECTED);
+    expect(result.current.read.data?.knowledge_item.edited_at).toEqual(
+      expect.any(String),
+    );
+  });
+
+  it("invalidates ['review-items'] on settle and nothing else", async () => {
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["review-items", null], { review_items: [] });
+    queryClient.setQueryData(["documents"], { documents: [] });
+    queryClient.setQueryData(["document", "doc_edit"], { document: {} });
+
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_short"),
+      { wrapper },
+    );
+    await result.current.mutateAsync({ title: CORRECTED });
+
+    expect(
+      queryClient.getQueryState(["review-items", null])?.isInvalidated,
+    ).toBe(true);
+    /* D6 — an edit leaves the item needs_review, so no shelf count moves. */
+    expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(false);
+    expect(
+      queryClient.getQueryState(["document", "doc_edit"])?.isInvalidated,
+    ).toBe(false);
+  });
+
+  it("still invalidates ['review-items'] when the patch fails, writing nothing", async () => {
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["review-items", null], { review_items: [] });
+
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_nowhere"),
+      { wrapper },
+    );
+    await expect(
+      result.current.mutateAsync({ title: "x" }),
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(
+      queryClient.getQueryState(["review-items", null])?.isInvalidated,
+    ).toBe(true);
+    expect(
+      queryClient.getQueryData(["knowledge-item", "item_edit_nowhere"]),
+    ).toBeUndefined();
+  });
+
+  /* NOT review.test.tsx's log: the cache write sits BEFORE the caller's
+     callback (D12). Copying that assertion unchanged would pin the very bug
+     D12 exists to prevent. */
+  it("runs onMutate → request → setQueryData → onSettled → invalidate", async () => {
+    const log: string[] = [];
+    server.use(
+      knowledgeItemPatchHandler(editableItemsFixture, () =>
+        log.push("request"),
+      ),
+    );
+
+    const { queryClient, wrapper } = makeWrapper();
+    const originalSet = queryClient.setQueryData.bind(queryClient);
+    const originalInvalidate = queryClient.invalidateQueries.bind(queryClient);
+    vi.spyOn(queryClient, "setQueryData").mockImplementation(
+      (queryKey, updater) => {
+        log.push("setQueryData");
+        return originalSet(queryKey, updater);
+      },
+    );
+    vi.spyOn(queryClient, "invalidateQueries").mockImplementation((filters) => {
+      log.push("invalidate");
+      return originalInvalidate(filters);
+    });
+
+    const { result } = renderHook(
+      () =>
+        useUpdateKnowledgeItem("item_edit_short", {
+          onMutate: () => {
+            log.push("onMutate");
+          },
+          onSettled: () => {
+            log.push("onSettled");
+          },
+        }),
+      { wrapper },
+    );
+    await result.current.mutateAsync({ title: CORRECTED });
+
+    expect(log).toEqual([
+      "onMutate",
+      "request",
+      "setQueryData",
+      "onSettled",
+      "invalidate",
+    ]);
+  });
+
+  /* D12 made observable rather than merely stated — the contract 5.4's Save
+     and Save-and-approve hang off. */
+  it("shows a caller's onSettled the freshly written item", async () => {
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(
+      ["knowledge-item", "item_edit_short"],
+      pristine("item_edit_short"),
+    );
+
+    let seen: string | undefined;
+    const { result } = renderHook(
+      () =>
+        useUpdateKnowledgeItem("item_edit_short", {
+          onSettled: () => {
+            seen = (
+              queryClient.getQueryData(["knowledge-item", "item_edit_short"]) as
+                | KnowledgeItemResponse
+                | undefined
+            )?.knowledge_item.title;
+          },
+        }),
+      { wrapper },
+    );
+    await result.current.mutateAsync({ title: CORRECTED });
+
+    expect(seen).toBe(CORRECTED);
+  });
+
+  it("fires caller onError once on a 404 and still does its settle work", async () => {
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["review-items", null], { review_items: [] });
+
+    const onError = vi.fn();
+    const onSettled = vi.fn();
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_nowhere", { onError, onSettled }),
+      { wrapper },
+    );
+
+    await expect(
+      result.current.mutateAsync({ title: "x" }),
+    ).rejects.toBeInstanceOf(ApiError);
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(ApiError);
+    expect(onSettled).toHaveBeenCalledTimes(1);
+    expect(
+      queryClient.getQueryState(["review-items", null])?.isInvalidated,
+    ).toBe(true);
+  });
+
+  /* ---------- the contract's error table, reaching the caller ---------- */
+
+  const errorRows: {
+    name: string;
+    itemId: string;
+    body: KnowledgeItemUpdateRequest;
+    status: number;
+    envelope: ReturnType<typeof emptyPatchEnvelope>;
+    use?: () => void;
+  }[] = [
+    {
+      name: "400 invalid_request",
+      itemId: "item_edit_short",
+      body: {},
+      status: 400,
+      envelope: emptyPatchEnvelope("item_edit_short"),
+    },
+    {
+      name: "404 knowledge_item_not_found",
+      itemId: "item_edit_nowhere",
+      body: { title: "x" },
+      status: 404,
+      envelope: knowledgeItemNotFoundEnvelope("item_edit_nowhere"),
+    },
+    {
+      name: "404 review_not_pending",
+      itemId: decidedItemFixture.knowledge_item.id,
+      body: { title: "x" },
+      status: 404,
+      envelope: reviewNotPendingEnvelope(
+        decidedItemFixture.knowledge_item.id,
+        "ready",
+      ),
+      use: () => server.use(knowledgeItemPatchHandler([decidedItemFixture])),
+    },
+    {
+      name: "409 ingestion_already_running",
+      itemId: "item_edit_short",
+      body: { title: "x" },
+      status: 409,
+      envelope: ingestionAlreadyRunningEnvelope(
+        "doc_baking",
+        "extracting_items",
+      ),
+      use: () =>
+        server.use(
+          knowledgeItemErrorHandler(
+            409,
+            ingestionAlreadyRunningEnvelope("doc_baking", "extracting_items"),
+          ),
+        ),
+    },
+    {
+      name: "409 review_item_stale",
+      itemId: "item_edit_short",
+      body: { title: "x" },
+      status: 409,
+      envelope: reviewItemStaleEnvelope("item_edit_short", 1, 2),
+      use: () =>
+        server.use(
+          knowledgeItemErrorHandler(
+            409,
+            reviewItemStaleEnvelope("item_edit_short", 1, 2),
+          ),
+        ),
+    },
+    {
+      name: "401 unauthorized",
+      itemId: "item_edit_short",
+      body: { title: "x" },
+      status: 401,
+      envelope: unauthorizedEnvelope,
+      use: () =>
+        server.use(unauthorizedPatchHandler("/api/v1/knowledge-items/:itemId")),
+    },
+    {
+      name: "422 invalid_request",
+      itemId: "item_edit_short",
+      body: { title: "x" },
+      status: 422,
+      envelope: validationFailedEnvelope([
+        { type: "string_too_short", loc: ["body", "title"], msg: "too short" },
+      ]),
+      use: () =>
+        server.use(
+          knowledgeItemErrorHandler(
+            422,
+            validationFailedEnvelope([
+              {
+                type: "string_too_short",
+                loc: ["body", "title"],
+                msg: "too short",
+              },
+            ]),
+          ),
+        ),
+    },
+  ];
+
+  for (const row of errorRows) {
+    it(`surfaces ${row.name} to the caller as ApiError`, async () => {
+      row.use?.();
+      const { wrapper } = makeWrapper();
+      const { result } = renderHook(() => useUpdateKnowledgeItem(row.itemId), {
+        wrapper,
+      });
+
+      const err: unknown = await result.current
+        .mutateAsync(row.body)
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(ApiError);
+      const apiError = err as ApiError;
+      expect(apiError.status).toBe(row.status);
+      expect(apiError.code).toBe(row.envelope.error.code);
+      /* The enveloped copy, verbatim — the form renders it. */
+      expect(apiError.message).toBe(row.envelope.error.message);
+      expect(apiError.details).toEqual(row.envelope.error.details);
+    });
+  }
 });
