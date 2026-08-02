@@ -68,7 +68,7 @@ describe("answer card", () => {
     });
     expect(chip).toHaveTextContent("pp. 33–35");
     expect(chip.getAttribute("href")).toBe(
-      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector",
+      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector%26asked%3D1",
     );
 
     /* Picks sidebar. */
@@ -78,7 +78,7 @@ describe("answer card", () => {
     expect(pickLinks).toHaveLength(3);
     expect(pickLinks[0]).toHaveTextContent("Fruit-Stuffed French Toast");
     expect(pickLinks[0]?.getAttribute("href")).toBe(
-      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector",
+      "/recipes/item_frenchtoast?from=%2F%3Fq%3Dbreakfast%26mode%3Dvector%26asked%3D1",
     );
     expect(pickLinks[1]).toHaveTextContent(
       "Makes 12 — the memorable centerpiece.",
@@ -96,8 +96,10 @@ describe("answer card", () => {
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/recipes/item_frenchtoast"),
     );
+    /* The captured URL carries `asked=1`, so following the back link restores
+       the answer the pick was taken from — not just the grid under it. */
     expect(new URLSearchParams(router.state.location.search).get("from")).toBe(
-      "/?q=breakfast&mode=vector",
+      "/?q=breakfast&mode=vector&asked=1",
     );
   });
 

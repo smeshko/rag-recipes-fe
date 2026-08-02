@@ -77,7 +77,11 @@ describe("ask affordance", () => {
       retrieval: { mode: "vector" },
       answer: { include_results: false },
     });
-    expect(router.state.location.search).toBe("?q=breakfast&mode=vector");
+    /* Ask commits the arming param alongside the query: `asked=1` is what
+       says an answer belongs on this history entry. */
+    expect(router.state.location.search).toBe(
+      "?q=breakfast&mode=vector&asked=1",
+    );
   });
 
   it("Ask with edited input commits the new ?q= and asks about it", async () => {
@@ -91,7 +95,7 @@ describe("ask affordance", () => {
     await waitFor(() => expect(answersCalls).toHaveLength(1));
     const firstBody = answersCalls[0]?.body as { query: string } | undefined;
     expect(firstBody?.query).toBe("weekend brunch");
-    expect(router.state.location.search).toBe("?q=weekend+brunch");
+    expect(router.state.location.search).toBe("?q=weekend+brunch&asked=1");
     /* The Ask-initiated q change must not self-clear the pending answer. */
     await waitFor(() =>
       expect(screen.queryByTestId("answer-skeleton")).toBeNull(),

@@ -57,12 +57,16 @@ describe("SearchPage URL ↔ state", () => {
     expect(bodies).toHaveLength(0);
   });
 
-  it("typing + submit writes ?q= (and only ?q=)", async () => {
+  it("typing + Ask writes ?q= and the arming param, nothing else", async () => {
+    /* No ?mode= for hybrid (D1); `asked=1` because Ask is what arms the
+       entry — those two params and no others. */
     const user = userEvent.setup();
     const router = renderAt("/");
     await user.type(searchBox(), "scones");
     await user.click(screen.getByRole("button", { name: "Ask" }));
-    await waitFor(() => expect(router.state.location.search).toBe("?q=scones"));
+    await waitFor(() =>
+      expect(router.state.location.search).toBe("?q=scones&asked=1"),
+    );
   });
 
   it("chip click writes ?mode= preserving q, and re-queries with it", async () => {
@@ -116,7 +120,9 @@ describe("SearchPage URL ↔ state", () => {
     await user.clear(searchBox());
     await user.type(searchBox(), "beta");
     await user.click(screen.getByRole("button", { name: "Ask" }));
-    await waitFor(() => expect(router.state.location.search).toBe("?q=beta"));
+    await waitFor(() =>
+      expect(router.state.location.search).toBe("?q=beta&asked=1"),
+    );
     await router.navigate(-1);
     await waitFor(() => expect(searchBox()).toHaveValue("alpha"));
   });

@@ -16,7 +16,6 @@ import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
-import { armedAsk, clearLastAsk, saveLastAsk } from "./lastAsk";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { ModeChips } from "./ModeChips";
 import { parseMode } from "./mode";
@@ -104,25 +103,23 @@ export function SearchPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* The ask whose answer belongs on this screen — the note that says which
-     cache entry to read, not the answer itself. Seeded from the per-tab record
-     because opening a recipe unmounts SearchPage: an ask held only in
-     component state would be gone by the time the user comes back, and the
-     answer would vanish while the (cached) results reappeared. */
-  const [ask, setAsk] = useState<AnswerAsk | null>(() =>
-    armedAsk(q, reviewIncluded),
-  );
-  /* The record is per-tab while the URL is per-history-entry, so the two can
-     disagree — a Back/Forward step, or the library's armed link-out landing on
-     the same query over a different corpus. The URL decides: an ask that no
-     longer describes the search on screen is not this screen's ask. */
-  const liveAsk =
-    ask !== null && ask.query === q && ask.reviewIncluded === reviewIncluded
-      ? ask
+     cache entry to read, not the answer itself. Derived from the URL, so it is
+     per history entry: opening a recipe unmounts SearchPage, and coming back
+     re-derives the same ask and re-reads the same cache entry. Back and
+     Forward across the Ask click land on the right answer state for free,
+     because the arming lives in the entry rather than beside it. */
+  const ask: AnswerAsk | null =
+    q !== "" && searchParams.get("asked") === "1"
+      ? { query: q, mode, reviewIncluded }
       : null;
 
   /* Functional updater so unknown params (e.g. epic 03's review=included)
      survive every write; hybrid stays out of the URL (D1). */
-  const writeParams = (nextQ: string, nextMode: SearchMode) => {
+  const writeParams = (
+    nextQ: string,
+    nextMode: SearchMode,
+    options?: { asked?: boolean },
+  ) => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       if (nextQ) {
@@ -134,6 +131,17 @@ export function SearchPage() {
         params.set("mode", nextMode);
       } else {
         params.delete("mode");
+      }
+      /* Ask arms the entry it commits. Every other write may only carry the
+         arming along while it still describes the same question: the ask is
+         {q, mode, corpus}, so a new query or a mode chip addresses a cache
+         entry nobody asked for, and leaving `asked=1` on it would claim an
+         answer that cannot exist (D9). The answer is not lost — the entry
+         holding it is one Back away, and it is still in the cache. */
+      if (options?.asked) {
+        params.set("asked", "1");
+      } else if (nextQ !== q || nextMode !== mode) {
+        params.delete("asked");
       }
       return params;
     });
@@ -150,14 +158,6 @@ export function SearchPage() {
     } else if (q !== "") {
       clearLastSearch();
     }
-    /* A new query is a new question, and the old answer goes with it. An
-       unchanged q does not disarm: a mode chip must leave the answer standing
-       (/answers ran its own retrieval, so the toggle changes the grid, not the
-       answer), and Ask on the committed query re-arms immediately below. */
-    if (nextQ !== q) {
-      clearLastAsk();
-      setAsk(null);
-    }
   };
 
   const search = useSearch(q, mode, reviewIncluded);
@@ -169,24 +169,26 @@ export function SearchPage() {
   const results = search.data?.results ?? [];
   const resultsMode = search.resultsMode;
 
-  /* Reads the cache for `liveAsk` and never fetches by itself, so a remount —
-     Back from a recipe — restores the answer without a second LLM call, and no
-     navigation can produce one. run() is the single thing that spends. */
-  const answer = useAnswer(liveAsk);
+  /* Reads the cache for `ask` and never fetches by itself, so a remount — Back
+     from a recipe, Forward across the Ask click, a bookmarked ?asked=1 — reads
+     whatever the cache holds and no navigation can produce a round-trip. On a
+     cold load the entry is simply empty and the slot renders nothing. run() is
+     the single thing that spends. */
+  const answer = useAnswer(ask);
 
-  /* URL commit, then arm, then fetch — the ordering is what keeps the
-     committed ?q= and the answer describing the same question. No in-flight
-     latch: two clicks in one frame fetch the same key, and TanStack dedupes
-     that into one round-trip. */
+  /* URL commit, then fetch — the committed ?q=&asked=1 and the answer describe
+     the same question. `next` is passed to run() rather than read back from
+     searchParams: setSearchParams has not committed in this tick, and run()
+     fetches by key precisely so it does not depend on the observer's current
+     binding. No in-flight latch either: two clicks in one frame fetch the same
+     key, and TanStack dedupes that into one round-trip. */
   const askShelf = () => {
     const asked = text.trim();
     if (asked === "") {
       return;
     }
     const next: AnswerAsk = { query: asked, mode, reviewIncluded };
-    writeParams(asked, mode);
-    saveLastAsk(next);
-    setAsk(next);
+    writeParams(asked, mode, { asked: true });
     answer.run(next);
   };
 
@@ -196,22 +198,17 @@ export function SearchPage() {
   };
 
   /* "An answer never appears for a query it wasn't asked about" is true by
-     construction now: the ask IS the cache key, so a q the user never asked
-     about has no entry to read and the slot renders nothing. */
+     construction: the ask IS the cache key, so a q the user never asked about
+     has no entry to read and the slot renders nothing. */
 
-  /* The fallback grid replaces 2.1's section only while the answer still
-     matches the current search — /answers ran its own retrieval at the
-     answer-time mode, so after a chip toggle the live grid returns. */
+  /* The fallback grid replaces 2.1's section only while an ask is armed. No
+     mode comparison left to make — the ask is read from the same URL the grid
+     is, so its mode IS the URL's, and a chip toggle disarms rather than
+     leaving a stale answer standing (D9/D10). */
   const fallbackData =
     answer.data && isFallback(answer.data) ? answer.data : null;
-  /* Provenance is the ask's own mode, not the URL's. (The armed state needs no
-     comparison: it is part of the key, so an answer retrieved under a
-     different needs-review filter is simply not readable here.) */
-  const answerMatchesSearch = liveAsk !== null && liveAsk.mode === mode;
   const showFallbackGrid =
-    fallbackData !== null &&
-    fallbackData.results.length > 0 &&
-    answerMatchesSearch;
+    fallbackData !== null && fallbackData.results.length > 0 && ask !== null;
   /* A zero-result fallback already says "nothing found" — don't say it twice.
      It suppresses *only* SearchEmpty, not the whole ladder (TASK-004): the
      2.1 section still owns the page, and /answers runs its own retrieval, so
@@ -219,9 +216,7 @@ export function SearchPage() {
      Verified live: the two retrievals genuinely diverge — "xyzzy quantum
      blockchain tractor" gives /answers 10 results and /search 0. */
   const zeroResultFallback =
-    fallbackData !== null &&
-    fallbackData.results.length === 0 &&
-    answerMatchesSearch;
+    fallbackData !== null && fallbackData.results.length === 0 && ask !== null;
 
   /* Every arm AnswerSection would render, in one predicate. */
   const answerSlotOccupied =
@@ -290,8 +285,8 @@ export function SearchPage() {
         answer={answer}
         onRephrase={rephrase}
         onRetry={() => {
-          if (liveAsk !== null) {
-            answer.run(liveAsk);
+          if (ask !== null) {
+            answer.run(ask);
           }
         }}
       />
@@ -305,8 +300,8 @@ export function SearchPage() {
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
           results={fallbackData.results}
-          /* answerMatchesSearch gates this grid, so the ask's mode and the
-             URL's are the same one here. */
+          /* The ask is read from this URL, so its mode and the URL's are the
+             same one here. */
           mode={mode}
           bloomBase={0.24}
           heading={

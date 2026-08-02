@@ -144,8 +144,13 @@ const askTheShelf = async (user: User) => {
 
 interface EntryPoint {
   label: string;
-  /** Where the walk starts — and, after the back link, where it must end. */
+  /** Where the walk starts. */
   from: string;
+  /** Where the back link must land: the URL captured at the moment the recipe
+      was opened. Defaults to `from`, and differs only where the walk itself
+      commits a URL — Ask arms the entry with `asked=1`, and that is exactly
+      what brings the answer back with the user. */
+  returnsTo?: string;
   backLabel: string;
   seed?: () => void;
   open: (user: User) => Promise<void>;
@@ -164,6 +169,7 @@ const ENTRY_POINTS: EntryPoint[] = [
   {
     label: "an answer citation chip",
     from: "/?q=breakfast",
+    returnsTo: "/?q=breakfast&asked=1",
     backLabel: "← Back to results · “breakfast”",
     seed: () => server.use(answersHandler(groundedAnswerFixture)),
     open: async (user) => {
@@ -176,6 +182,7 @@ const ENTRY_POINTS: EntryPoint[] = [
   {
     label: "an answer pick",
     from: "/?q=breakfast",
+    returnsTo: "/?q=breakfast&asked=1",
     backLabel: "← Back to results · “breakfast”",
     seed: () => server.use(answersHandler(groundedAnswerFixture)),
     open: async (user) => {
@@ -203,8 +210,8 @@ describe("return targets", () => {
   });
 
   it.each(ENTRY_POINTS)(
-    "returns to $from from a recipe opened via $label",
-    async ({ from, backLabel, seed, open }) => {
+    "returns to the URL it was opened from, via $label",
+    async ({ from, returnsTo, backLabel, seed, open }) => {
       seed?.();
       const user = userEvent.setup();
       const { router } = renderAt(from);
@@ -218,7 +225,7 @@ describe("return targets", () => {
       expect(link).toHaveAccessibleName(backLabel);
       await user.click(link);
 
-      await waitFor(() => expect(url(router)).toBe(from));
+      await waitFor(() => expect(url(router)).toBe(returnsTo ?? from));
     },
   );
 

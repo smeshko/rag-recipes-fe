@@ -134,7 +134,7 @@ describe("fallback", () => {
     ).toBeInTheDocument();
   });
 
-  it("mode toggle after a fallback brings the live grid back, notice stays", async () => {
+  it("mode toggle after a fallback brings the live grid back and retires the notice", async () => {
     server.use(answersHandler(fallbackWithResultsFixture));
     renderAt("/?q=wine+pairing");
     const user = await ask();
@@ -144,7 +144,12 @@ describe("fallback", () => {
     await waitFor(() =>
       expect(screen.getByText("2 matches")).toBeInTheDocument(),
     );
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    /* The chip changes the ask — {q, mode, corpus} is the cache key — so the
+       observer lands on an entry nobody has asked for. The notice goes with
+       the answer it belonged to, and the CTA offers the new question. Not a
+       second round-trip: the fallback stays in the cache, one Back away. */
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 
