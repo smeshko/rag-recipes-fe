@@ -66,8 +66,15 @@ export function ReviewItemCard({
   /** Record (or clear, with null) this item's failure message on the page. */
   onDecisionError: (itemId: string, message: string | null) => void;
 }) {
-  /* `flags` is non-empty by contract — an unflagged item is not in the queue. */
+  /* NOT "non-empty by contract" — 5.4 TASK-008 observed the opposite on the
+     live dev shelf. Editing recomputes the warnings server-side, so a repair
+     that clears the last flag leaves an item that is still `needs_review`
+     (nobody has decided it) and still in the queue with `flags: []`. The
+     unguarded `flags[0]` read that assumption used to allow took the whole
+     /review route down to React Router's error boundary — one repaired item
+     hid every other card. */
   const [lead, ...secondaries] = item.flags;
+  const cleared = lead === undefined;
   const span = pageSpan(item.source_pages);
 
   const queryClient = useQueryClient();
@@ -110,12 +117,28 @@ export function ReviewItemCard({
 
   return (
     <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
-      <p
-        data-testid="review-flag-lead"
-        className="text-[13px] font-semibold text-danger"
-      >
-        {flagText(lead)}
-      </p>
+      {/* Success tone, not danger, and an explicit line rather than nothing:
+          a card that simply loses its flag line is indistinguishable from one
+          that never had flags, and "the reviewer sees which warnings their fix
+          cleared" is the point of the epic. Same voice as the read page's
+          `ReviewCallout` cleared arm, which already carried this state — the
+          two surfaces stay deliberately separate components (they differ in
+          chrome and tone) but must not disagree about the words. */}
+      {cleared ? (
+        <p
+          data-testid="review-flag-cleared"
+          className="text-[13px] font-semibold text-success"
+        >
+          Nothing is flagged any more — approve it to put it on the shelf.
+        </p>
+      ) : (
+        <p
+          data-testid="review-flag-lead"
+          className="text-[13px] font-semibold text-danger"
+        >
+          {flagText(lead)}
+        </p>
+      )}
       {secondaries.map((flag) => (
         <p
           key={flag.code}

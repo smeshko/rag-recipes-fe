@@ -63,10 +63,49 @@ const emptyMessageItem: ReviewItem = {
   flags: [{ code: "low_normalization_confidence", message: "" }],
 };
 
+/* An item the reviewer has ALREADY repaired to the point where the backend
+   recomputed every warning away, but which nobody has decided yet — so it is
+   still `needs_review` and still in the queue with `flags: []`. Observed live
+   on the dev shelf in 5.4 TASK-008: repairing `no_ingredients` on an item
+   whose only other flag was also cleared left this exact payload, and the
+   unguarded `flags[0]` read took the whole /review route down to React
+   Router's error boundary. */
+const repairedItem: ReviewItem = {
+  ...reviewItemsFixture[0],
+  id: "ki_repaired",
+  title: "Fully Repaired Item",
+  flags: [],
+  edited_at: "2026-08-02T21:32:31.333104Z",
+};
+
 describe("flagged-item card", () => {
   beforeEach(() =>
-    server.use(...reviewScenario([...reviewItemsFixture, emptyMessageItem])),
+    server.use(
+      ...reviewScenario([
+        ...reviewItemsFixture,
+        emptyMessageItem,
+        repairedItem,
+      ]),
+    ),
   );
+
+  it("renders an item whose repair cleared every flag, instead of crashing", async () => {
+    renderReview();
+
+    const { card } = await itemCard("Fully Repaired Item");
+    /* No lead line to render — and, critically, no thrown TypeError: the rest
+       of the queue must still be on screen. */
+    expect(card.queryByTestId("review-flag-lead")).not.toBeInTheDocument();
+    expect(card.getByTestId("review-flag-cleared")).toHaveTextContent(
+      "Nothing is flagged any more",
+    );
+    /* The repair marker still rides on the provenance line. */
+    expect(card.getByTestId("review-edited-marker")).toBeInTheDocument();
+    /* The whole queue survived — the sibling cards rendered too. */
+    expect(
+      await screen.findByRole("heading", { name: "Maple Cutout Cookies" }),
+    ).toBeInTheDocument();
+  });
 
   it("leads with flags[0].message verbatim, before the title in DOM order", async () => {
     renderReview();
