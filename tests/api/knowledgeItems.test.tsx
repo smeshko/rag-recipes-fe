@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import type {
   KnowledgeItemResponse,
@@ -17,6 +18,7 @@ import {
   useUpdateKnowledgeItem,
 } from "../../src/api/knowledgeItems";
 import {
+  applyPatch,
   decidedItemFixture,
   editableItemsFixture,
   editScenario,
@@ -1059,6 +1061,49 @@ describe("useUpdateKnowledgeItem", () => {
     await result.current.mutateAsync({ title: CORRECTED });
 
     expect(seen).toBe(CORRECTED);
+  });
+
+  /* Two saves of the same item, the FIRST one slow. Unserialized, its stale
+     response settles last and overwrites the newer one — and because D5 writes
+     the item entry instead of invalidating it, nothing would correct it. */
+  it("serializes concurrent saves of the same item", async () => {
+    let seen = 0;
+    server.use(
+      http.patch(
+        "/api/v1/knowledge-items/:itemId",
+        async ({ request: incoming }) => {
+          const body = (await incoming.json()) as KnowledgeItemUpdateRequest;
+          seen += 1;
+          if (seen === 1) {
+            await new Promise((resolve) => setTimeout(resolve, 60));
+          }
+          return HttpResponse.json(
+            applyPatch(pristine("item_edit_short"), body),
+          );
+        },
+      ),
+    );
+
+    const { queryClient, wrapper } = makeWrapper();
+    const { result } = renderHook(
+      () => useUpdateKnowledgeItem("item_edit_short"),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await Promise.all([
+        result.current.mutateAsync({ title: "first save" }),
+        result.current.mutateAsync({ title: "second save" }),
+      ]);
+    });
+
+    expect(
+      (
+        queryClient.getQueryData(["knowledge-item", "item_edit_short"]) as
+          | KnowledgeItemResponse
+          | undefined
+      )?.knowledge_item.title,
+    ).toBe("second save");
   });
 
   /* The other half of the D12 seam: 5.4's Save-and-approve is an ASYNC caller

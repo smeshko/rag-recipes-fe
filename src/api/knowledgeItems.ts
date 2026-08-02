@@ -83,6 +83,13 @@ export function useUpdateKnowledgeItem<TContext = unknown>(
     KnowledgeItemUpdateRequest,
     TContext
   >({
+    /* Saves of the SAME item run one at a time (TanStack v5 mutation scope);
+       different items still run in parallel. Not a nicety: this hook WRITES
+       ['knowledge-item', id] and deliberately never invalidates it (D5), so a
+       slow earlier response landing after a newer one would leave the cache
+       holding pre-patch content with nothing to correct it. Serializing here
+       rather than at the call site keeps the guarantee with the write. */
+    scope: { id: `knowledge-item-${itemId}` },
     /* The annotation on `body` comes from the generic above and is the ONLY
        type safety on the patch payload: route() checks path and method, never
        the request body (PLAN D1). The client never serializes for you. */
