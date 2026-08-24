@@ -31,10 +31,10 @@ test:
 
 # Regenerate src/api/schema.d.ts from the running backend's OpenAPI schema.
 typegen:
-    @curl -sf -o /dev/null http://localhost:8001/openapi.json || (echo "backend not reachable on :8001 — start it with 'just dev' in ../backend" && exit 1)
-    pnpm exec openapi-typescript http://localhost:8001/openapi.json -o src/api/schema.d.ts
+    @curl -sf -o /dev/null http://localhost:8004/openapi.json || (echo "backend not reachable on :8004 — start it with 'just dev-api' in ../rag-knowledge" && exit 1)
+    pnpm exec openapi-typescript http://localhost:8004/openapi.json -o src/api/schema.d.ts
 
 # Verify the committed schema.d.ts is up to date with the running backend.
 typegen-check:
-    @curl -sf -o /dev/null http://localhost:8001/openapi.json || (echo "backend not reachable on :8001 — start it with 'just dev' in ../backend" && exit 1)
-    pnpm exec openapi-typescript http://localhost:8001/openapi.json -o src/api/schema.d.ts --check
+    @curl -sf -o /dev/null http://localhost:8004/openapi.json || (echo "backend not reachable on :8004 — start it with 'just dev-api' in ../rag-knowledge" && exit 1)
+    pnpm exec openapi-typescript http://localhost:8004/openapi.json -o src/api/schema.d.ts --check

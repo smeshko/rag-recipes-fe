@@ -4,7 +4,7 @@ import { installMatchMedia } from "./matchMedia";
 import { server } from "./msw/server";
 
 /* 'error': an unmatched request fails the test instead of silently passing
-   through to the real backend on :8001. */
+   through to the real backend on :8004. */
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
 /* jsdom implements no matchMedia, and the theme store reads one on every

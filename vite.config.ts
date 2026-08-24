@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8001",
+        target: "http://localhost:8004",
         ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       },
     },
