@@ -269,10 +269,17 @@ function Row({
        min-width is auto, so a long unbroken word would otherwise size the
        track to itself and push the row wide, regardless of overflow-wrap. */
     <li
+      data-testid={row.flagged ? "edit-row-flagged" : undefined}
+      /* A flagged row keeps its read-mode marking — the warning fill and left
+         rule — so the reviewer lands on the line the flag named. */
       className={`grid items-start gap-2 ${
         ordered
           ? "grid-cols-[auto_minmax(0,1fr)_auto] max-[560px]:grid-cols-[auto_minmax(0,1fr)]"
           : "grid-cols-[minmax(0,1fr)_auto] max-[560px]:grid-cols-[minmax(0,1fr)]"
+      } ${
+        row.flagged
+          ? "-ml-3 rounded-[10px] border-l-[3px] border-warning-border bg-warning-fill py-1 pl-3"
+          : ""
       }`}
     >
       {ordered ? (
@@ -286,6 +293,16 @@ function Row({
         ref={setTextNode}
         rows={1}
         aria-label={`${capitalize(noun)} ${position}`}
+        aria-description={
+          row.flagged
+            ? "Flagged: normalization confidence below threshold"
+            : undefined
+        }
+        title={
+          row.flagged
+            ? "Flagged: normalization confidence below threshold"
+            : undefined
+        }
         value={row.text}
         onChange={(event) => onText(index, event.target.value)}
         /* text-base on phones: under 16px, iOS zooms the viewport on focus,

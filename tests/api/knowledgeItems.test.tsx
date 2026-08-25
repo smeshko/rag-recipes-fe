@@ -306,6 +306,10 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       {
         code: "low_overall_confidence",
         message: SOFT_WARNING_MESSAGES.low_overall_confidence,
+        /* The reviewer aids ride along: the item's own overall score against
+           the (mock) bound — the same projection the backend attaches. */
+        value: 0.42,
+        threshold: 0.5,
       },
     ]);
   });
@@ -770,6 +774,7 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
         "id",
         "item_type",
         "review_reasons",
+        "review_thresholds",
         "source_span_ids",
         "status",
         "structured_data",
@@ -821,14 +826,21 @@ describe("PATCH /knowledge-items/{item_id} (contract mock)", () => {
       for (const code of ki.structured_data.warnings ?? []) {
         expect(canonicalCodes).toContain(code);
       }
-      /* review_reasons is the copy-table projection of warnings. */
-      expect(ki.review_reasons).toEqual(
+      /* review_reasons is the copy-table projection of warnings (the reviewer
+         aids — value/threshold/positions — ride along and are asserted on
+         their own above). */
+      expect(ki.review_reasons).toMatchObject(
         ki.status === "needs_review"
           ? (ki.structured_data.warnings ?? []).map((code) => ({
               code,
               message: SOFT_WARNING_MESSAGES[code],
             }))
           : [],
+      );
+      expect(ki.review_reasons).toHaveLength(
+        ki.status === "needs_review"
+          ? (ki.structured_data.warnings ?? []).length
+          : 0,
       );
     }
   });

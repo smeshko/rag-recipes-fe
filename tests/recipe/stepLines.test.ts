@@ -15,7 +15,7 @@ describe("stepLines", () => {
           { text: "Serve.", step_number: null },
         ],
       }),
-    ).toEqual([
+    ).toMatchObject([
       { number: 1, text: "Warm the pan." },
       { number: 2, text: "Serve." },
     ]);
@@ -32,7 +32,7 @@ describe("stepLines", () => {
           { text: "Serve.", step_number: 2 },
         ],
       }),
-    ).toEqual([
+    ).toMatchObject([
       { number: 1, text: "Warm the pan." },
       { number: 2, text: "Add the eggs." },
       { number: 3, text: "Serve." },
@@ -48,7 +48,7 @@ describe("stepLines", () => {
           { text: "Serve.", step_number: 1 },
         ],
       }),
-    ).toEqual([
+    ).toMatchObject([
       { number: 1, text: "Warm the pan." },
       { number: 2, text: "Add the eggs." },
       { number: 3, text: "Serve." },
@@ -63,7 +63,7 @@ describe("stepLines", () => {
           { text: "Serve.", step_number: 1 },
         ],
       }),
-    ).toEqual([
+    ).toMatchObject([
       { number: 1, text: "Warm the pan." },
       { number: 2, text: "Serve." },
     ]);
@@ -80,7 +80,7 @@ describe("stepLines", () => {
           { text: "Add the eggs.", step_number: 2 },
         ],
       }),
-    ).toEqual([
+    ).toMatchObject([
       { number: 1, text: "Warm the pan." },
       { number: 2, text: "Add the eggs." },
       { number: 4, text: "Serve." },

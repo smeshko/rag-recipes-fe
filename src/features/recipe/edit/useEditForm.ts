@@ -4,6 +4,7 @@ import type {
   KnowledgeItemUpdateRequest,
 } from "../../../api";
 import { ingredientLines } from "../ingredientLines";
+import { flaggedIngredientPositions } from "../reviewMarks";
 import { stepLines } from "../stepLines";
 
 /** One editable line. `id` is synthetic and travels with the row through a
@@ -11,6 +12,11 @@ import { stepLines } from "../stepLines";
 export interface LineRow {
   id: string;
   text: string;
+  /** Seeded true for an ingredient row the backend named on a
+      `low_normalization_confidence` flag. Travels with the row through a
+      reorder; a fresh row is never flagged. Presentation only — it never
+      reaches the wire. */
+  flagged?: boolean;
 }
 
 export type ListName = "ingredients" | "steps";
@@ -122,6 +128,10 @@ function seedState(
      (D7) — read mode ignores it too, and the two must agree. */
   const resolution = ingredientLines(sd);
   const ingredientTexts = resolution.kind === "empty" ? [""] : resolution.lines;
+  const flagged = flaggedIngredientPositions(ki.review_reasons);
+  const isFlagged = (index: number) =>
+    resolution.kind === "structured" &&
+    flagged.has(resolution.rows[index].position);
   const stepTexts = stepLines(sd).map((step) => step.text);
 
   const form: EditForm = {
@@ -133,9 +143,10 @@ function seedState(
     prepTime: sd.prep_time ?? "",
     cookTime: sd.cook_time ?? "",
     totalTime: sd.total_time ?? "",
-    ingredients: ingredientTexts.map((text) => ({
+    ingredients: ingredientTexts.map((text, index) => ({
       id: mintId("ingredients"),
       text,
+      ...(isFlagged(index) ? { flagged: true } : {}),
     })),
     steps: (stepTexts.length > 0 ? stepTexts : [""]).map((text) => ({
       id: mintId("steps"),
