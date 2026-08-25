@@ -4,8 +4,6 @@ import { Bloom, Eyebrow, withReturnTo } from "../../ui";
 import { inlineCiteOccurrences } from "./answerText";
 import { AnswerText, type CitationMap, TrailingChips } from "./CitationChips";
 
-const NUMERALS = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
-
 export function AnswerCard({ answer }: { answer: AnswerResponse }) {
   /* Picks and chips capture the same URL — same page, same provenance. */
   const location = useLocation();
@@ -49,15 +47,12 @@ export function AnswerCard({ answer }: { answer: AnswerResponse }) {
           <h4 className="text-[12px] font-bold tracking-[0.12em] text-fg-subtle uppercase">
             Tonight's picks
           </h4>
-          {answer.recommendations.map((pick, index) => (
+          {answer.recommendations.map((pick) => (
             <Link
               key={pick.knowledge_item_id}
               to={withReturnTo(`/recipes/${pick.knowledge_item_id}`, location)}
-              className="flex items-start gap-3 rounded-reco border border-border bg-surface-raised px-4 py-3.5 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-card"
+              className="block rounded-reco border border-border bg-surface-raised px-4 py-3.5 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-card"
             >
-              <span className="pt-px font-display text-[15px] font-semibold text-accent italic">
-                {NUMERALS[index] ?? index + 1}.
-              </span>
               <span>
                 <b className="block text-[14.5px] font-bold">{pick.title}</b>
                 <span className="mt-0.5 block text-[12.5px] text-fg-muted">
