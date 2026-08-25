@@ -4,6 +4,7 @@ import {
   useDocuments,
 } from "../../api";
 import { Bloom, Panel } from "../../ui";
+import { WriteByHandCta } from "../recipe/create/WriteByHandCta";
 import { BookRow, type DetailState } from "./BookRow";
 import { Dropzone } from "./Dropzone";
 
@@ -80,6 +81,12 @@ export function LibraryPage() {
 
       <Bloom duration={0.7} delay={0.1} className="mt-7">
         <Dropzone />
+        {/* Inside the dropzone's own bloom slot, not a new one: the two are one
+            "how a recipe gets here" block, and staggering them apart would read
+            as two unrelated sections. */}
+        <div className="mt-4">
+          <WriteByHandCta />
+        </div>
       </Bloom>
 
       <Bloom

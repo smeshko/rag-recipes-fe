@@ -5,18 +5,23 @@ import {
   type AnswerResponse,
   type ApiError,
   isFallback,
+  type MenuAsk,
+  type MenuResponse,
   useAnswer,
+  useMenu,
   useShelfStats,
 } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
 import { Bloom, SearchInput } from "../../ui";
 import { isReviewIncluded } from "../library/presentation";
+import { AiAnswers } from "./AiAnswers";
 import { AnswerCard } from "./AnswerCard";
-import { AnswerCta } from "./AnswerCta";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
 import { FallbackNotice } from "./FallbackNotice";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
+import { MenuCard } from "./MenuCard";
+import { MenuSkeleton } from "./MenuSkeleton";
 import { ModeChips } from "./ModeChips";
 import { parseMode } from "./mode";
 import { ResultsGrid } from "./ResultsGrid";
@@ -89,6 +94,32 @@ function AnswerSection({
   return null;
 }
 
+/* The menu slot's three arms. No fallback branch: a fallback menu still
+   carries courses, so MenuCard renders it with the warning inline. */
+function MenuSection({
+  menu,
+  onRetry,
+}: {
+  menu: {
+    isFetching: boolean;
+    isError: boolean;
+    data: MenuResponse | undefined;
+    error: unknown;
+  };
+  onRetry: () => void;
+}) {
+  if (menu.isFetching) {
+    return <MenuSkeleton />;
+  }
+  if (menu.isError) {
+    return <AnswerError error={menu.error as ApiError} onRetry={onRetry} />;
+  }
+  if (menu.data) {
+    return <MenuCard menu={menu.data} />;
+  }
+  return null;
+}
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -114,6 +145,13 @@ export function SearchPage() {
     q !== "" && searchParams.get("asked") === "1"
       ? { query: q, mode, reviewIncluded }
       : null;
+  /* The menu ask, same construction: `?menu=1` on this entry says the cache
+     entry for this question's menu belongs on screen. Exclusive with `asked`
+     by nextSearchParams' rule, so at most one AI slot is ever armed. */
+  const menuAsk: MenuAsk | null =
+    q !== "" && searchParams.get("menu") === "1"
+      ? { query: q, mode, reviewIncluded }
+      : null;
 
   /* The single URL-commit choke point. Every param rule — unknown params
      survive, hybrid stays out of the URL, `asked` only where it still
@@ -124,12 +162,13 @@ export function SearchPage() {
   const writeParams = (
     nextQ: string,
     nextMode: SearchMode,
-    options?: { asked?: boolean },
+    options?: { asked?: boolean; menu?: boolean },
   ) => {
     const commit = {
       q: nextQ,
       mode: nextMode,
       asked: options?.asked === true,
+      menu: options?.menu === true,
     };
     /* A commit that changes nothing is not a history entry (review #1.1). A
        second Ask on the question already on screen — the button re-enables
@@ -151,6 +190,7 @@ export function SearchPage() {
       q,
       mode,
       asked: searchParams.get("asked") === "1",
+      menu: searchParams.get("menu") === "1",
     });
     if (committed.toString() !== canonicalHere.toString()) {
       setSearchParams((prev) => nextSearchParams(prev, commit));
@@ -192,6 +232,7 @@ export function SearchPage() {
     q,
     mode: resultsMode,
     asked: searchParams.get("asked") === "1",
+    menu: searchParams.get("menu") === "1",
   });
   const resultsFrom = {
     pathname: location.pathname,
@@ -204,6 +245,7 @@ export function SearchPage() {
      cold load the entry is simply empty and the slot renders nothing. run() is
      the single thing that spends. */
   const answer = useAnswer(ask);
+  const menu = useMenu(menuAsk);
 
   /* URL commit, then fetch — the committed ?q=&asked=1 and the answer describe
      the same question. `next` is passed to run() rather than read back from
@@ -219,6 +261,18 @@ export function SearchPage() {
     const next: AnswerAsk = { query: asked, mode, reviewIncluded };
     writeParams(asked, mode, { asked: true });
     answer.run(next);
+  };
+
+  /* The menu twin of askShelf: commit ?menu=1 (which drops asked=1), then
+     fetch by key. */
+  const composeMenu = () => {
+    const asked = text.trim();
+    if (asked === "") {
+      return;
+    }
+    const next: MenuAsk = { query: asked, mode, reviewIncluded };
+    writeParams(asked, mode, { menu: true });
+    menu.run(next);
   };
 
   const rephrase = () => {
@@ -247,22 +301,6 @@ export function SearchPage() {
   const zeroResultFallback =
     fallbackData !== null && fallbackData.results.length === 0 && ask !== null;
 
-  /* Every arm AnswerSection would render, in one predicate. */
-  const answerSlotOccupied =
-    answer.isFetching || answer.isError || answer.data !== undefined;
-
-  /* CTA visibility (round-1 #4): offer the grounded answer only while a live
-     grid is up and the answer slot is empty. Every occupied arm (skeleton,
-     card, error, fallback notice — the notice already owns the "want an
-     answer?" conversation) and every non-grid state (bare /, loading, search
-     error, empty) hides it. */
-  const showAnswerCta =
-    q !== "" &&
-    !answerSlotOccupied &&
-    !search.isLoading &&
-    !search.error &&
-    results.length > 0;
-
   /* Two of the answer slot's four states carry no announcement of their own:
      the skeleton is aria-hidden and the answer card is plain content. A
      screen-reader user would click Ask and hear nothing, then nothing again
@@ -273,9 +311,13 @@ export function SearchPage() {
      uniquely addressable. */
   const answerStatus = answer.isFetching
     ? "Asking the shelf…"
-    : fallbackData === null && answer.data !== undefined
-      ? "The answer is ready."
-      : "";
+    : menu.isFetching
+      ? "Composing a menu…"
+      : fallbackData === null && answer.data !== undefined
+        ? "The answer is ready."
+        : menu.data !== undefined
+          ? "The menu is ready."
+          : "";
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
@@ -301,11 +343,20 @@ export function SearchPage() {
           value={text}
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
-          onAsk={askShelf}
-          asking={answer.isFetching}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </Bloom>
+
+      {/* The LLM actions, as one group under the bar. Both ask the draft, so
+          an emptied box disables them (review #1.2) — same guard askShelf
+          and composeMenu apply on their own. */}
+      <AiAnswers
+        onAsk={askShelf}
+        onMenu={composeMenu}
+        disabled={text.trim() === ""}
+        asking={answer.isFetching}
+        composing={menu.isFetching}
+      />
 
       {/* Mounted unconditionally: a live region has to exist before its
           content changes for the change to be announced reliably. */}
@@ -326,11 +377,14 @@ export function SearchPage() {
         }}
       />
 
-      {showAnswerCta ? (
-        /* Disabled, not hidden, on an emptied draft: askShelf asks the draft
-           and would silently no-op (review #1.2) — same guard as the bar. */
-        <AnswerCta onAsk={askShelf} disabled={text.trim() === ""} />
-      ) : null}
+      <MenuSection
+        menu={menu}
+        onRetry={() => {
+          if (menuAsk !== null) {
+            menu.run(menuAsk);
+          }
+        }}
+      />
 
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid

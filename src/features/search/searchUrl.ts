@@ -16,8 +16,11 @@ import { parseMode } from "./mode";
 export interface SearchCommit {
   q: string;
   mode: SearchMode;
-  /** True only on the write that arms the entry (Ask). */
+  /** True only on the write that arms the entry for an answer (Ask the shelf). */
   asked: boolean;
+  /** True only on the write that arms the entry for a menu (Compose a menu).
+      Never true together with `asked`: the AI slot shows one thing. */
+  menu: boolean;
 }
 
 /**
@@ -33,7 +36,10 @@ export interface SearchCommit {
  * - `asked=1` is set by the ask itself, and otherwise survives only while the
  *   question is unchanged. The ask is `{q, mode, corpus}`, so a new query or a
  *   mode chip addresses a cache entry nobody asked for; leaving the arming on
- *   it would claim an answer that cannot exist (PLAN.md D9).
+ *   it would claim an answer that cannot exist (PLAN.md D9);
+ * - `menu=1` follows exactly the same rule for a composed menu, and the two
+ *   are exclusive: arming one drops the other, because the AI slot renders
+ *   one result and the URL must say which.
  */
 export function nextSearchParams(
   prev: URLSearchParams,
@@ -47,7 +53,7 @@ export function nextSearchParams(
     params.set("q", next.q);
   }
   for (const [key, value] of prev) {
-    if (key !== "q" && key !== "mode" && key !== "asked") {
+    if (key !== "q" && key !== "mode" && key !== "asked" && key !== "menu") {
       params.append(key, value);
     }
   }
@@ -57,8 +63,12 @@ export function nextSearchParams(
   const sameQuestion =
     next.q === (prev.get("q") ?? "") &&
     next.mode === parseMode(prev.get("mode"));
-  if (next.asked || (sameQuestion && prev.get("asked") === "1")) {
+  const armed = next.asked || next.menu;
+  if (next.asked || (!armed && sameQuestion && prev.get("asked") === "1")) {
     params.set("asked", "1");
+  }
+  if (next.menu || (!armed && sameQuestion && prev.get("menu") === "1")) {
+    params.set("menu", "1");
   }
   return params;
 }

@@ -2,6 +2,7 @@ import { HttpResponse, http } from "msw";
 import type {
   ErrorEnvelope,
   Ingredient,
+  KnowledgeItemCreateRequest,
   KnowledgeItemResponse,
   KnowledgeItemUpdateRequest,
   RecipeStructuredData,
@@ -971,5 +972,107 @@ export const editScenario = (items: KnowledgeItemResponse[]) => {
         return response;
       },
     ),
+  ];
+};
+
+/* ---------- the manual create path (POST /knowledge-items) ---------- */
+
+/** The fixed ids the backend's `ensure_manual_shelf` uses. Constants here
+    rather than string literals in each test: the shelf is a real, named place
+    in the product, and a test asserting the recipe landed on it should say so
+    the same way the FE does. */
+export const MANUAL_SHELF_DOCUMENT_ID = "doc_manual_shelf";
+export const MANUAL_SHELF_TITLE = "Handwritten";
+
+/**
+ * Build the 201 body for a typed recipe — the mock's half of
+ * `ingestion/manual.authored_recipe`.
+ *
+ * It reuses `editIngredients` / `editSteps` against an EMPTY existing list,
+ * which is the same trick the server plays with `apply_edit`: every submitted
+ * line is unmatched, so every line comes out human-authored (parse nulled,
+ * confidences 1.0, `edited: true`). Warnings go through `recomputeWarnings`
+ * from an empty base, so a recipe typed with no method carries `no_steps`
+ * exactly as an extracted one would — including this module's documented
+ * divergences, which is the point of not writing a second rule here.
+ *
+ * `status` is `indexing`, not `ready`: the server queues a chunk-and-embed
+ * job and answers before it runs. A fixture that said `ready` would let a UI
+ * that ignores the delay pass its tests.
+ */
+export const applyCreate = (
+  id: string,
+  body: KnowledgeItemCreateRequest,
+): KnowledgeItemResponse => {
+  const structuredData: RecipeStructuredData = {
+    schema: "recipe.v1",
+    yield: body.yield ?? null,
+    prep_time: body.prep_time ?? null,
+    cook_time: body.cook_time ?? null,
+    total_time: body.total_time ?? null,
+    ingredients: editIngredients([], body.ingredients ?? []),
+    ingredients_text: (body.ingredients ?? []).join("\n"),
+    steps: editSteps([], body.steps ?? []),
+    steps_text: (body.steps ?? []).join("\n"),
+  };
+  structuredData.warnings = recomputeWarnings([], structuredData);
+
+  return {
+    knowledge_item: {
+      id,
+      document_id: MANUAL_SHELF_DOCUMENT_ID,
+      item_type: "recipe",
+      title: body.title,
+      summary: body.summary ?? null,
+      status: "indexing",
+      /* No page was read, so there is no span to cite and no citation to
+         build a subtitle tail out of. */
+      source_span_ids: [],
+      confidence: {
+        overall: 1,
+        boundary: 1,
+        fields: { title: 1, summary: 1, yield: 1, ingredients: 1, steps: 1 },
+      },
+      structured_data: structuredData,
+      /* `[]` regardless of the warnings above: the server projects reasons
+         only for a `needs_review` item, and a typed recipe never is one. */
+      review_reasons: [],
+      edited_at: null,
+      favourited_at: null,
+    },
+    display: { title: body.title, subtitle: MANUAL_SHELF_TITLE },
+    source_citations: [],
+  };
+};
+
+/**
+ * STATEFUL scenario: POST creates, and the created item is then readable at
+ * `GET /knowledge-items/{id}` — which is what the create page's own success
+ * path needs, since it navigates straight to the recipe page.
+ *
+ * Same warning as `editScenario`: never register this as a base handler.
+ * `server.resetHandlers()` removes runtime handlers but does not reset closure
+ * state, so a created item would leak into the next test.
+ */
+export const createScenario = (
+  onRequest?: (body: KnowledgeItemCreateRequest) => void,
+) => {
+  const created = new Map<string, KnowledgeItemResponse>();
+  let counter = 0;
+  return [
+    http.post("/api/v1/knowledge-items", async ({ request }) => {
+      const body = (await request.json()) as KnowledgeItemCreateRequest;
+      onRequest?.(body);
+      counter += 1;
+      const item = applyCreate(`item_written_${counter}`, body);
+      created.set(item.knowledge_item.id, item);
+      return HttpResponse.json(item, { status: 201 });
+    }),
+    /* Falls through (`undefined`) for anything this scenario did not create,
+       so the read fixtures behind it stay reachable. */
+    http.get("/api/v1/knowledge-items/:itemId", ({ params }) => {
+      const item = created.get(String(params.itemId));
+      return item ? HttpResponse.json(item) : undefined;
+    }),
   ];
 };

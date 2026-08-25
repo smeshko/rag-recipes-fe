@@ -81,7 +81,7 @@ describe("SearchInput", () => {
     const onSubmit = vi.fn();
     render(<ControlledSearch onSubmit={onSubmit} />);
     await user.type(screen.getByRole("textbox"), "weekend breakfast");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Search" }));
     expect(onSubmit).toHaveBeenCalledWith("weekend breakfast");
   });
 

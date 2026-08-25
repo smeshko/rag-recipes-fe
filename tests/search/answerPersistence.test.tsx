@@ -43,7 +43,7 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const askButton = () => screen.getByRole("button", { name: "Ask" });
+const askButton = () => screen.getByRole("button", { name: "Ask the shelf" });
 const answerCard = () => screen.queryByText(/Grounded in your books/);
 
 async function settleGrid() {
@@ -147,7 +147,7 @@ describe("an answer survives a detour through a recipe", () => {
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
     /* The CTA is back, because the new query has no answer of its own. */
-    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 
@@ -191,7 +191,7 @@ describe("asked=1 is the ask", () => {
     await settleGrid();
     /* The entry before the click never had an answer on it. */
     expect(answerCard()).toBeNull();
-    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
 
     await act(async () => {
       await router.navigate(1);
@@ -267,7 +267,7 @@ describe("asked=1 is the ask", () => {
     renderAt("/?q=breakfast&asked=1");
     await settleGrid();
     expect(answerCard()).toBeNull();
-    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
     expect(answersCalls).toBe(0);
   });
 
@@ -288,7 +288,7 @@ describe("asked=1 is the ask", () => {
     await settleGrid();
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
-    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 });

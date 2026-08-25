@@ -138,7 +138,9 @@ const openReviewCard = async (user: User, title: string) => {
 };
 
 const askTheShelf = async (user: User) => {
-  await user.click(await screen.findByRole("button", { name: "Ask" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Ask the shelf" }),
+  );
   await screen.findByText(/Grounded in your books/);
 };
 

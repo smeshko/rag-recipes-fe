@@ -8,6 +8,7 @@ import { request } from "./client";
 import { PaginationCapError } from "./documents";
 import { route } from "./routes";
 import type {
+  KnowledgeItemCreateRequest,
   KnowledgeItemListResponse,
   KnowledgeItemResponse,
   KnowledgeItemSummary,
@@ -232,6 +233,72 @@ export function useUpdateKnowledgeItem<TContext = unknown>(
             exact: true,
           });
         }
+      }
+    },
+  });
+}
+
+/**
+ * POST /knowledge-items — a recipe typed by hand, 201 with the GET body.
+ *
+ * The one creation path that does not start with a PDF. The backend puts the
+ * item on a shared "Handwritten" document, creating that document on the first
+ * call, and answers with the item already `indexing`: a worker chunks and
+ * embeds it, and only then does it appear in search (the same delay approving
+ * or re-saving a shelved recipe costs).
+ *
+ * No pass-through seam, unlike `useUpdateKnowledgeItem` and
+ * `useDeleteKnowledgeItem`: an optimistic `onMutate` needs a row to move, and
+ * before this call there is no row anywhere to be optimistic about.
+ *
+ * The response IS the GET body, so the item entry is WRITTEN rather than
+ * invalidated (`useUpdateKnowledgeItem`'s D5): the page this mutation
+ * navigates to reads its recipe from cache instead of refetching what the
+ * server just handed us.
+ *
+ * Three invalidations on settle, success and failure alike — a failure can
+ * still have committed the row (the 500 the endpoint raises when it cannot
+ * queue the indexing job comes *after* the insert), so refreshing is the
+ * honest response either way:
+ *
+ * - ['documents'] — the shelf gained a book on the very first manual recipe,
+ *   and a recipe on every one after that. Bare prefix: it covers the list.
+ * - ['knowledge-items'] — bare prefix, every filter variant of the book
+ *   listing the new recipe belongs in.
+ * - ['document', id] EXACT — the counts beside the Handwritten spine moved.
+ *   `exact` so the ['document', id, 'status'] polling entry is never refired
+ *   (`invalidateOnTerminal`'s documented trap in documents.ts).
+ *
+ * NOT ['favourites']: a recipe cannot be born starred.
+ */
+export function useCreateKnowledgeItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation<KnowledgeItemResponse, Error, KnowledgeItemCreateRequest>({
+    /* Serialized against itself: a double-submitted form must not race two
+       inserts, and the shelf bootstrap is idempotent but the item insert is
+       not — two in flight would be two recipes. The scope has no id in it
+       because the thing being created does not have one yet. */
+    scope: { id: "knowledge-item-create" },
+    mutationFn: (body) =>
+      request<KnowledgeItemResponse>(route("/knowledge-items", "post"), {
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      }),
+    onSettled: (data) => {
+      if (data) {
+        queryClient.setQueryData(
+          ["knowledge-item", data.knowledge_item.id],
+          data,
+        );
+      }
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+      void queryClient.invalidateQueries({ queryKey: ["knowledge-items"] });
+      if (data) {
+        void queryClient.invalidateQueries({
+          queryKey: ["document", data.knowledge_item.document_id],
+          exact: true,
+        });
       }
     },
   });

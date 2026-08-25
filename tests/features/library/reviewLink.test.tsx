@@ -186,7 +186,7 @@ describe("review=included search request body", () => {
     renderAt("/?review=included");
 
     await user.type(screen.getByRole("textbox"), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toMatchObject({
@@ -211,7 +211,7 @@ describe("review=included search request body", () => {
     renderAt("/");
 
     await user.type(screen.getByRole("textbox"), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).not.toHaveProperty("filters");

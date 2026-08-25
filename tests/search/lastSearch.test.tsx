@@ -59,8 +59,29 @@ describe("nextSearchParams / searchUrl (the param rules, in one place)", () => {
     q: string,
     mode: SearchMode,
     asked = false,
+    menu = false,
   ): string =>
-    searchUrl(nextSearchParams(new URLSearchParams(prev), { q, mode, asked }));
+    searchUrl(
+      nextSearchParams(new URLSearchParams(prev), { q, mode, asked, menu }),
+    );
+
+  it("arms menu=1 on the compose write and drops a standing asked=1", () => {
+    expect(commit("q=muffins&asked=1", "muffins", "hybrid", false, true)).toBe(
+      "/?q=muffins&menu=1",
+    );
+  });
+
+  it("keeps menu=1 only while the question is unchanged, like asked=1", () => {
+    expect(commit("q=muffins&menu=1", "muffins", "hybrid")).toBe(
+      "/?q=muffins&menu=1",
+    );
+    expect(commit("q=muffins&menu=1", "muffins", "vector")).toBe(
+      "/?q=muffins&mode=vector",
+    );
+    expect(commit("q=muffins&menu=1", "muffins", "hybrid", true)).toBe(
+      "/?q=muffins&asked=1",
+    );
+  });
 
   it("keeps unknown params — they belong to somebody else", () => {
     expect(commit("review=included&future=param", "muffins", "hybrid")).toBe(
@@ -134,7 +155,7 @@ describe("last-search persistence (storage writes)", () => {
     const user = userEvent.setup();
     renderAt("/");
     await user.type(searchBox(), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
     await waitFor(() => expect(storedLastSearch()).toBe("/?q=scones&asked=1"));
   });
 

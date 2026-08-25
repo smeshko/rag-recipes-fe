@@ -45,7 +45,7 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const askButton = () => screen.getByRole("button", { name: "Ask" });
+const askButton = () => screen.getByRole("button", { name: "Ask the shelf" });
 
 async function settleGrid() {
   await waitFor(() =>

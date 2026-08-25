@@ -49,9 +49,9 @@ afterEach(() => {
 async function ask() {
   const user = userEvent.setup();
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled(),
+    expect(screen.getByRole("button", { name: "Ask the shelf" })).toBeEnabled(),
   );
-  await user.click(screen.getByRole("button", { name: "Ask" }));
+  await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
   return user;
 }
 
@@ -124,9 +124,13 @@ describe("fallback", () => {
     );
     renderAt("/?q=wine+pairing");
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: "Ask the shelf" }),
+      ).toBeEnabled(),
     );
-    await userEvent.setup().click(screen.getByRole("button", { name: "Ask" }));
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Ask the shelf" }));
     await screen.findByRole("status");
     /* The search failure still surfaces; it is not an answer-layer concern. */
     expect(
@@ -149,7 +153,7 @@ describe("fallback", () => {
        the answer it belonged to, and the CTA offers the new question. Not a
        second round-trip: the fallback stays in the cache, one Back away. */
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByTestId("answer-cta")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 

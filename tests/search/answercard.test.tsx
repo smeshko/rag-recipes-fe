@@ -35,9 +35,9 @@ function renderAsked(fixture = groundedAnswerFixture) {
 async function ask() {
   const user = userEvent.setup();
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Ask" })).toBeEnabled(),
+    expect(screen.getByRole("button", { name: "Ask the shelf" })).toBeEnabled(),
   );
-  await user.click(screen.getByRole("button", { name: "Ask" }));
+  await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
 }
 
 describe("answer card", () => {

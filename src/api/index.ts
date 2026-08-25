@@ -36,11 +36,14 @@ export type {
 export {
   documentKnowledgeItemsQueryOptions,
   fetchAllDocumentKnowledgeItems,
+  useCreateKnowledgeItem,
   useDeleteKnowledgeItem,
   useDocumentKnowledgeItems,
   useKnowledgeItem,
   useUpdateKnowledgeItem,
 } from "./knowledgeItems";
+export type { MenuAsk } from "./menus";
+export { isMenuFallback, MENU_GC_TIME, useMenu } from "./menus";
 export { createQueryClient, shouldRetry } from "./queryClient";
 export type { UseReviewDecisionOptions } from "./review";
 export {
@@ -65,6 +68,7 @@ export type {
   AnswerResponse,
   BatchUploadItemResult,
   BatchUploadResponse,
+  CourseSelection,
   DocumentCounts,
   DocumentDetailResponse,
   DocumentListItem,
@@ -77,10 +81,13 @@ export type {
   IngestionStatusResponse,
   Ingredient,
   ItemConfidence,
+  KnowledgeItemCreateRequest,
   KnowledgeItemListResponse,
   KnowledgeItemResponse,
   KnowledgeItemSummary,
   KnowledgeItemUpdateRequest,
+  MenuCourse,
+  MenuResponse,
   RecipeStructuredData,
   Recommendation,
   ReprocessResponse,

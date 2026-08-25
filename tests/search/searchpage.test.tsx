@@ -63,7 +63,7 @@ describe("SearchPage URL ↔ state", () => {
     const user = userEvent.setup();
     const router = renderAt("/");
     await user.type(searchBox(), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=scones&asked=1"),
     );
@@ -119,7 +119,7 @@ describe("SearchPage URL ↔ state", () => {
     const router = renderAt("/?q=alpha");
     await user.clear(searchBox());
     await user.type(searchBox(), "beta");
-    await user.click(screen.getByRole("button", { name: "Ask" }));
+    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=beta&asked=1"),
     );
