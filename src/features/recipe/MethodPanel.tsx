@@ -1,15 +1,27 @@
-import type { ItemConfidence, RecipeStructuredData } from "../../api";
+import type {
+  ItemConfidence,
+  RecipeStructuredData,
+  ReviewThresholds,
+} from "../../api";
 import { Panel } from "../../ui";
+import { LowScoreMark } from "./LowScoreMark";
+import { lowMark } from "./reviewMarks";
 import { stepLines } from "./stepLines";
 
 export function MethodPanel({
   sd,
   status,
   confidence,
+  thresholds = null,
 }: {
   sd: RecipeStructuredData;
   status: string;
   confidence: ItemConfidence | null;
+  /** Present only for a `needs_review` item. No backend rule fires on a single
+      step, so a step mark is ADVISORY: the step's own `confidence.overall`
+      judged against the item-level overall bound, to tell a reviewer where in
+      the method to look first. Without thresholds nothing is marked. */
+  thresholds?: ReviewThresholds | null;
 }) {
   /* Ordering and numbering live in `stepLines` (5.3 D6), shared with the edit
      form so the two surfaces can never disagree about what the method is.
@@ -19,6 +31,7 @@ export function MethodPanel({
      available, and the list is built once per payload and never reordered. */
   const steps = stepLines(sd).map((step, index) => ({
     key: `${index}:${step.number}`,
+    mark: lowMark(step.confidence?.overall, thresholds?.overall),
     ...step,
   }));
   const overall = confidence?.overall;
@@ -43,12 +56,27 @@ export function MethodPanel({
           </p>
           <ol className="mt-4 flex flex-col gap-4">
             {steps.map((step) => (
-              <li key={step.key} className="grid grid-cols-[40px_1fr] gap-1">
+              <li
+                key={step.key}
+                data-testid={step.mark ? "step-flagged" : undefined}
+                className={`grid grid-cols-[40px_1fr] gap-1 ${
+                  step.mark
+                    ? "-ml-3 rounded-[10px] border-l-[3px] border-warning-border bg-warning-fill py-1 pl-3"
+                    : ""
+                }`}
+              >
                 <span className="font-display text-[17px] font-semibold text-accent italic">
                   {step.number}.
                 </span>
                 <span className="text-[15px] leading-[1.65] text-fg">
                   {step.text}
+                  {step.mark ? (
+                    <LowScoreMark
+                      mark={step.mark}
+                      label="Step"
+                      testId="step-score"
+                    />
+                  ) : null}
                 </span>
               </li>
             ))}

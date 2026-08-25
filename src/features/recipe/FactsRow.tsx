@@ -1,4 +1,6 @@
 import type { RecipeStructuredData } from "../../api";
+import { LowScoreMark } from "./LowScoreMark";
+import type { LowMark } from "./reviewMarks";
 
 interface Fact {
   label: string;
@@ -23,7 +25,15 @@ function facts(sd: RecipeStructuredData): Fact[] {
   return list;
 }
 
-export function FactsRow({ sd }: { sd: RecipeStructuredData }) {
+export function FactsRow({
+  sd,
+  yieldMark = null,
+}: {
+  sd: RecipeStructuredData;
+  /** The `fields.yield` low mark, when the extractor doubted its own serving
+      count — the only fact the schema scores. */
+  yieldMark?: LowMark | null;
+}) {
   const list = facts(sd);
   if (list.length === 0) {
     return null;
@@ -39,6 +49,9 @@ export function FactsRow({ sd }: { sd: RecipeStructuredData }) {
             {fact.label}
           </span>{" "}
           <span className="font-semibold text-fg">{fact.value}</span>
+          {fact.label === "Serves" && yieldMark ? (
+            <LowScoreMark mark={yieldMark} label="Yield" testId="yield-score" />
+          ) : null}
         </div>
       ))}
     </div>

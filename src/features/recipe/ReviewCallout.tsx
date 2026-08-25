@@ -1,4 +1,5 @@
 import type { KnowledgeItemResponse, ReviewFlag } from "../../api";
+import { flagDetail } from "./reviewMarks";
 
 /* The read page's review block (5.4 TASK-005): one surface doing three jobs
    for a `needs_review` item — what is still flagged, whether anyone has
@@ -30,6 +31,22 @@ import type { KnowledgeItemResponse, ReviewFlag } from "../../api";
    Edit and Delete from `RecipeActions` above. */
 
 const flagText = (flag: ReviewFlag) => flag.message || flag.code;
+
+/** The score line under a flag — observed value, current bound, marked-row
+    count — rendered only when the backend sent the aids (`flagDetail`). */
+function FlagDetail({ flag }: { flag: ReviewFlag }) {
+  const detail = flagDetail(flag);
+  /* A sibling of the flag line, not a child: the flag's own text stays the
+     backend's copy verbatim, and the aid reads as its footnote. */
+  return detail ? (
+    <p
+      data-testid="review-flag-detail"
+      className="font-mono text-[11.5px] font-semibold text-warning/70"
+    >
+      {detail}
+    </p>
+  ) : null;
+}
 
 export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
   const { status, review_reasons: flags, edited_at } = item.knowledge_item;
@@ -68,6 +85,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
             >
               {flagText(lead)}
             </p>
+            <FlagDetail flag={lead} />
             {/* Keyed by code AND message: `code` alone is not unique. Every
                 warning the backend has no modelled copy for collapses onto
                 the single `llm_warning` fallback envelope
@@ -75,13 +93,15 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
                 on one item render two siblings with the same code. The list
                 is derived, never reordered in place, so the pair is stable. */}
             {secondaries.map((flag) => (
-              <p
-                key={`${flag.code}:${flag.message}`}
-                data-testid="recipe-flag-secondary"
-                className="mt-1 text-[12.5px] font-semibold text-warning/85"
-              >
-                {flagText(flag)}
-              </p>
+              <div key={`${flag.code}:${flag.message}`}>
+                <p
+                  data-testid="recipe-flag-secondary"
+                  className="mt-1 text-[12.5px] font-semibold text-warning/85"
+                >
+                  {flagText(flag)}
+                </p>
+                <FlagDetail flag={flag} />
+              </div>
             ))}
           </>
         )}

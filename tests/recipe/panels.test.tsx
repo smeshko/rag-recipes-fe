@@ -187,7 +187,12 @@ describe("ingredientLines", () => {
       ],
       ingredients_text: "ignored",
     });
-    expect(res).toEqual({ kind: "structured", lines: ["first", "second"] });
+    expect(res).toMatchObject({
+      kind: "structured",
+      lines: ["first", "second"],
+      /* Rows ride along in the same order, keyed by declared position. */
+      rows: [{ position: 1 }, { position: 2 }],
+    });
   });
 
   it("splits text lines dropping empties", () => {

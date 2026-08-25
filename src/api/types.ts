@@ -231,6 +231,11 @@ export interface ItemConfidence {
   fields?: Record<string, number> | null;
 }
 
+/** The current soft-validation bounds, shipped only on a `needs_review` item
+    so per-line scores (ingredients, steps, fields) can be marked against the
+    same numbers the backend judges by — the FE hardcodes no threshold. */
+export type ReviewThresholds = components["schemas"]["ReviewThresholds"];
+
 /* Defensive mirror of recipe.v1: every field optional/nullable because the
    backend passes the stored dict verbatim. `schema` stays a plain string so
    future recipe.v* versions still render what matches; non-recipe schemas
@@ -264,6 +269,8 @@ export interface KnowledgeItemResponse {
        the generated KnowledgeItemDetail declares it, this hand-written type
        simply never did. Declaring it here is a fix, not a forward bet. */
     review_reasons: ReviewFlag[];
+    /* Present (non-null) only on `needs_review` items; optional on the wire. */
+    review_thresholds?: ReviewThresholds | null;
     /* Optional because the generated `KnowledgeItemDetail` declares it
        optional — `edited_at` is absent from that schema's `required` set, so
        an unedited item may omit the key entirely. The `?` matches the wire,

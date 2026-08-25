@@ -6,6 +6,7 @@ import type {
   KnowledgeItemUpdateRequest,
   RecipeStructuredData,
   ReviewFlag,
+  ReviewThresholds,
   Step,
 } from "../api";
 
@@ -136,21 +137,82 @@ const linesText = (
   rows: { raw_text?: string | null; text?: string | null }[],
 ) => rows.map((row) => row.raw_text ?? row.text ?? "").join("\n");
 
+/**
+ * The soft-validation bounds the mock judges against — the FE twin of the
+ * backend's `review_thresholds`. A MOCK INVENTION, like `MOCK_MIN_RECIPE_CHARS`:
+ * the real values are `Settings` the backend ships per item, and product code
+ * only ever reads them off the wire.
+ */
+export const MOCK_REVIEW_THRESHOLDS: ReviewThresholds = {
+  overall: 0.5,
+  boundary: 0.5,
+  normalization: 0.5,
+};
+
+/** What the backend's `build_review_reasons` needs beyond the codes to attach
+    its reviewer aids: the item's top-level scores and its ingredient rows. */
+interface ReasonAids {
+  confidence?: { overall?: number | null; boundary?: number | null } | null;
+  ingredients?: readonly Ingredient[] | null;
+}
+
 /** Projection of warning codes into `{code, message}` — the FE mirror of the
     backend's `build_review_reasons`: populated only for `needs_review`, and
-    a non-canonical string is enveloped rather than promoted into `code`. */
+    a non-canonical string is enveloped rather than promoted into `code`.
+
+    With `aids`, the three confidence codes also carry `value` / `threshold`
+    and `low_normalization_confidence` names the `ingredient_positions` under
+    the bound (the lowest row when none is, as the backend does). */
 export const buildReviewReasons = (
   status: string,
   warnings: readonly string[] | null | undefined,
+  aids?: ReasonAids,
 ): ReviewFlag[] => {
   if (status !== "needs_review" || !Array.isArray(warnings)) {
     return [];
   }
-  return warnings.map((warning) =>
-    warning in SOFT_WARNING_MESSAGES
-      ? { code: warning, message: SOFT_WARNING_MESSAGES[warning] }
-      : { code: "llm_warning", message: String(warning) },
-  );
+  return warnings.map((warning) => {
+    if (!(warning in SOFT_WARNING_MESSAGES)) {
+      return { code: "llm_warning", message: String(warning) };
+    }
+    const flag: ReviewFlag = {
+      code: warning,
+      message: SOFT_WARNING_MESSAGES[warning],
+    };
+    if (!aids) {
+      return flag;
+    }
+    if (warning === "low_overall_confidence") {
+      flag.value = aids.confidence?.overall ?? null;
+      flag.threshold = MOCK_REVIEW_THRESHOLDS.overall;
+    } else if (warning === "low_boundary_confidence") {
+      flag.value = aids.confidence?.boundary ?? null;
+      flag.threshold = MOCK_REVIEW_THRESHOLDS.boundary;
+    } else if (warning === "low_normalization_confidence") {
+      const threshold = MOCK_REVIEW_THRESHOLDS.normalization;
+      const scored = (aids.ingredients ?? []).flatMap((ing, index) => {
+        const score = ing.confidence?.normalization;
+        return typeof score === "number"
+          ? [{ position: ing.position ?? index, score }]
+          : [];
+      });
+      flag.threshold = threshold;
+      if (scored.length > 0) {
+        const lowest = Math.min(...scored.map((row) => row.score));
+        const below = scored.filter((row) => row.score < threshold);
+        flag.value = lowest;
+        flag.ingredient_positions = (
+          below.length > 0
+            ? below
+            : scored.filter((row) => row.score === lowest)
+        ).map((row) => row.position);
+      } else {
+        flag.value = null;
+        flag.ingredient_positions = null;
+      }
+    }
+    return flag;
+  });
 };
 
 const editableItem = (options: {
@@ -189,7 +251,12 @@ const editableItem = (options: {
         },
       },
       structured_data: { schema: "recipe.v1", ...options.structured, warnings },
-      review_reasons: buildReviewReasons(status, warnings),
+      review_reasons: buildReviewReasons(status, warnings, {
+        confidence: options.confidence,
+        ingredients: options.structured.ingredients,
+      }),
+      review_thresholds:
+        status === "needs_review" ? MOCK_REVIEW_THRESHOLDS : null,
       /* Nobody has edited these yet — the whole point of the fixtures. */
       edited_at: null,
     },
@@ -657,6 +724,10 @@ export const applyPatch = (
       review_reasons: buildReviewReasons(
         knowledgeItem.status,
         structuredData.warnings,
+        {
+          confidence: knowledgeItem.confidence,
+          ingredients: structuredData.ingredients,
+        },
       ),
       /* Stamped server-side on every successful patch (contract §1). */
       edited_at: new Date().toISOString(),

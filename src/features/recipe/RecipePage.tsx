@@ -8,6 +8,7 @@ import { Provenance } from "./Provenance";
 import { RecipeActions } from "./RecipeActions";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "./RecipeStates";
 import { ReviewCallout } from "./ReviewCallout";
+import { lowFields } from "./reviewMarks";
 import { TitleBlock } from "./TitleBlock";
 
 function TitleSkeleton() {
@@ -52,7 +53,15 @@ export function RecipePage() {
       <>
         <Bloom duration={0.7} delay={0.08} className="pt-8">
           <TitleBlock item={data} />
-          <FactsRow sd={data.knowledge_item.structured_data} />
+          <FactsRow
+            sd={data.knowledge_item.structured_data}
+            yieldMark={
+              lowFields(
+                data.knowledge_item.confidence?.fields,
+                data.knowledge_item.review_thresholds,
+              ).yield ?? null
+            }
+          />
           {/* Page-level verbs sit with the head, not at the foot: they belong
               to the recipe as a whole, and a reader who came to fix or remove
               this one should not have to scroll past the method to find them.
@@ -71,6 +80,8 @@ export function RecipePage() {
             <IngredientsPanel
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
+              flags={data.knowledge_item.review_reasons}
+              thresholds={data.knowledge_item.review_thresholds}
             />
           </Bloom>
           <Bloom duration={0.7} delay={0.18}>
@@ -78,6 +89,7 @@ export function RecipePage() {
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
               confidence={data.knowledge_item.confidence}
+              thresholds={data.knowledge_item.review_thresholds}
             />
           </Bloom>
         </div>

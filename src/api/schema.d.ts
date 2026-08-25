@@ -746,6 +746,7 @@ export interface components {
              * @default []
              */
             review_reasons: components["schemas"]["ReviewReason"][];
+            review_thresholds?: components["schemas"]["ReviewThresholds"] | null;
             /** Edited At */
             edited_at?: string | null;
         };
@@ -1006,6 +1007,12 @@ export interface components {
             code: string;
             /** Message */
             message: string;
+            /** Value */
+            value?: number | null;
+            /** Threshold */
+            threshold?: number | null;
+            /** Ingredient Positions */
+            ingredient_positions?: number[] | null;
         };
         /** ReviewRequest */
         ReviewRequest: {
@@ -1016,6 +1023,20 @@ export interface components {
             knowledge_item: components["schemas"]["ReviewedKnowledgeItem"];
             /** Decision */
             decision: string;
+        };
+        /**
+         * ReviewThresholds
+         * @description The current soft-validation bounds, so the UI can mark per-line scores
+         *     (steps, fields) the item-level reasons do not individually name. Shipped
+         *     only on ``needs_review`` items.
+         */
+        ReviewThresholds: {
+            /** Overall */
+            overall: number;
+            /** Boundary */
+            boundary: number;
+            /** Normalization */
+            normalization: number;
         };
         /** ReviewedKnowledgeItem */
         ReviewedKnowledgeItem: {

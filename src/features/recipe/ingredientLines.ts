@@ -1,7 +1,16 @@
-import type { RecipeStructuredData } from "../../api";
+import type { Ingredient, RecipeStructuredData } from "../../api";
+
+/** One rendered structured row: the parse it came from and the position the
+    backend addresses it by in `ReviewFlag.ingredient_positions` — the row's
+    declared `position`, else its index in the payload array, which is the
+    same fallback `build_review_reasons` applies. */
+export interface IngredientRow {
+  ingredient: Ingredient;
+  position: number;
+}
 
 export type IngredientResolution =
-  | { kind: "structured"; lines: string[] }
+  | { kind: "structured"; lines: string[]; rows: IngredientRow[] }
   | { kind: "text"; lines: string[] }
   | { kind: "empty" };
 
@@ -10,13 +19,16 @@ export type IngredientResolution =
 export function ingredientLines(
   sd: RecipeStructuredData,
 ): IngredientResolution {
-  const structured = (sd.ingredients ?? [])
-    .slice()
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map((ing) => ing.raw_text)
-    .filter((text): text is string => Boolean(text));
+  const rows = (sd.ingredients ?? [])
+    .map((ingredient, index) => ({
+      ingredient,
+      position: ingredient.position ?? index,
+    }))
+    .sort((a, b) => (a.ingredient.position ?? 0) - (b.ingredient.position ?? 0))
+    .filter((row) => Boolean(row.ingredient.raw_text));
+  const structured = rows.map((row) => row.ingredient.raw_text as string);
   if (structured.length > 0) {
-    return { kind: "structured", lines: structured };
+    return { kind: "structured", lines: structured, rows };
   }
   const text = (sd.ingredients_text ?? "")
     .split("\n")

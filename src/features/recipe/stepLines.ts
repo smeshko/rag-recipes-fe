@@ -3,6 +3,8 @@ import type { RecipeStructuredData, Step } from "../../api";
 export interface StepLine {
   number: number;
   text: string;
+  /** The step's own extraction score, verbatim; read mode marks a low one. */
+  confidence: Record<string, number> | null;
 }
 
 /* The method's ordering and numbering rules, lifted out of `MethodPanel` so
@@ -45,5 +47,6 @@ export function stepLines(sd: RecipeStructuredData): StepLine[] {
   return ordered.map((step, index) => ({
     number: trustNumbering ? (step.step_number as number) : index + 1,
     text: step.text,
+    confidence: step.confidence ?? null,
   }));
 }
