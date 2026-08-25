@@ -77,6 +77,18 @@ export async function request<T>(
   }
 
   if (response.ok) {
+    /* 204 carries no body, so `response.json()` would reject with a raw
+       SyntaxError — outside the fetch try/catch above, so it would escape as
+       something that is not an ApiError and defeat every `instanceof ApiError`
+       check downstream. The per-recipe DELETE is the first 204 the app calls;
+       `DELETE /documents/{id}` has been in the schema unused since 21.2 and
+       would have hit exactly this. Callers of a 204 route type T as `void`. */
+    if (
+      response.status === 204 ||
+      response.headers.get("Content-Length") === "0"
+    ) {
+      return undefined as T;
+    }
     return (await response.json()) as T;
   }
 

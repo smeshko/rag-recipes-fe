@@ -48,6 +48,7 @@ export const RETURN_TO_ROUTES = [
   "/",
   "/recipes/:id",
   "/library",
+  "/library/:documentId",
   "/review",
 ] as const;
 
@@ -115,12 +116,20 @@ export function readReturnTo(
   };
 }
 
-export type ReturnSection = "search" | "library" | "review";
+export type ReturnSection = "search" | "library" | "book" | "review";
 
 /**
  * Which part of the app a target belongs to — all Nav needs, and the split
  * BackLink's label arms key off. `/review` matches with `end: false` so the
  * classification holds for any future child of the queue.
+ *
+ * A book's contents page is its OWN section rather than a child of `library`,
+ * and the order below is what makes that work: `matchPath("/library", …)`
+ * defaults to `end: true`, so it would return null for `/library/doc_x` and
+ * the target would fall all the way through to the Cook degrade. Naming it
+ * separately (instead of relaxing the `/library` match to `end: false`) is
+ * what lets a back link say "the book" rather than "your shelf" — two
+ * different places, and the shelf link would send a reader one hop too far.
  */
 export function returnSection(
   target: ReturnTarget | null,
@@ -130,6 +139,9 @@ export function returnSection(
   }
   if (matchPath({ path: "/review", end: false }, target.pathname)) {
     return "review";
+  }
+  if (matchPath("/library/:documentId", target.pathname)) {
+    return "book";
   }
   if (matchPath("/library", target.pathname)) {
     return "library";

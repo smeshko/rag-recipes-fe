@@ -310,6 +310,8 @@ const queueRow = (id: string, title: string): ReviewItem => ({
   title,
   summary: null,
   item_type: "recipe",
+  /* Always needs_review on a queue row. */
+  status: "needs_review",
   document: { id: QUEUE_DOCUMENT, title: "bakingwithlesssugar" },
   source_pages: { page_start: 41, page_end: 43 },
   extraction: {

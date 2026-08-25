@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { ApiError, useKnowledgeItem } from "../../../api";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "../RecipeStates";
 import { NotEditable } from "./EditStates";
+import { isEditableStatus } from "./editableStatus";
 import { RecipeEditForm } from "./RecipeEditForm";
 
 /* RecipePage's TitleSkeleton shape, re-pitched for the edit head (eyebrow +
@@ -100,7 +101,7 @@ export function RecipeEditPage() {
   /* `status` is a plain string on the item type — a string compare, not a
      narrowed union. A CLEAN session still yields to the dead end, which is the
      honest and more useful answer; only an open draft holds the form. */
-  if (data.knowledge_item.status !== "needs_review" && !draftHeld) {
+  if (!isEditableStatus(data.knowledge_item.status) && !draftHeld) {
     return <NotEditable status={data.knowledge_item.status} id={id} />;
   }
 
@@ -113,10 +114,15 @@ export function RecipeEditPage() {
     <RecipeEditForm
       item={data}
       draftRef={draftRef}
+      /* Same predicate as the gate above, and that is the point (see
+         editableStatus.ts): `ready` is now an ordinary thing to be editing,
+         so it must not raise the "someone beat you to it" banner. What still
+         does: `indexing`, `rejected`, `superseded` — all of which mean
+         somebody or something acted on this item while the form was open. */
       conflictStatus={
-        data.knowledge_item.status !== "needs_review"
-          ? data.knowledge_item.status
-          : undefined
+        isEditableStatus(data.knowledge_item.status)
+          ? undefined
+          : data.knowledge_item.status
       }
     />
   );

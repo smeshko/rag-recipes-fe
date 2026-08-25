@@ -15,6 +15,7 @@ import {
 } from "../../../ui";
 import { statusTone } from "../statusTone";
 import { SaveConflict } from "./EditStates";
+import { isShelved } from "./editableStatus";
 import { FactsFields } from "./FactsFields";
 import { IngredientsEditPanel } from "./IngredientsEditPanel";
 import { MethodEditPanel } from "./MethodEditPanel";
@@ -61,6 +62,11 @@ export function RecipeEditForm({
   conflictStatus?: string;
 }) {
   const status = statusTone(item.knowledge_item.status);
+  /* A shelved recipe is already approved, so it changes two things here: the
+     save costs a re-index (the notice below) and "Save & approve" has nothing
+     left to approve — the backend's review verb only accepts `needs_review`
+     and would answer 404 `review_not_pending`. */
+  const shelved = isShelved(item.knowledge_item.status);
   const { form, setField, setRows, newRow, isDirty, isValid, patchBody } =
     useEditForm(item);
   const navigate = useNavigate();
@@ -236,6 +242,21 @@ export function RecipeEditForm({
           error={saveError}
           approveError={approveError}
         />
+        {/* Not a conflict and not an error — a cost. Saving a shelved recipe
+            drops its chunks and queues a re-embed, so it leaves search for as
+            long as that takes. A reviewer correcting a typo deserves to know
+            that before pressing Save, not to discover it by failing to find
+            the recipe afterwards. Calm register and its own tone, so it is
+            never mistaken for `SaveConflict` sitting directly above it. */}
+        {shelved && (
+          <p
+            data-testid="edit-reindex-notice"
+            className="mt-4 rounded-[14px] border border-border bg-accent-fill px-5 py-3 text-[13px] text-fg-muted"
+          >
+            This recipe is on the shelf. Saving re-indexes it, so it will drop
+            out of search for a moment before coming back.
+          </p>
+        )}
         <TitleFields form={form} isValid={isValid} setField={setField} />
         <FactsFields form={form} setField={setField} />
       </Bloom>
@@ -290,18 +311,23 @@ export function RecipeEditForm({
               "Saving…" alongside "Approving…" names one act twice. */}
           {update.isPending && !decide.isPending ? "Saving…" : "Save changes"}
         </button>
-        <button
-          type="button"
-          data-testid="edit-save-approve"
-          onClick={submit("approve")}
-          disabled={submitDisabled}
-          /* Approve's own vocabulary, verbatim from `ReviewItemCard` (D13):
-             the two surfaces name the same verb the same way, so a reviewer
-             reads one control, not two. */
-          className="rounded-pill bg-success-fill px-5 py-2 text-[13px] font-bold text-success pointer-coarse:min-h-11 disabled:opacity-40"
-        >
-          {decide.isPending ? "Approving…" : "Save & approve"}
-        </button>
+        {/* Absent rather than disabled for a shelved recipe: a greyed-out
+            "Save & approve" invites a reviewer to work out why it will not
+            press, when the honest answer is that the verb does not apply. */}
+        {!shelved && (
+          <button
+            type="button"
+            data-testid="edit-save-approve"
+            onClick={submit("approve")}
+            disabled={submitDisabled}
+            /* Approve's own vocabulary, verbatim from `ReviewItemCard` (D13):
+               the two surfaces name the same verb the same way, so a reviewer
+               reads one control, not two. */
+            className="rounded-pill bg-success-fill px-5 py-2 text-[13px] font-bold text-success pointer-coarse:min-h-11 disabled:opacity-40"
+          >
+            {decide.isPending ? "Approving…" : "Save & approve"}
+          </button>
+        )}
       </Bloom>
     </div>
   );

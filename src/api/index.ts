@@ -22,8 +22,18 @@ export {
   useReprocess,
   useShelfStats,
 } from "./documents";
-export type { UseUpdateKnowledgeItemOptions } from "./knowledgeItems";
-export { useKnowledgeItem, useUpdateKnowledgeItem } from "./knowledgeItems";
+export type {
+  UseDeleteKnowledgeItemOptions,
+  UseUpdateKnowledgeItemOptions,
+} from "./knowledgeItems";
+export {
+  documentKnowledgeItemsQueryOptions,
+  fetchAllDocumentKnowledgeItems,
+  useDeleteKnowledgeItem,
+  useDocumentKnowledgeItems,
+  useKnowledgeItem,
+  useUpdateKnowledgeItem,
+} from "./knowledgeItems";
 export { createQueryClient, shouldRetry } from "./queryClient";
 export type { UseReviewDecisionOptions } from "./review";
 export {
@@ -59,7 +69,9 @@ export type {
   IngestionStatusResponse,
   Ingredient,
   ItemConfidence,
+  KnowledgeItemListResponse,
   KnowledgeItemResponse,
+  KnowledgeItemSummary,
   KnowledgeItemUpdateRequest,
   RecipeStructuredData,
   Recommendation,

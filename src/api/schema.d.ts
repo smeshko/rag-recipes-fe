@@ -200,30 +200,72 @@ export interface paths {
         get: operations["get_knowledge_item_api_v1_knowledge_items__item_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Knowledge Item
+         * @description Delete one recipe and everything derived from it.
+         *
+         *     The per-item counterpart to ``DELETE /documents/{document_id}``, and the
+         *     same shape: 404 unknown → 409 mid-reprocess → cascade → commit → log the
+         *     per-table counts (a body-less 204 leaves no other audit trail).
+         *
+         *     ``SELECT ... FOR UPDATE`` takes the **document** row, not the item — the
+         *     lock order every writer here uses (``jobs.py``: document first, item
+         *     second), and inverting it risks a deadlock against a concurrent reprocess.
+         *     It also does the real work: it serializes this handler against
+         *     ``index_knowledge_item``, so deleting an item that is mid-``indexing`` is
+         *     safe without any new machinery — the job either has not started (and then
+         *     finds the item gone, hitting its ``item is None`` no-op) or has finished.
+         *
+         *     Allowed at any item status, ``ready`` included. That is the point: a
+         *     shelved recipe had no removal path at all, and ``rejected`` — the soft
+         *     delete the review surface offers — reaches only ``needs_review`` items.
+         *
+         *     Not closed here: deleting the last ``ready`` item of the active generation
+         *     leaves ``documents.active_source_version`` pointing at a generation with
+         *     nothing in it. Not corrupt — search simply finds nothing and the counts
+         *     read zero — and reprocessing is the existing way back.
+         */
+        delete: operations["delete_knowledge_item_api_v1_knowledge_items__item_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Knowledge Item
-         * @description Correct a pending-review item in place (Epic 22.2).
+         * @description Correct a knowledge item in place (Epic 22.2; ``ready`` items since).
          *
-         *     The third review verb. Editing never decides: the item is still
-         *     ``needs_review`` afterwards, with its content warnings re-derived from the
-         *     corrected text — so a reviewer who fixes "no ingredients" stops seeing the
-         *     flag that said so, while ``low_overall_confidence`` /
-         *     ``low_boundary_confidence`` survive, because retyping a line does not attest
-         *     that the recipe was cut out of the page correctly.
+         *     Content warnings are re-derived from the corrected text either way — so a
+         *     reviewer who fixes "no ingredients" stops seeing the flag that said so,
+         *     while ``low_overall_confidence`` / ``low_boundary_confidence`` survive,
+         *     because retyping a line does not attest that the recipe was cut out of the
+         *     page correctly.
          *
-         *     Restricted to ``needs_review`` by the guarded UPDATE. Those items have no
-         *     chunks and no embeddings, so an edit is a pure row rewrite and the *edited*
-         *     text is what gets chunked when the reviewer then approves; editing an
-         *     indexed item would need a delete-and-re-embed path that does not exist.
+         *     Two statuses, two very different transactions:
+         *
+         *     - ``needs_review`` — the original path, and still a pure row rewrite.
+         *       Editing never decides: the item is *still* ``needs_review`` afterwards,
+         *       and the edited text is what gets chunked when the reviewer approves.
+         *       These items have no chunks and no embeddings, so there is nothing else to
+         *       keep in step.
+         *     - ``ready`` — the item is indexed, so a row rewrite alone would leave
+         *       ``chunks`` and ``chunk_embeddings`` describing the *old* text and the
+         *       recipe findable by words it no longer contains. The handler therefore
+         *       drops its index rows in the same transaction, flips it to ``indexing``,
+         *       and enqueues ``index_knowledge_item`` to rebuild and re-embed from the
+         *       saved text — the delete-and-re-embed path this docstring used to say did
+         *       not exist.
+         *
+         *     Two consequences of the ``ready`` path, both deliberate. The recipe is
+         *     **absent from search until the worker finishes** (search requires chunks),
+         *     which is the price of not blocking the request on an embedding round-trip.
+         *     And if the job exhausts its retries, the item-level pass in
+         *     ``sweep_stuck_jobs`` returns the row to ``needs_review`` — an edit can
+         *     therefore demote a shelved recipe into the review queue. That is honest
+         *     rather than lossy: the row genuinely has no chunks at that point, which is
+         *     exactly what ``needs_review`` means.
          *
          *     Guards run in the same order as ``POST …/review`` so each stays reachable
          *     rather than masked: 404 unknown id → 409 mid-reprocess document → 409 stale
-         *     generation → guarded UPDATE → 404 not awaiting review. The empty-body 400
-         *     sits *after* the 404 so an unknown id reports as unknown whatever the body
-         *     says.
+         *     generation → guarded UPDATE → 404 not editable. The empty-body 400 sits
+         *     *after* the 404 so an unknown id reports as unknown whatever the body says.
          *
          *     Not closed here (and not asked for by the epic): two concurrent PATCHes are
          *     last-write-wins on content. The guarded UPDATE closes the edit-vs-decide
@@ -232,6 +274,40 @@ export interface paths {
          *     item in two tabs would see the second edit replace the first wholesale.
          */
         patch: operations["update_knowledge_item_api_v1_knowledge_items__item_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/knowledge-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Document Knowledge Items
+         * @description List one book's knowledge items, newest first.
+         *
+         *     The listing ``GET /review-items`` cannot be: it answers for *every* status,
+         *     which is what makes a book browsable once its recipes are on the shelf.
+         *
+         *     Unfiltered, it hides ``superseded`` and ``rejected`` rows — a dead
+         *     generation and a thrown-away item are not part of the book's contents — but
+         *     an explicit ``?status=`` reaches either, so nothing is unreachable. Unlike
+         *     ``/review-items``, the document is *addressed* rather than filtered, so an
+         *     unknown id is a 404 (the ``GET /documents/{id}`` rule), not an empty list.
+         *
+         *     There is deliberately no document-status guard: unlike the review queue,
+         *     which excludes mid-reprocess books because deciding their items is unsafe,
+         *     reading a book's contents while it reprocesses is harmless. The write verbs
+         *     keep their own 409.
+         */
+        get: operations["list_document_knowledge_items_api_v1_documents__document_id__knowledge_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/review-items": {
@@ -680,6 +756,17 @@ export interface components {
             /** Subtitle */
             subtitle: string | null;
         };
+        /**
+         * KnowledgeItemListResponse
+         * @description ``GET /documents/{document_id}/knowledge-items``.
+         *
+         *     No total and no cursor, matching ``ReviewItemListResponse`` — clients walk
+         *     ``limit``/``offset`` until a page comes back short.
+         */
+        KnowledgeItemListResponse: {
+            /** Knowledge Items */
+            knowledge_items: components["schemas"]["ReviewItem"][];
+        };
         /** KnowledgeItemResponse */
         KnowledgeItemResponse: {
             knowledge_item: components["schemas"]["KnowledgeItemDetail"];
@@ -859,6 +946,8 @@ export interface components {
             summary: string | null;
             /** Item Type */
             item_type: string;
+            /** Status */
+            status: string;
             document: components["schemas"]["ReviewItemDocument"];
             source_pages: components["schemas"]["ReviewItemSourcePages"];
             extraction: components["schemas"]["ReviewItemExtraction"];
@@ -1391,6 +1480,35 @@ export interface operations {
             };
         };
     };
+    delete_knowledge_item_api_v1_knowledge_items__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_knowledge_item_api_v1_knowledge_items__item_id__patch: {
         parameters: {
             query?: never;
@@ -1413,6 +1531,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeItemResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_document_knowledge_items_api_v1_documents__document_id__knowledge_items_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemListResponse"];
                 };
             };
             /** @description Validation Error */

@@ -157,8 +157,21 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           className={`self-stretch ${spineAccent(doc.status, doc.id)}`}
         />
         <div className="py-5">
+          {/* The title is the way into the book's contents — but only once
+              there is something to list. A queued or mid-extraction book has
+              no items yet, so it stays plain text rather than a link that
+              lands on an empty page. */}
           <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
-            {doc.title}
+            {isReadyIsh(doc.status) ? (
+              <Link
+                to={withReturnTo(`/library/${doc.id}`, location)}
+                className="transition-colors hover:text-accent"
+              >
+                {doc.title}
+              </Link>
+            ) : (
+              doc.title
+            )}
           </h3>
           <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
             {subtitleFor(doc, detail)}

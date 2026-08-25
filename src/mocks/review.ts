@@ -30,6 +30,7 @@ export const reviewItemsFixture: ReviewItem[] = [
     title: "Maple Cutout Cookies",
     summary: "Crisp maple-sweetened cutout cookies for decorating.",
     item_type: "recipe",
+    status: "needs_review",
     document: { id: "doc_baking", title: "bakingwithlesssugar" },
     source_pages: { page_start: 41, page_end: 43 },
     extraction: {
@@ -51,6 +52,7 @@ export const reviewItemsFixture: ReviewItem[] = [
     title: "Honey Oat Sandwich Loaf",
     summary: "A soft sandwich loaf sweetened with honey instead of sugar.",
     item_type: "recipe",
+    status: "needs_review",
     document: { id: "doc_baking", title: "bakingwithlesssugar" },
     source_pages: { page_start: 57, page_end: 57 },
     extraction: {
@@ -76,6 +78,7 @@ export const reviewItemsFixture: ReviewItem[] = [
     title: "Rustic Pear Galette",
     summary: null,
     item_type: "recipe",
+    status: "needs_review",
     document: { id: "doc_baking", title: "bakingwithlesssugar" },
     source_pages: { page_start: 88, page_end: 88 },
     extraction: {
@@ -97,6 +100,7 @@ export const reviewItemsFixture: ReviewItem[] = [
     title: "Stovetop Skillet Granola",
     summary: "Toasty granola made entirely in one skillet.",
     item_type: "recipe",
+    status: "needs_review",
     document: { id: "doc_onepan", title: "onepantorulethemall" },
     source_pages: { page_start: null, page_end: null },
     extraction: {
@@ -122,6 +126,7 @@ export const reviewItemsFixture: ReviewItem[] = [
     title: "Everyday Paleo Salad Dressing",
     summary: "A sharp mustard-and-olive-oil dressing for weekday salads.",
     item_type: "recipe",
+    status: "needs_review",
     document: { id: "doc_paleo", title: "eatdrinkpaleo" },
     source_pages: { page_start: 112, page_end: 112 },
     extraction: {

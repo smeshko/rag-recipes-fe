@@ -33,6 +33,8 @@ const makeItems = (n: number): ReviewItem[] =>
     title: `Recipe ${i}`,
     summary: null,
     item_type: "recipe",
+    /* Always needs_review on a queue row. */
+    status: "needs_review",
     document: { id: "doc_bulk", title: "bulkbook" },
     source_pages: { page_start: i + 1, page_end: i + 1 },
     extraction: {

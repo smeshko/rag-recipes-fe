@@ -28,13 +28,21 @@ export function NotEditable({
     <div className="pt-16">
       <Panel className="mx-auto max-w-[560px] text-center">
         <p className="font-display text-[18px] font-semibold">
-          {status === "ready"
-            ? "This one's already on the shelf."
-            : "This item isn't waiting for review."}
+          {status === "indexing"
+            ? "This one is being re-indexed."
+            : "This one can't be edited."}
         </p>
         <p className="mt-1 text-[13.5px] text-fg-muted">
-          Only items that need review can be edited. This one is{" "}
-          <b className="font-semibold">{label}</b>.
+          {status === "indexing" ? (
+            <>
+              A save is still working its way through — try again in a moment.
+            </>
+          ) : (
+            <>
+              Only shelved recipes and items awaiting review can be edited. This
+              one is <b className="font-semibold">{label}</b>.
+            </>
+          )}
         </p>
         <p className="mt-5">
           <Link

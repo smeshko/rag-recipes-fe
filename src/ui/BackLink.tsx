@@ -48,6 +48,14 @@ export function BackLink() {
     );
   }
 
+  if (target !== null && section === "book") {
+    return (
+      <Link to={target.to} className={CLASSES}>
+        ← Back to the book
+      </Link>
+    );
+  }
+
   if (target !== null && section === "library") {
     return (
       <Link to={target.to} className={CLASSES}>

@@ -30,12 +30,15 @@ const EDIT_PATH = `/recipes/${ITEM_ID}/edit`;
 const SEEDED_TITLE = needsReviewItemFixture.knowledge_item.title;
 const REPAIRED_TITLE = `${SEEDED_TITLE} (repaired)`;
 
-/** The same item, as another tab's approval would leave it in the cache. */
-const approvedInCache = {
+/** The same item, as another tab's approval would leave it in the cache.
+    `indexing`, not `ready`: approve flips to the transitional status first,
+    and since shelved recipes became editable a `ready` payload landing under
+    the form is no longer a conflict at all — it is just the item. */
+const decidedInCache = {
   ...needsReviewItemFixture,
   knowledge_item: {
     ...needsReviewItemFixture.knowledge_item,
-    status: "ready",
+    status: "indexing",
   },
 };
 
@@ -73,10 +76,10 @@ function expectFormIntact() {
   expect(screen.getByTestId("recipe-edit-page")).toBeInTheDocument();
   expect(titleField()).toHaveValue(REPAIRED_TITLE);
   expect(
-    screen.queryByText("This one's already on the shelf."),
+    screen.queryByText("This one is being re-indexed."),
   ).not.toBeInTheDocument();
   expect(
-    screen.queryByText("This item isn't waiting for review."),
+    screen.queryByText("This one can't be edited."),
   ).not.toBeInTheDocument();
 }
 
@@ -86,7 +89,7 @@ describe("a status flip under an open draft", () => {
     await repair(user);
 
     act(() => {
-      queryClient.setQueryData(["knowledge-item", ITEM_ID], approvedInCache);
+      queryClient.setQueryData(["knowledge-item", ITEM_ID], decidedInCache);
     });
 
     const alert = await screen.findByRole("alert");
@@ -94,7 +97,7 @@ describe("a status flip under an open draft", () => {
       "This item is no longer waiting for review",
     );
     /* The item's ACTUAL status, through `statusTone` — not a generic line. */
-    expect(alert).toHaveTextContent("it is now Ready");
+    expect(alert).toHaveTextContent("it is now Indexing");
     expect(alert).toHaveTextContent(
       "Your changes are still here, but saving them may be refused",
     );
@@ -106,7 +109,7 @@ describe("a status flip under an open draft", () => {
     await repair(user);
 
     act(() => {
-      queryClient.setQueryData(["knowledge-item", ITEM_ID], approvedInCache);
+      queryClient.setQueryData(["knowledge-item", ITEM_ID], decidedInCache);
     });
     await screen.findByRole("alert");
 

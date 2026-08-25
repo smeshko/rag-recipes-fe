@@ -26,12 +26,15 @@ function renderAt(path: string) {
   return { ...utils, router, queryClient };
 }
 
-/** The same item, as another tab's approval would leave it in the cache. */
-const approvedInCache = {
+/** The same item, as another tab's approval would leave it in the cache.
+    `indexing`, not `ready`: approve flips to the transitional status and a
+    worker settles it afterwards — and since shelved recipes became editable,
+    `ready` is no longer a status the form has to defend itself against. */
+const decidedInCache = {
   ...needsReviewItemFixture,
   knowledge_item: {
     ...needsReviewItemFixture.knowledge_item,
-    status: "ready",
+    status: "indexing",
   },
 };
 
@@ -68,30 +71,49 @@ describe("edit page ladder", () => {
     expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
   });
 
-  it("refuses a ready item with the already-on-the-shelf copy", async () => {
+  it("opens the form for a shelved item and warns that saving re-indexes it", async () => {
+    /* The inverse of what this case used to assert. A `ready` item was refused
+       until the backend grew a delete-and-re-embed path; now it edits like any
+       other, at the cost of a trip through `indexing`. */
     renderAt("/recipes/item_full/edit");
 
-    expect(
-      await screen.findByText("This one's already on the shelf."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/only items that need review/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
-    expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
+    expect(screen.getByTestId("edit-reindex-notice")).toHaveTextContent(
+      /drop out of search for a moment/i,
+    );
+    /* No conflict banner: `ready` is an ordinary thing to be editing now, so
+       the status gate and the conflict surface must agree it is fine. */
     expect(
-      screen.getByRole("link", { name: /view the recipe/i }),
-    ).toHaveAttribute("href", "/recipes/item_full");
+      screen.queryByText(/no longer waiting for review/i),
+    ).not.toBeInTheDocument();
+    /* Nothing left to approve — the review verb only accepts needs_review. */
+    expect(screen.queryByTestId("edit-save-approve")).not.toBeInTheDocument();
+    expect(screen.getByTestId("edit-save")).toBeInTheDocument();
+  });
+
+  it("keeps Save & approve for a needs_review item, and no re-index notice", async () => {
+    renderAt("/recipes/item_review/edit");
+
+    expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
+    expect(screen.getByTestId("edit-save-approve")).toBeInTheDocument();
+    expect(screen.queryByTestId("edit-reindex-notice")).not.toBeInTheDocument();
   });
 
   it("refuses a superseded item with the generic copy, echoing the status", async () => {
     renderAt("/recipes/item_superseded/edit");
 
     expect(
-      await screen.findByText("This item isn't waiting for review."),
+      await screen.findByText("This one can't be edited."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/only shelved recipes and items awaiting review/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Superseded")).toBeInTheDocument();
     expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /view the recipe/i }),
+    ).toHaveAttribute("href", "/recipes/item_superseded");
   });
 
   it("renders the calm not-found state for a missing item", async () => {
@@ -151,11 +173,11 @@ describe("edit page ladder", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("This one's already on the shelf."),
+      screen.queryByText("This one can't be edited."),
     ).not.toBeInTheDocument();
   });
 
-  it("keeps a dirty form when the item is approved under it", async () => {
+  it("keeps a dirty form when the item is decided under it", async () => {
     /* The status gate is re-evaluated on every cache update, and neither
        `useBlocker` nor `beforeunload` can see an unmount — so a background
        refetch that returns `ready` would otherwise swap the form for
@@ -169,16 +191,16 @@ describe("edit page ladder", () => {
     act(() => {
       queryClient.setQueryData(
         ["knowledge-item", "item_review"],
-        approvedInCache,
+        decidedInCache,
       );
     });
 
-    /* The pill reading Ready is the proof the fresh payload really reached the
-       page — the form survived it rather than never being re-rendered. */
-    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    /* The pill reading Indexing is the proof the fresh payload really reached
+       the page — the form survived it rather than never being re-rendered. */
+    expect(await screen.findByText("Indexing")).toBeInTheDocument();
     expect(screen.getByTestId("recipe-edit-page")).toBeInTheDocument();
     expect(
-      screen.queryByText("This one's already on the shelf."),
+      screen.queryByText("This one can't be edited."),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toHaveValue(
       `${needsReviewItemFixture.knowledge_item.title} (repaired)`,
@@ -231,9 +253,9 @@ describe("edit page ladder", () => {
     );
   });
 
-  it("still yields to the dead end when the approved-under form is clean", async () => {
-    /* Nothing to lose, so the honest answer wins: the item really is on the
-       shelf now. Only an open draft holds the form. */
+  it("still yields to the dead end when the decided-under form is clean", async () => {
+    /* Nothing to lose, so the honest answer wins: the item really is being
+       indexed now. Only an open draft holds the form. */
     const { queryClient } = renderAt("/recipes/item_review/edit");
 
     expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
@@ -241,12 +263,12 @@ describe("edit page ladder", () => {
     act(() => {
       queryClient.setQueryData(
         ["knowledge-item", "item_review"],
-        approvedInCache,
+        decidedInCache,
       );
     });
 
     expect(
-      await screen.findByText("This one's already on the shelf."),
+      await screen.findByText("This one is being re-indexed."),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("recipe-edit-page")).not.toBeInTheDocument();
   });

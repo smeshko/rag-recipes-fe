@@ -333,6 +333,18 @@ export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewListResponse =
   components["schemas"]["ReviewItemListResponse"];
 
+/* The per-book listing row. Structurally the SAME model as `ReviewItem` — the
+   backend reuses it under the alias `KnowledgeItemSummary` — because a recipe
+   card needs the same fields wherever it is rendered. Aliased separately here
+   so feature code reads honestly: `/library/:id` is not a review queue.
+
+   The one field the queue does not exercise is `status`: it is always
+   `needs_review` there, and carries real information only in this listing. */
+export type KnowledgeItemSummary = components["schemas"]["ReviewItem"];
+
+export type KnowledgeItemListResponse =
+  components["schemas"]["KnowledgeItemListResponse"];
+
 export type ReviewDecision = components["schemas"]["ReviewDecision"];
 
 export type ReviewDecisionRequest = components["schemas"]["ReviewRequest"];
