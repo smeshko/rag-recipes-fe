@@ -162,20 +162,13 @@ describe("returnSection", () => {
 });
 
 describe("RETURN_TO_ROUTES", () => {
-  /* Three documented exclusions, not a loosened check — a subset assertion
-     here would kill the tripwire that catches a new route nobody taught the
-     back link about. `*` would accept every string on earth; `/recipes/:id/edit`
-     is a form, and a back link that returns a user to one they abandoned is
-     wrong — worse, admitting it would let a hand-edited
-     `?from=/recipes/x/edit` aim a recipe page's back link into the editor.
-
-     `/recipes/new` is the third, and the only one listing it would not
-     actually keep out: `/recipes/:id` matches it, so a hand-edited
-     `?from=/recipes/new` is *accepted* — and then classified `null` by
-     `returnSection`, exactly as `/recipes/anything` is, so the back link
-     degrades to Cook rather than pointing back into the blank form. Listed
-     here so the tripwire stays exact, not because it is a second guard. */
-  const EXCLUDED = ["*", "/recipes/:id/edit", "/recipes/new"];
+  /* Two documented exclusions, not a loosened check — a subset assertion here
+     would kill the tripwire that catches a new route nobody taught the back
+     link about. `*` would accept every string on earth; `/recipes/:id/edit` is
+     a form, and a back link that returns a user to one they abandoned is
+     wrong — worse, admitting it would let a hand-edited `?from=/recipes/x/edit`
+     aim a recipe page's back link into the editor. */
+  const EXCLUDED = ["*", "/recipes/:id/edit"];
 
   it("stays in step with the route table, catch-all and edit excluded", () => {
     const childPaths = (routes[0].children ?? []).map((route) => route.path);
@@ -188,5 +181,4 @@ describe("RETURN_TO_ROUTES", () => {
   it("rejects the edit route as a return target", () => {
     expect(readFrom("/recipes/x/edit")).toBeNull();
   });
-
 });

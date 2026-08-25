@@ -36,7 +36,6 @@ export type {
 export {
   documentKnowledgeItemsQueryOptions,
   fetchAllDocumentKnowledgeItems,
-  useCreateKnowledgeItem,
   useDeleteKnowledgeItem,
   useDocumentKnowledgeItems,
   useKnowledgeItem,
@@ -81,7 +80,6 @@ export type {
   IngestionStatusResponse,
   Ingredient,
   ItemConfidence,
-  KnowledgeItemCreateRequest,
   KnowledgeItemListResponse,
   KnowledgeItemResponse,
   KnowledgeItemSummary,

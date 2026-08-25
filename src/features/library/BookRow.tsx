@@ -36,24 +36,12 @@ function isTerminal(status: DocumentListItem["status"]): boolean {
   return (TERMINAL_STATUSES as readonly string[]).includes(status);
 }
 
-/** The handwritten shelf: a book with no file behind it, whose recipes were
-    typed rather than extracted. A plain string compare because `source_type`
-    is typed `string` on the list item — the backend's enum, not ours. */
-function isHandwritten(doc: DocumentListItem): boolean {
-  return doc.source_type === "manual";
-}
-
 function subtitleFor(doc: DocumentListItem, detail: DetailState): string {
   if (detail.status === "pending") {
     return "…";
   }
   if (detail.status === "error") {
     return "—";
-  }
-  if (isHandwritten(doc)) {
-    /* "0 pages scanned" is technically true and completely wrong: nothing was
-       scanned because nothing was ever a page. */
-    return "written by hand";
   }
   if (isReadyIsh(doc.status)) {
     return `${detail.detail.counts.source_spans} pages scanned`;
@@ -239,13 +227,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               Open review queue →
             </Link>
           )}
-          {/* Absent rather than disabled on the handwritten shelf, the same
-              call `RecipeEditForm` makes for "Save & approve" on a shelved
-              recipe: a greyed-out Reprocess invites you to work out why it
-              will not press, when the honest answer is that the verb does not
-              apply. There is no PDF to re-extract, and the backend answers 400
-              to the attempt. */}
-          {isTerminal(doc.status) && !isHandwritten(doc) && (
+          {isTerminal(doc.status) && (
             <button
               type="button"
               disabled={reprocess.isPending}
