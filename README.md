@@ -2,7 +2,7 @@
 
 Single-user web frontend for the rag-recipes backend: search the recipe library, read a synthesised answer with citations, and manage uploads.
 
-Vite + React + TypeScript, Tailwind CSS v4 with the "Sunday Kitchen" theme, Biome for lint and format, pnpm for packages.
+Vite + React + TypeScript, Tailwind CSS v4, Biome for lint and format, pnpm for packages.
 
 ## Prerequisites
 
@@ -36,15 +36,34 @@ The dev server runs on <http://localhost:5173>.
 
 ```
 src/
-  theme.css   Tailwind v4 @theme tokens + the hand-tuned bloom / card-header layer
-  main.tsx    entry point; self-hosted @fontsource imports
-  App.tsx     placeholder proving the theme
-design/       standalone HTML mockups — the visual spec
+  theme.css   Tailwind v4 @theme tokens (light) + the dark value overrides
+  main.tsx    entry point — router, query client, the one stylesheet import
+  ui/         Shell, Sidebar, Nav and the shared primitives
+  features/   one directory per surface (search, library, recipe, …)
+  api/        typed client, query hooks and the generated OpenAPI schema
+design/       retired mockups — history, not the spec (see below)
 ```
 
-## Design and architecture
+## Design
 
-- `ARCHITECTURE.md` — stack, data layer, routing and project layout decisions.
-- `design/e-sunday-kitchen.html` — the visual spec the theme tokens are derived from. Open it side by side with the app when changing `src/theme.css`.
+The visual language is modelled on ChatGPT's web app: flat surfaces separated
+by hairlines rather than shadow or fill, a near-white page against a faintly
+grey nav rail, one near-black solid that carries every primary action, a blue
+reserved for links, and no ornament — no gradients, no hover lifts, no entrance
+animation. Emphasis comes from weight and whitespace, never from colour.
 
-The mockups in `design/` load fonts from Google's CDN, but the app itself does not: Petrona and Figtree are self-hosted through `@fontsource` and bundled. `design/` is excluded from both Biome and Tailwind's source scanning.
+Start at `src/theme.css`: the token block is commented with what each role
+means and why its value is what it is, and every colour in the app resolves
+through it. Dark mode is a value-only override of the same token names, so it
+needs no per-component work.
+
+Type is the system sans stack, deliberately — that is the fallback the target
+itself ships behind its custom face, it renders natively everywhere, and it
+keeps webfonts off the critical path. There are no `@fontsource` imports.
+
+`design/` holds the earlier "Sunday Kitchen" mockups (warm cream, a Petrona
+display serif, lifted cards). They are **no longer the spec** — treat them as
+history until they are replaced. They are excluded from both Biome and
+Tailwind's source scanning.
+
+`ARCHITECTURE.md` covers stack, data layer, routing and project layout.

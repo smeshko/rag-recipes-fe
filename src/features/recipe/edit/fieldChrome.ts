@@ -2,20 +2,24 @@
    scalar editors cannot drift apart a class at a time. It stays in `edit/`
    rather than `src/ui/`: one consumer, no primitive yet.
 
-   Every class here is a 5.5 role token (D19) — `surface-inset` specifically
-   for field fills, which is the role the token split created for an inset
-   sitting on a raised surface. */
+   Every class here is a role token (D19). The fills moved from `surface-inset`
+   to `surface-raised` in the re-skin: a field is now drawn by its hairline
+   border, not by a tinted well, and an inset fill on a white page reads as a
+   disabled control rather than as a place to type. */
 
-/** Field labels: the uppercase micro-caps `FactsRow` prints on its chips, so
-    the edit surface reads as the read surface. Always on a real
-    `<label htmlFor>` — the visible label and the accessible name are the same
-    string, which is what makes the form screen-reader navigable. */
-export const labelClass =
-  "text-[11px] font-bold tracking-[0.06em] text-fg-subtle uppercase";
+/** Field labels. Sentence case at 13px, not the retired uppercase micro-caps:
+    small-caps tracking is the one ornament this language spends on section
+    labels (`Eyebrow`), and spending it again on every input turns a form into
+    a wall of shouting. Always on a real `<label htmlFor>` — the visible label
+    and the accessible name are the same string, which is what makes the form
+    screen-reader navigable. */
+export const labelClass = "text-[13px] font-medium text-fg-muted";
 
-/** Title and summary: an inset fill, apricot on focus. Carries no text colour
-    — each field sets its own face, and two colour utilities on one element
-    would be decided by stylesheet order rather than by the call site. */
+/** Title and summary: hairline box, raised fill, and a focus that moves the
+    border rather than lighting it up — `fg-subtle` plus the 2px halo, the same
+    focus the composer uses. Carries no text colour: each field sets its own
+    face, and two colour utilities on one element would be decided by
+    stylesheet order rather than by the call site. */
 /* `pointer-coarse:text-base` on every editable field here and in
    LineListEditor: iOS Safari zooms the viewport when a focused control's
    font-size is under 16px, and the edit form is the only screen in the app
@@ -25,21 +29,17 @@ export const labelClass =
    width and the 667x375 landscape sweep caught it immediately: a landscape
    phone is 667px wide, misses every phone tier, and is still iOS Safari —
    so it still zoomed. Same lesson as the tap targets (DECISIONS.md D3):
-   layout is a width concern, touch behaviour is not.
-
-   The mouse faces (inherited 15px here, 13px on the fact chips) are
-   untouched, so the read and edit surfaces still match at the width the
-   mockups describe. */
+   layout is a width concern, touch behaviour is not. */
 export const fieldClass =
-  "w-full rounded-[12px] border border-border bg-surface-inset px-3 py-2 pointer-coarse:text-base pointer-coarse:min-h-11 focus:border-accent focus:outline-none focus:shadow-focus";
+  "w-full rounded-reco border border-border bg-surface-raised px-3 py-2 text-[15px] outline-none transition-[border-color,box-shadow] focus:border-fg-subtle focus:shadow-focus placeholder:text-fg-subtle pointer-coarse:text-base pointer-coarse:min-h-11";
 
-/** The four facts sit in `FactsRow`'s chip instead of the inset field: a
-    raised, shadowed shell holding the label and the input together, so the
-    row still reads as the read page's facts. The shell owns the border, so
-    the focus ring is `focus-within:`. */
+/** The four facts sit in a chip rather than a bare field, because the label and
+    its value belong to one control. Same hairline box and same focus as
+    `fieldClass`, minus the shadow the retired chip carried — the shell owns the
+    border, so the ring is `focus-within:`. */
 export const factChipClass =
-  "rounded-[12px] border border-border bg-surface-raised px-4 py-2.5 shadow-card focus-within:border-accent focus-within:shadow-focus";
+  "rounded-reco border border-border bg-surface-raised px-4 py-2.5 transition-[border-color,box-shadow] focus-within:border-fg-subtle focus-within:shadow-focus";
 
 /** …and the input inside it is bare: the chip is the visible field. */
 export const factInputClass =
-  "w-full border-none bg-transparent text-[13px] font-semibold text-fg outline-none pointer-coarse:min-h-11 placeholder:font-normal placeholder:text-fg-subtle pointer-coarse:text-base";
+  "w-full border-none bg-transparent text-[15px] text-fg outline-none pointer-coarse:min-h-11 placeholder:text-fg-subtle pointer-coarse:text-base";

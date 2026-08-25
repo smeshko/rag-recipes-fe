@@ -13,7 +13,7 @@ export type MethodEditPanelProps = Pick<
  * list it binds. Anything that would make it differ in a fifth belongs in
  * `LineListEditor`'s props, not in a second copy of this file.
  *
- * **No step number is stored or sent.** The apricot ordinal is `index + 1` at
+ * **No step number is stored or sent.** The step ordinal is `index + 1` at
  * render, so a reorder or a removal renumbers the method by construction, and
  * `patchBody()` sends `steps: string[]` in array order for the backend to
  * number from position (D9). The read panel's careful preservation of a gapped
@@ -27,8 +27,8 @@ export function MethodEditPanel({
 }: MethodEditPanelProps) {
   return (
     <Panel>
-      <h2 className="font-display text-[19px] font-semibold">Method</h2>
-      <p className="mt-1 text-[12.5px] text-fg-subtle">
+      <h2 className="text-[18px] font-semibold tracking-[-0.01em]">Method</h2>
+      <p className="mt-1 text-[13px] text-fg-subtle">
         {rows.length} steps · numbered as you order them
       </p>
       <LineListEditor

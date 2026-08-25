@@ -36,12 +36,24 @@ function isTerminal(status: DocumentListItem["status"]): boolean {
   return (TERMINAL_STATUSES as readonly string[]).includes(status);
 }
 
+/** The handwritten shelf: a book with no file behind it, whose recipes were
+    typed rather than extracted. A plain string compare because `source_type`
+    is typed `string` on the list item — the backend's enum, not ours. */
+function isHandwritten(doc: DocumentListItem): boolean {
+  return doc.source_type === "manual";
+}
+
 function subtitleFor(doc: DocumentListItem, detail: DetailState): string {
   if (detail.status === "pending") {
     return "…";
   }
   if (detail.status === "error") {
     return "—";
+  }
+  if (isHandwritten(doc)) {
+    /* "0 pages scanned" is technically true and completely wrong: nothing was
+       scanned because nothing was ever a page. */
+    return "written by hand";
   }
   if (isReadyIsh(doc.status)) {
     return `${detail.detail.counts.source_spans} pages scanned`;
@@ -63,11 +75,14 @@ function CountCell({
   return (
     <div>
       <b
-        className={`block font-display text-[20px] font-semibold ${danger ? "text-danger" : ""}`}
+        className={`block text-[18px] font-semibold ${danger ? "text-danger" : ""}`}
       >
         {value ?? "—"}
       </b>
-      <small className="text-[11.5px] font-bold tracking-[0.06em] text-fg-subtle uppercase">
+      {/* Eyebrow's weight and tracking, inlined: this is a caption under a
+          number rather than a section label, so it does not want the
+          component's inline-flex box. */}
+      <small className="text-[11px] font-semibold tracking-[0.06em] text-fg-subtle uppercase">
         {label}
       </small>
     </div>
@@ -154,7 +169,11 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
       {/* `relative isolate` is the positioning context for the title link's
           stretched hit area below — `isolate` so the z-10 the sibling controls
           carry is scoped to this card and cannot outrank anything outside it. */}
-      <article className="relative isolate grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-border bg-surface-raised shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-row-hover max-[880px]:grid-cols-[6px_1fr]">
+      {/* A list row, not a raised card: hairline box, no shadow, and a fill on
+          hover instead of a lift. The whole row is one hit target (see the
+          stretched link below), so the fill is also the affordance — nothing
+          else on the row says "this is clickable". */}
+      <article className="relative isolate grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-card border border-border bg-surface-raised transition-colors duration-150 hover:bg-surface-hover max-[880px]:grid-cols-[6px_1fr]">
         <span
           aria-hidden="true"
           className={`self-stretch ${spineAccent(doc.status, doc.id)}`}
@@ -173,7 +192,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               name stays the book's title — a screen reader announces one link,
               not a card-sized mystery — and ⌘-click, middle-click and "copy
               link address" all still work anywhere on the row. */}
-          <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
+          <h3 className="text-[15px] font-semibold leading-[1.35]">
             {isReadyIsh(doc.status) ? (
               <Link
                 to={withReturnTo(`/library/${doc.id}`, location)}
@@ -185,7 +204,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               doc.title
             )}
           </h3>
-          <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
+          <small className="mt-1 block text-[13px] text-fg-subtle">
             {subtitleFor(doc, detail)}
           </small>
         </div>
@@ -222,17 +241,23 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           {(counts?.needs_review_items ?? 0) > 0 && (
             <Link
               to={withReturnTo(reviewQueueUrl(doc.id), location)}
-              className="mt-2 block text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
+              className="mt-2 block text-[13px] font-medium text-accent hover:underline pointer-coarse:min-h-11"
             >
               Open review queue →
             </Link>
           )}
-          {isTerminal(doc.status) && (
+          {/* Absent rather than disabled on the handwritten shelf, the same
+              call `RecipeEditForm` makes for "Save & approve" on a shelved
+              recipe: a greyed-out Reprocess invites you to work out why it
+              will not press, when the honest answer is that the verb does not
+              apply. There is no PDF to re-extract, and the backend answers 400
+              to the attempt. */}
+          {isTerminal(doc.status) && !isHandwritten(doc) && (
             <button
               type="button"
               disabled={reprocess.isPending}
               onClick={() => reprocess.mutate()}
-              className="mt-2 block w-full text-right text-[12.5px] font-bold text-accent hover:underline disabled:opacity-50 pointer-coarse:min-h-11 max-[880px]:text-left"
+              className="mt-2 block w-full text-right text-[13px] font-medium text-accent hover:underline disabled:opacity-50 pointer-coarse:min-h-11 max-[880px]:text-left"
             >
               {doc.status === "failed" ? "Retry ↻" : "Reprocess ↻"}
             </button>
@@ -243,7 +268,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           {reprocess.isError && !quietError && (
             <span
               role="alert"
-              className="mt-2 block text-[12.5px] font-semibold text-danger"
+              className="mt-2 block text-[13px] font-medium text-danger"
             >
               {reprocess.error instanceof Error
                 ? reprocess.error.message

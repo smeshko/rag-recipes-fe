@@ -13,8 +13,13 @@ import { readReturnTo, returnSection } from "./returnTo";
 
    Guarded behind `pointer-coarse:` so the fine-pointer rendering — where the
    link is a plain inline box with no padding — is byte-identical to before. */
+/* Muted grey that darkens to full foreground on hover, rather than turning
+   accent-blue: the accent is reserved for links that go somewhere new, and a
+   whole row of chrome flipping to blue under the pointer is the loudest thing
+   on an otherwise flat page. Medium weight, not semibold — at 13px semibold
+   reads as a heading competing with the recipe title directly below it. */
 const CLASSES =
-  "text-[13px] font-semibold text-fg-muted transition-colors hover:text-accent pointer-coarse:inline-block pointer-coarse:py-3";
+  "text-[13px] font-medium text-fg-muted transition-colors hover:text-fg pointer-coarse:inline-block pointer-coarse:py-3";
 
 /**
  * One hop back, to wherever this screen was actually reached from — read from

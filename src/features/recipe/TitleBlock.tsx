@@ -44,14 +44,22 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
           {status.label}
         </Pill>
       </div>
-      <h1 className="mt-4 font-display text-[clamp(30px,4vw,42px)] font-semibold leading-[1.15] tracking-[-0.01em]">
+      {/* One fixed size, no clamp. A fluid 30–42px display title was the
+          loudest thing on the page, and it grew precisely where there was
+          least room for it — the viewport width it scaled with is also the
+          width the two panels below have to share. 26px/semibold reads as the
+          head of a document at every width, which is what it is. */}
+      <h1 className="mt-4 text-[26px] font-semibold leading-[1.25] tracking-[-0.02em]">
         {item.display.title}
         {low.title ? (
           <LowScoreMark mark={low.title} label="Title" testId="title-score" />
         ) : null}
       </h1>
       {item.knowledge_item.summary ? (
-        <p className="mt-3 max-w-[720px] font-display text-[17px] text-fg-muted italic">
+        /* Body text, not a pull quote: the summary is the extractor's own
+           sentence about the recipe, and setting it in oversized italics
+           dressed a machine-written line as an epigraph. */
+        <p className="mt-3 max-w-[720px] text-[15px] text-fg-muted">
           {item.knowledge_item.summary}
           {low.summary ? (
             <LowScoreMark

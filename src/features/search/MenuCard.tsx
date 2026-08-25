@@ -24,14 +24,14 @@ export function MenuCard({ menu }: { menu: MenuResponse }) {
     <Bloom duration={0.7} delay={0.2} className="mt-14">
       <section
         data-testid="menu-card"
-        className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] overflow-hidden rounded-panel border border-border bg-surface-raised shadow-card max-[960px]:grid-cols-1"
+        className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] overflow-hidden rounded-panel border border-border bg-surface-raised max-[960px]:grid-cols-1"
       >
         <div className="px-[38px] py-[34px] max-[560px]:px-5 max-[560px]:py-6">
           <Eyebrow>
             A menu from your books · {filled} of {menu.courses.length} course
             {menu.courses.length === 1 ? "" : "s"}
           </Eyebrow>
-          <h3 className="mt-5 font-display text-[clamp(24px,3vw,30px)] font-medium leading-[1.2]">
+          <h3 className="mt-5 text-[18px] font-semibold tracking-[-0.01em] leading-[1.3]">
             {menu.menu.title}
           </h3>
           {menu.theme ? (
@@ -42,7 +42,7 @@ export function MenuCard({ menu }: { menu: MenuResponse }) {
                courses below are still real picks, just without the argument. */
             <p
               role="status"
-              className="mt-4 rounded-[12px] border border-warning-border bg-warning-fill px-4 py-3 text-[14px] text-warning"
+              className="mt-4 rounded-reco border border-warning-border bg-warning-fill px-4 py-3 text-[14px] text-warning"
             >
               {menu.warnings.join(" ")}
             </p>
@@ -54,11 +54,8 @@ export function MenuCard({ menu }: { menu: MenuResponse }) {
           ) : null}
           <TrailingChips citations={menu.citations} inlineIds={inline} />
         </div>
-        <aside
-          className="flex flex-col gap-3.5 border-l border-border p-[30px] max-[960px]:border-t max-[960px]:border-l-0 max-[560px]:p-5"
-          style={{ background: "var(--gradient-warm)" }}
-        >
-          <h4 className="text-[12px] font-bold tracking-[0.12em] text-fg-subtle uppercase">
+        <aside className="flex flex-col gap-3.5 border-l border-border bg-surface-inset p-[30px] max-[960px]:border-t max-[960px]:border-l-0 max-[560px]:p-5">
+          <h4 className="text-[11px] font-semibold tracking-[0.08em] text-fg-subtle uppercase">
             The courses
           </h4>
           {menu.courses.map((course) =>
@@ -69,16 +66,18 @@ export function MenuCard({ menu }: { menu: MenuResponse }) {
                   `/recipes/${course.selection.knowledge_item_id}`,
                   location,
                 )}
-                className="block rounded-reco border border-border bg-surface-raised px-4 py-3.5 transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-card"
+                /* Border step on hover, matching the picks aside on the answer
+                   card — the two asides are the same row shape. */
+                className="block rounded-reco border border-border bg-surface-raised px-4 py-3.5 transition-colors hover:border-border-strong"
               >
-                <span className="block text-[11px] font-bold tracking-[0.1em] text-accent uppercase">
+                <span className="block text-[11px] font-semibold tracking-[0.08em] text-accent uppercase">
                   {course.slot}
                 </span>
-                <b className="mt-0.5 block text-[14.5px] font-bold">
+                <b className="mt-0.5 block text-[15px] font-semibold">
                   {course.selection.title}
                 </b>
                 {course.selection.reason ? (
-                  <span className="mt-0.5 block text-[12.5px] text-fg-muted">
+                  <span className="mt-0.5 block text-[13px] text-fg-muted">
                     {course.selection.reason}
                   </span>
                 ) : null}
@@ -88,7 +87,7 @@ export function MenuCard({ menu }: { menu: MenuResponse }) {
                 key={course.slot}
                 className="rounded-reco border border-dashed border-border px-4 py-3.5"
               >
-                <span className="block text-[11px] font-bold tracking-[0.1em] text-fg-subtle uppercase">
+                <span className="block text-[11px] font-semibold tracking-[0.08em] text-fg-subtle uppercase">
                   {course.slot}
                 </span>
                 <span className="mt-0.5 block text-[13px] text-fg-muted">

@@ -3,28 +3,28 @@
 /* Keeps the design/ mockups out of Tailwind's source scanning — they are a
    visual spec, not app source, and their class names would otherwise feed the
    production CSS. The path is relative to this file: if theme.css moves, this
-   must move with it, or the mockups silently rejoin the build (no error). */
+   must move with it, or the mockups silently rejoin the build (no error).
+
+   NOTE: design/ still holds the retired "Sunday Kitchen" mockups (warm cream,
+   Petrona serif, lifted cards). They are no longer the spec — the reference is
+   ChatGPT's web app. Treat them as history until they are replaced. */
 @source not "../design";
 
 /* BREAKPOINTS — three tiers, all desktop-first `max-[NNNpx]` arbitrary
    variants. There is deliberately no `--breakpoint-*` token: declaring one
    would mint Tailwind's mobile-first `sm:`-style variants and invite a
-   half-migration, inverting the polarity of the 26 rules already written this
-   way and desynchronising src/ from design/, which expresses the same two
-   tablet rules as `@media (max-width: 880px|960px)`.
+   half-migration, inverting the polarity of the rules already written this way.
 
-     max-[960px]  the answer card and the 3-col results grid go single-column
-     max-[880px]  the recipe columns, book rows and ingredients panel reflow
+     max-[960px]  the answer body and the results grid go single-column
+     max-[880px]  SIDEBAR → DRAWER. Also where recipe columns and book rows
+                  reflow. One tier, because they want the same width: below it
+                  there is no room for a 260px rail beside a readable column.
      max-[560px]  PHONE. Gutters, padding and stacked action rows.
 
    Note the arithmetic: Tailwind v4 compiles `max-[Npx]` to
    `@media not all and (min-width: Npx)`, which is EXCLUSIVE — the rules apply
    at 559px and below, not at 560. Measured, not assumed. Nothing depends on
    the exact edge, but don't write a test asserting the flip happens AT 560.
-
-   560 is picked to sit clear of both neighbours: comfortably below 880 so the
-   tiers never collide, and comfortably above the ~430px widest phone in
-   portrait, so split-view and small-tablet widths get the phone treatment too.
 
    TOUCH SIZING IS NOT A WIDTH CONCERN. Tap targets key off `pointer-coarse:`,
    never off 560 — a 667x375 landscape phone is a coarse pointer at a width no
@@ -41,117 +41,147 @@
    a DIFFERENT token rather than a different value. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Sunday Kitchen tokens — design/e-sunday-kitchen.html is the visual spec.
-   --color-sage is #5c6b4c (the value the mockups actually paint), not the dead
-   #7C8A6E declaration; see the plan's DECISIONS.md D4.
+/* ChatGPT-web tokens. The design language in one paragraph, because every
+   value below follows from it: flat surfaces separated by hairlines rather
+   than by shadow or fill; a near-white page against a faintly grey rail; one
+   near-black solid that carries every primary action; a blue reserved for
+   links and interactive ink; and no decoration — no gradients, no lifts, no
+   entrance animation. Emphasis is carried by WEIGHT and WHITESPACE, never by
+   colour. When a value here looks boring, that is the brief.
 
-   NAMING RULE: every --color-* is named for the ROLE it plays (surface, fg,
-   accent, border, skeleton, success/warning/danger), never for its pigment —
-   so phase 5.6 can drop in a dark palette by editing values alone. The three
-   exceptions are the categorical book accents sage / terra / butter, where
-   the hue IS the identity: they label which book a card belongs to, so they
-   rotate as a set and cannot be renamed to a role. */
+   NAMING RULE (unchanged from the previous palette, and the reason this
+   re-skin was a value edit rather than a rename): every --color-* is named for
+   the ROLE it plays, never for its pigment. The three exceptions are the
+   categorical book accents sage / terra / butter, where the hue IS the
+   identity: they label which book a card belongs to, so they rotate as a set.
+   They are now low-chroma — a loud triad is the single most off-language thing
+   a flat UI can do — but they are still three distinguishable hues. */
 @theme {
   /* --- Surfaces --- */
-  --color-surface: #fbf7ef; /* the page wash */
-  --color-surface-inset: #fbf7ef; /* inset fill sitting ON a raised surface */
-  --color-surface-raised: #ffffff; /* cards, panels, the search bar */
-  --color-surface-inverted: #2b241a; /* solid pill / chip fill */
-  --color-surface-warm: #fdf6ea; /* warm aside fill, light stop */
-  --color-surface-warm-strong: #faf1e0; /* warm aside fill, deep stop */
-  --color-surface-glow: #fdf0dc; /* the body wash's radial highlight */
+  --color-surface: #ffffff; /* the page wash / main pane */
+  --color-surface-sidebar: #f9f9f9; /* the nav rail, one step off the page */
+  --color-surface-inset: #f4f4f4; /* chips, code, the user's own turn */
+  --color-surface-raised: #ffffff; /* cards, panels, the composer */
+  --color-surface-hover: #ececec; /* row / icon-button hover fill */
+  --color-surface-inverted: #0d0d0d; /* THE primary solid: buttons, active nav */
+  --color-surface-warm: #f9f9f9; /* aside fill, light stop (now neutral) */
+  --color-surface-warm-strong: #f4f4f4; /* aside fill, deep stop */
 
   /* --- Foregrounds --- */
-  --color-fg: #2b241a; /* body text on a light surface */
-  --color-fg-muted: #6b6152; /* secondary text, labels */
-  --color-fg-subtle: #a2977f; /* tertiary text, meta, placeholders */
-  --color-fg-inverted: #fbf7ef; /* text on --color-surface-inverted */
+  --color-fg: #0d0d0d; /* body text on a light surface */
+  --color-fg-muted: #5d5d5d; /* secondary text, labels */
+  --color-fg-subtle: #8f8f8f; /* tertiary text, meta, placeholders */
+  --color-fg-inverted: #ffffff; /* text on --color-surface-inverted */
   --color-fg-on-accent: #ffffff; /* text on an accent or danger solid */
 
-  /* --- Accent --- */
-  --color-accent: #c96f3b; /* primary action and emphasis */
-  --color-accent-strong: #b25e2e; /* accent hover / pressed */
-  --color-accent-pressed: #9a4f26; /* one step below -strong; solid-button hover */
-  --color-accent-fill: #f7e8dc; /* accent tint background, and the focus ring */
+  /* --- Accent ---
+     Interactive ink only: links, active icons, focus. It is NOT the fill of a
+     primary button — that is --color-surface-inverted, the black pill, which
+     is what makes the language read as ChatGPT rather than as a blue SaaS app.
+     `accent-strong` / `-pressed` are the hover/active ink for accent TEXT, so
+     they darken in light and lighten in dark. #0b5ed7 measures 5.84:1 on white
+     and #0a4fb4 7.53:1; dark's #7ab7ff measures 7.70:1 on #212121. */
+  --color-accent: #0b5ed7; /* link and interactive ink */
+  --color-accent-strong: #0a4fb4; /* accent-text hover */
+  --color-accent-pressed: #083d8c; /* accent-text active */
+  --color-accent-fill: #eaf2fd; /* accent tint background */
 
   /* --- Lines --- */
-  --color-border: #ede5d6; /* every hairline border */
-  --color-border-strong: #dccfb4; /* the dropzone's dashed edge */
-  --color-skeleton: #ede5d6; /* loading placeholder blocks */
+  --color-border: #e5e5e5; /* every hairline border */
+  --color-border-strong: #cdcdcd; /* the dropzone's dashed edge */
+  --color-skeleton: #ececec; /* loading placeholder blocks */
 
   /* --- Status --- */
-  --color-success: #3e7a50; /* success ink */
-  --color-success-fill: #e6f2e6; /* success tint background */
-  --color-warning: #8f6a1e; /* warning ink */
-  --color-warning-fill: #fbf3dc; /* warning tint background */
-  --color-warning-border: #ead9a8; /* warning outline */
-  --color-danger: #b4472e; /* danger ink and solid fill */
-  --color-danger-fill: #fbeae4; /* danger tint background */
-  --color-danger-border: #f0cdbf; /* danger outline */
+  --color-success: #1a7f37; /* success ink */
+  --color-success-fill: #e8f5ec; /* success tint background */
+  --color-warning: #9a6700; /* warning ink */
+  --color-warning-fill: #fdf5e2; /* warning tint background */
+  --color-warning-border: #eddcae; /* warning outline */
+  --color-danger: #cf222e; /* danger ink and solid fill */
+  --color-danger-fill: #fdeceb; /* danger tint background */
+  --color-danger-border: #f5cfcd; /* danger outline */
 
   /* --- Book accents (categorical — the name IS the role) --- */
-  --color-sage: #5c6b4c; /* book accent 1, ink */
-  --color-sage-fill: #edf0e6; /* book accent 1, tint */
-  --color-terra: #a05a2c; /* book accent 2, ink */
-  --color-terra-fill: #f5e3d3; /* book accent 2, tint */
-  --color-butter: #9a7b25; /* book accent 3, ink */
-  --color-butter-fill: #fbf0d3; /* book accent 3, tint */
+  --color-sage: #4d6b53; /* book accent 1, ink */
+  --color-sage-fill: #eff3f0; /* book accent 1, tint */
+  --color-terra: #8a5a3b; /* book accent 2, ink */
+  --color-terra-fill: #f5efea; /* book accent 2, tint */
+  --color-butter: #7a6420; /* book accent 3, ink */
+  --color-butter-fill: #f4f1e6; /* book accent 3, tint */
 
-  /* --- Gradients --- */
-  /* The warm aside/provenance fill — the design set's one shared gradient. */
+  /* --- Gradients ---
+     Both are flat now and stay gradients only so their call sites (three
+     inline `background: var(--gradient-warm)` styles and the ingestion bar's
+     inline fill) keep working without an edit. A gradient whose stops are
+     equal paints a solid; when those call sites move to `bg-*` utilities these
+     two tokens should go with them. */
   --gradient-warm: linear-gradient(
     180deg,
-    var(--color-surface-warm),
-    var(--color-surface-warm-strong)
+    var(--color-surface-inset),
+    var(--color-surface-inset)
   );
-  /* The ingestion progress-bar fill (design/sk-library.html). The light stop
-     has no other consumer, so it stays a literal inside the token. */
-  --gradient-progress: linear-gradient(90deg, #e8b08a, var(--color-accent));
+  --gradient-progress: linear-gradient(
+    90deg,
+    var(--color-accent),
+    var(--color-accent)
+  );
 
-  --font-display: "Petrona", serif;
-  --font-body: "Figtree", sans-serif;
+  /* System stack, deliberately. ChatGPT ships a custom sans and falls back to
+     exactly this; matching the fallback is closer to the target than any
+     webfont we could pick, and it removes two @fontsource packages from the
+     critical path.
+
+     --font-display is an ALIAS, not a second family. The retired palette
+     paired a Petrona display serif with a Figtree body, and ~45 call sites say
+     `font-display`. In this language there is no display face — headings are
+     the same sans, differing only in size and weight — so rather than a
+     45-file rename the token now resolves to the body stack. Call sites should
+     drop `font-display` as their files are touched; when the last one goes,
+     delete this. */
+  --font-body:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-display: var(--font-body);
 
   --radius-chip: 6px;
-  --radius-reco: 14px;
-  --radius-card: 18px;
-  --radius-panel: 22px;
+  --radius-reco: 12px;
+  --radius-card: 16px;
+  --radius-panel: 16px;
   --radius-pill: 999px;
 
-  /* Shadow TINT, not shadow geometry — and the reason the four shadows below
-     carry no literal colour of their own. Tailwind v4 resolves an @theme
-     shadow's VALUE into --tw-shadow at build time (it has to, so a
-     shadow-colour utility can rewrite it), which is why grep for
-     `var(--shadow` over the built CSS finds 0 and why redeclaring
-     --shadow-card in the dark block below would be dead CSS that reviews
-     perfectly. What Tailwind DOES preserve is a var() COLOUR inside a shadow,
-     so these are the only part of a shadow that can be re-toned at runtime.
-     Do not fold them back into the shadow literals. The values are light's
-     previous literals exactly — the indirection is a zero-pixel refactor. */
-  --shadow-tint: rgba(94, 74, 44, 0.08); /* --shadow-card, wide pass */
-  --shadow-tint-soft: rgba(94, 74, 44, 0.05); /* --shadow-card, tight pass */
-  --shadow-tint-row: rgba(94, 74, 44, 0.13); /* the BookRow lift */
-  --shadow-tint-strong: rgba(94, 74, 44, 0.14); /* card lift + focus glow */
+  /* Shadow TINT, not shadow geometry — and the reason the shadows below carry
+     no literal colour of their own. Tailwind v4 resolves an @theme shadow's
+     VALUE into --tw-shadow at build time (it has to, so a shadow-colour
+     utility can rewrite it), which is why grep for `var(--shadow` over the
+     built CSS finds 0 and why redeclaring --shadow-card in the dark block
+     would be dead CSS that reviews perfectly. What Tailwind DOES preserve is a
+     var() COLOUR inside a shadow, so these are the only part of a shadow that
+     can be re-toned at runtime. Do not fold them back into the literals.
 
-  /* The focus ring's 4px halo, split out of --color-accent-fill (plan D13).
-     That token is a tint BACKGROUND everywhere else and inverts to a dark
-     tint in dark, where it would make the ring invisible; the ring wants a
-     light translucent accent. Light keeps accent-fill verbatim, so nothing
-     moves. Deliberately not a --color-* token: it has no utility to mint. */
-  --ring-tint: var(--color-accent-fill);
+     Near-black in BOTH themes now. The old palette tinted them brown to sit on
+     a cream page; on a white page a tinted shadow reads as a smudge. */
+  --shadow-tint: rgba(0, 0, 0, 0.05); /* the composer's whisper */
+  --shadow-tint-soft: rgba(0, 0, 0, 0.04); /* unused pass, kept for parity */
+  --shadow-tint-row: rgba(0, 0, 0, 0.05); /* rows no longer lift */
+  --shadow-tint-strong: rgba(0, 0, 0, 0.12); /* menus, drawer, popovers */
 
-  /* Names are TASK-002's. Which mockup surface each one belongs to, since the
-     pair reads as one surface's rest/hover state but is not: --shadow-card is
-     the mockup's --shadow, used on .search / .answer / .reco:hover — .card has
-     no resting shadow. --shadow-card-hover is .card:hover only.
-     --shadow-row-hover is the library BookRow's lift on hover — a third
-     surface again, deeper than --shadow-card and shallower than
-     --shadow-card-hover. */
-  --shadow-card:
-    0 10px 30px var(--shadow-tint), 0 2px 6px var(--shadow-tint-soft);
-  --shadow-card-hover: 0 18px 44px var(--shadow-tint-strong);
-  --shadow-row-hover: 0 16px 40px var(--shadow-tint-row);
-  --shadow-focus:
-    0 14px 40px var(--shadow-tint-strong), 0 0 0 4px var(--ring-tint);
+  /* The focus ring's halo. Deliberately not a --color-* token: it has no
+     utility to mint, and it must be translucent so it reads on every surface
+     the ring can land on. */
+  --ring-tint: rgba(11, 94, 215, 0.4);
+
+  /* Depth is nearly gone on purpose. --shadow-card is the composer's whisper
+     and the only resting shadow in the app; the two -hover shadows are
+     deliberately IDENTICAL to it so that any call site still asking for a lift
+     gets none, and --shadow-menu is the one genuinely raised surface (the
+     mobile drawer, dropdowns). Cards, panels and rows are separated by
+     hairlines and whitespace — if something needs a shadow to read as a
+     distinct surface, it needs a border instead. */
+  --shadow-card: 0 2px 6px var(--shadow-tint);
+  --shadow-card-hover: 0 2px 6px var(--shadow-tint);
+  --shadow-row-hover: 0 2px 6px var(--shadow-tint-row);
+  --shadow-menu: 0 12px 32px var(--shadow-tint-strong);
+  --shadow-focus: 0 0 0 2px var(--ring-tint);
 }
 
 /* The dark palette — VALUES ONLY, same token names as @theme above, so the
@@ -166,95 +196,81 @@
    folded it into @theme. A bare `[data-theme="dark"]` only TIES at (0,1,0)
    and would then depend on source order. Keep the `html` prefix.
 
-   Deliberately absent, and never to be added: the four --shadow-* values.
-   Tailwind v4 inlines an @theme shadow into --tw-shadow at build time, so
-   overriding them HERE would be dead CSS that reviews perfectly. The
-   overridable part is the --shadow-tint-* / --ring-tint properties the @theme
-   block routes them through, and those are what the "Depth cues" group at the
-   bottom of this block re-tones. If a later refactor moves near-black values
-   back here as `--shadow-card: …`, the shadows silently stop tracking the
-   theme and nothing fails — `grep -c 'var(--shadow-tint' dist/assets/*.css`
-   is the guard. */
+   Deliberately absent, and never to be added: the --shadow-* values. Tailwind
+   v4 inlines an @theme shadow into --tw-shadow at build time, so overriding
+   them HERE would be dead CSS that reviews perfectly. The overridable part is
+   the --shadow-tint-* / --ring-tint properties the @theme block routes them
+   through, and those are what the "Depth cues" group at the bottom re-tones.
+   `grep -c 'var(--shadow-tint' dist/assets/*.css` is the guard.
+
+   The two gradients are absent for a different reason: both are now var()-only
+   (flat), so they follow the surfaces and the accent on their own. */
 html[data-theme="dark"] {
   color-scheme: dark;
 
   /* --- Surfaces --- */
-  --color-surface: #16110c; /* the page wash */
-  --color-surface-inset: #2a2118; /* inset fill sitting ON a raised surface */
-  --color-surface-raised: #201811; /* cards, panels, the search bar */
-  --color-surface-inverted: #f0e6d6; /* solid pill / chip fill */
-  --color-surface-warm: #241b13; /* warm aside fill, light stop */
-  --color-surface-warm-strong: #1e1710; /* warm aside fill, deep stop */
-  --color-surface-glow: #2a1e12; /* the body wash's radial highlight */
+  --color-surface: #212121; /* the page wash / main pane */
+  --color-surface-sidebar: #181818; /* the nav rail, one step off the page */
+  --color-surface-inset: #3a3a3a; /* chips, code, the user's own turn */
+  --color-surface-raised: #2f2f2f; /* cards, panels, the composer */
+  --color-surface-hover: #2a2a2a; /* row / icon-button hover fill */
+  --color-surface-inverted: #ececec; /* THE primary solid: buttons, active nav */
+  --color-surface-warm: #2a2a2a; /* aside fill, light stop */
+  --color-surface-warm-strong: #262626; /* aside fill, deep stop */
 
   /* --- Foregrounds --- */
-  --color-fg: #f3eadc; /* body text on a dark surface */
-  --color-fg-muted: #c3b39a; /* secondary text, labels */
-  --color-fg-subtle: #9b8c76; /* tertiary text, meta, placeholders */
-  --color-fg-inverted: #16110c; /* text on --color-surface-inverted */
-  --color-fg-on-accent: #1e1509; /* text on an accent or danger solid */
+  --color-fg: #ececec; /* body text on a dark surface */
+  --color-fg-muted: #b4b4b4; /* secondary text, labels */
+  --color-fg-subtle: #8f8f8f; /* tertiary text, meta, placeholders */
+  --color-fg-inverted: #0d0d0d; /* text on --color-surface-inverted */
+  --color-fg-on-accent: #0d0d0d; /* text on an accent or danger solid */
 
   /* --- Accent --- */
-  --color-accent: #e8975e; /* primary action and emphasis */
-  --color-accent-strong: #f5b481; /* accent hover / pressed */
-  --color-accent-pressed: #d8863f; /* one step below -strong; solid-button hover */
-  --color-accent-fill: #3b2617; /* accent tint background, and the focus ring */
+  --color-accent: #7ab7ff; /* link and interactive ink */
+  --color-accent-strong: #a3cdff; /* accent-text hover (lightens, not darkens) */
+  --color-accent-pressed: #c6e0ff; /* accent-text active */
+  --color-accent-fill: #1e3a5f; /* accent tint background (5.50:1 under #7ab7ff) */
 
   /* --- Lines --- */
-  --color-border: #372c20; /* every hairline border */
-  --color-border-strong: #4a3b2b; /* the dropzone's dashed edge */
-  --color-skeleton: #382c20; /* loading placeholder blocks */
+  --color-border: #3d3d3d; /* every hairline border */
+  --color-border-strong: #565656; /* the dropzone's dashed edge */
+  --color-skeleton: #333333; /* loading placeholder blocks */
 
   /* --- Status --- */
-  --color-success: #7fbf8e; /* success ink */
-  --color-success-fill: #1e2e22; /* success tint background */
-  --color-warning: #e3be6a; /* warning ink */
-  --color-warning-fill: #2e2617; /* warning tint background */
-  --color-warning-border: #4e4028; /* warning outline */
-  --color-danger: #f08b6b; /* danger ink and solid fill */
-  --color-danger-fill: #33201a; /* danger tint background */
-  --color-danger-border: #563328; /* danger outline */
+  --color-success: #5cc47a; /* success ink */
+  --color-success-fill: #16291c; /* success tint background */
+  --color-warning: #e3b341; /* warning ink */
+  --color-warning-fill: #2b2410; /* warning tint background */
+  --color-warning-border: #4a3d18; /* warning outline */
+  --color-danger: #ff8182; /* danger ink and solid fill */
+  --color-danger-fill: #33201f; /* danger tint background */
+  --color-danger-border: #5a2f2e; /* danger outline */
 
   /* --- Book accents (categorical — the name IS the role) --- */
-  --color-sage: #a9be92; /* book accent 1, ink */
-  --color-sage-fill: #262c1e; /* book accent 1, tint */
-  --color-terra: #e0a176; /* book accent 2, ink */
-  --color-terra-fill: #33241a; /* book accent 2, tint */
-  --color-butter: #e2c578; /* book accent 3, ink */
-  --color-butter-fill: #2f2818; /* book accent 3, tint */
+  --color-sage: #9dbba4; /* book accent 1, ink */
+  --color-sage-fill: #232a25; /* book accent 1, tint */
+  --color-terra: #c9a184; /* book accent 2, ink */
+  --color-terra-fill: #2b241f; /* book accent 2, tint */
+  --color-butter: #c7b579; /* book accent 3, ink */
+  --color-butter-fill: #282419; /* book accent 3, tint */
 
-  /* --- Depth cues --- */
-  /* The shadow TINTS, never the --shadow-* tokens: Tailwind inlines an
-     @theme shadow's value at build time, so a --shadow-card override here
-     would be dead CSS (tests/theme/tokens.test.ts guards the indirection).
-     Near-black rather than a deeper brown on purpose — a brown shadow on a
-     brown page is a hue shift, not a shadow. Dark's warmth comes from the
-     surfaces and the wash above; the shadows only have to read as depth,
-     and need far more opacity to do it against a dark backdrop. */
-  --shadow-tint: rgba(0, 0, 0, 0.45); /* --shadow-card, wide pass */
-  --shadow-tint-soft: rgba(0, 0, 0, 0.35); /* --shadow-card, tight pass */
-  --shadow-tint-row: rgba(0, 0, 0, 0.55); /* the BookRow lift */
-  --shadow-tint-strong: rgba(0, 0, 0, 0.55); /* card lift + focus glow */
+  /* --- Depth cues ---
+     The shadow TINTS, never the --shadow-* tokens (see the block comment).
+     Dark needs far more opacity to read as depth against a dark backdrop, but
+     the geometry is unchanged: still almost nothing, still hairline-led. */
+  --shadow-tint: rgba(0, 0, 0, 0.35);
+  --shadow-tint-soft: rgba(0, 0, 0, 0.25);
+  --shadow-tint-row: rgba(0, 0, 0, 0.35);
+  --shadow-tint-strong: rgba(0, 0, 0, 0.55);
 
-  /* The focus ring is the one thing that must NOT follow --color-accent-fill
-     (plan D13): that token is a dark tint here, so a ring made of it is a
-     near-black halo on a near-black card — invisible, and the criterion
-     --shadow-focus exists to satisfy. A translucent pass of dark's own
-     accent (#e8975e) keeps it apricot and visible on every surface. */
-  --ring-tint: rgba(232, 151, 94, 0.35);
-
-  /* The one whole-value gradient override in this block, and legitimately so:
-     unlike a shadow, --gradient-progress survives to the built CSS (it is read
-     through an inline style at IngestionProgress.tsx:98), so redeclaring it
-     here actually lands. Light's #e8b08a stop is a pale peach that reads as a
-     blown-out streak on a dark track; #8a542f keeps the same dark→accent sweep
-     direction light has, against a --color-surface-inset track. */
-  --gradient-progress: linear-gradient(90deg, #8a542f, var(--color-accent));
+  /* Dark's own accent, translucent, so the ring stays visible on the page, on
+     a raised card and on the black-on-white solid alike. */
+  --ring-tint: rgba(122, 183, 255, 0.45);
 }
 
-/* Tailwind preflight leaves body at system sans 16px/1.5 — the mockup
-   baseline is Figtree 15px/1.55 on the radial page wash
-   (--color-surface, highlit by --color-surface-glow). */
+/* Tailwind preflight leaves body at system sans 16px/1.5. The target's chrome
+   is 14px and its prose is 16px/1.7; 15px/1.6 sits between them and keeps the
+   existing type scale legible without a per-component rewrite. */
 @layer base {
   /* The resolved theme owns the UA chrome (scrollbars, input chrome,
      autofill). Light is the default; the unlayered dark block above flips it
@@ -265,17 +281,14 @@ html[data-theme="dark"] {
   }
 
   body {
-    background:
-      radial-gradient(
-        1000px 500px at 50% -160px,
-        var(--color-surface-glow),
-        transparent 70%
-      ),
-      var(--color-surface);
+    /* Flat. The retired palette painted a 1000x500 radial glow behind the
+       page; a wash is exactly the kind of decoration this language does not
+       have, and --color-surface-glow went with it. */
+    background: var(--color-surface);
     color: var(--color-fg);
     font-family: var(--font-body);
     font-size: 15px;
-    line-height: 1.55;
+    line-height: 1.6;
     /* dvh, not vh: mobile Safari's `vh` is the *largest* viewport, so with the
        toolbar shown 100vh overflows and every page gains a phantom scroll. */
     min-height: 100dvh;
@@ -300,20 +313,10 @@ html[data-theme="dark"] {
   }
 }
 
-@keyframes bloom {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 /* Progress keyframes — NAMESPACED on purpose: keyframe names are global and
-   last-writer-wins, and epic-02 phases 2.2/2.3 both plan a bare `shimmer`
-   that is a sweep, not this opacity pulse (design/sk-library.html). */
+   last-writer-wins, and a bare `shimmer` is a sweep, not this opacity pulse.
+   These two survive the re-skin because they are FEEDBACK, not decoration:
+   they say a job is still running. The entrance animation did not. */
 @keyframes progress-shimmer {
   50% {
     opacity: 0.75;
@@ -325,10 +328,8 @@ html[data-theme="dark"] {
   }
 }
 
-/* --bloom-delay must not inherit. A .bloom-card nested inside a .bloom
-   ancestor that set a delay would otherwise inherit the ancestor's value
-   instead of falling back to 0s — exactly the shape epic 02 uses (an
-   answer card inside a bloomed section). */
+/* --bloom-delay must not inherit. Kept only because <Bloom> still sets it as
+   an inline style (see below); when Bloom goes, this goes. */
 @property --bloom-delay {
   syntax: "<time>";
   inherits: false;
@@ -336,28 +337,22 @@ html[data-theme="dark"] {
 }
 
 @layer components {
-  /* Staggered reveal: chrome uses .bloom (.7s), grids use .bloom-card (.6s);
-     per-element delay via --bloom-delay. */
-  .bloom {
-    animation: bloom 0.7s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
-      both;
-  }
+  /* THE ENTRANCE ANIMATION IS GONE, AND `.bloom` / `.bloom-card` ARE NOW
+     NO-OPS. Nothing in this language fades or translates in on load — content
+     is simply there. The <Bloom> wrapper survives at ~106 call sites because
+     deleting it is a 20-file edit with no visual payoff (it renders a plain
+     div once these rules are empty), and one test asserts its delay maths.
+     Do not reintroduce the keyframes; do remove the wrapper opportunistically.
+
+     The classes are declared rather than deleted so that a call site reading
+     `className="bloom"` still resolves to something, and so this note has
+     somewhere to live. */
+  .bloom,
   .bloom-card {
-    animation: bloom 0.6s var(--bloom-delay, 0s) cubic-bezier(0.2, 0.7, 0.2, 1)
-      both;
+    animation: none;
   }
 
-  /* The reveal is decoration: with `both` fill every element sits at
-     opacity 0 until it animates, so honour the OS preference rather than
-     translating/fading 11+ elements per screen. */
-  @media (prefers-reduced-motion: reduce) {
-    .bloom,
-    .bloom-card {
-      animation: none;
-    }
-  }
-
-  /* Progress bar fill and current-stage dot (design/sk-library.html). */
+  /* Progress bar fill and current-stage dot. */
   .progress-fill {
     animation: progress-shimmer 1.8s ease-in-out infinite;
   }
@@ -371,19 +366,10 @@ html[data-theme="dark"] {
     }
   }
 
-  /* Card headers are a flat book-accent tint under its ink — never gradients.
-     They live here rather than on the utility class list because the accent is
-     chosen at runtime by accentFor(); the pair must move as one. */
-  .card-head-terra {
-    background: var(--color-terra-fill);
-    color: var(--color-terra);
-  }
-  .card-head-sage {
-    background: var(--color-sage-fill);
-    color: var(--color-sage);
-  }
-  .card-head-butter {
-    background: var(--color-butter-fill);
-    color: var(--color-butter);
-  }
+  /* The .card-head-{terra,sage,butter} classes lived here, pairing each book
+     accent's tint with its ink for Card's header band. The band is gone (see
+     ui/Card.tsx) and the accent is ink-only, which plain `text-terra` and its
+     two siblings already express — so there is nothing left for a component
+     class to hold. The -fill tokens stay in @theme: Pill's `book` tone and the
+     library's book-line chips still use them. */
 }

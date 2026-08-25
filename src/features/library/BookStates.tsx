@@ -16,7 +16,7 @@ export function BookSkeleton() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="mb-4 h-[88px] animate-pulse rounded-[18px] border border-border bg-surface-raised/70"
+          className="mb-4 h-[88px] animate-pulse rounded-card border border-border bg-surface-raised/70"
         />
       ))}
     </div>
@@ -31,7 +31,7 @@ export function BookError({
   onRetry: () => void;
 }) {
   return (
-    <div className="mx-auto mt-8 max-w-[560px] rounded-[20px] border border-danger-border bg-danger-fill px-7 py-6 text-center">
+    <div className="mx-auto mt-8 max-w-[560px] rounded-panel border border-danger-border bg-danger-fill px-7 py-6 text-center">
       {/* The house rule: backend copy verbatim, no FE code→message table. */}
       <p role="alert" className="text-[15px] font-semibold text-danger">
         {error.message}
@@ -39,7 +39,7 @@ export function BookError({
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent transition-opacity hover:opacity-90 pointer-coarse:min-h-11"
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-medium text-fg-on-accent transition-opacity hover:opacity-80 pointer-coarse:min-h-11"
       >
         Try again
       </button>
@@ -51,15 +51,15 @@ export function BookError({
 export function BookNotFound() {
   return (
     <Panel className="text-center">
-      <p className="font-display text-[18px] font-semibold">
+      <p className="text-[15px] font-semibold">
         That book is not on the shelf.
       </p>
-      <p className="mt-1 text-[13.5px] text-fg-muted">
+      <p className="mt-1 text-[14px] text-fg-muted">
         It may have been removed since this link was made.
       </p>
       <Link
         to="/library"
-        className="mt-3 inline-flex items-center text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
+        className="mt-3 inline-flex items-center text-[13px] font-medium text-accent hover:underline pointer-coarse:min-h-11"
       >
         Back to the shelf
       </Link>
@@ -76,13 +76,13 @@ export function BookEmptyFiltered({
 }) {
   return (
     <Panel className="text-center">
-      <p className="font-display text-[18px] font-semibold">
+      <p className="text-[15px] font-semibold">
         Nothing in this book is {label.toLowerCase()}.
       </p>
       <button
         type="button"
         onClick={onClear}
-        className="mt-2 inline-flex items-center text-[12.5px] font-bold text-accent hover:underline pointer-coarse:min-h-11"
+        className="mt-2 inline-flex items-center text-[13px] font-medium text-accent hover:underline pointer-coarse:min-h-11"
       >
         See every recipe
       </button>
@@ -93,10 +93,10 @@ export function BookEmptyFiltered({
 export function BookEmptyAll() {
   return (
     <Panel className="text-center">
-      <p className="font-display text-[18px] font-semibold">
+      <p className="text-[15px] font-semibold">
         No recipes came out of this book.
       </p>
-      <p className="mt-1 text-[13.5px] text-fg-muted">
+      <p className="mt-1 text-[14px] text-fg-muted">
         Reprocessing it from the shelf is the way to try the extraction again.
       </p>
     </Panel>

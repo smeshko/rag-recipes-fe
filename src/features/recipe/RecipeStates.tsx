@@ -5,7 +5,10 @@ import type { ApiError } from "../../api";
 export function RecipeNotFound({ id }: { id: string | undefined }) {
   return (
     <div className="pt-16 text-center">
-      <h1 className="font-display text-[clamp(28px,4vw,40px)] font-medium leading-[1.2]">
+      {/* The same 26px/semibold as a real recipe title: an empty state is a
+          page, not a poster, and a fluid display size made the dead end shout
+          louder than the recipes it stands in for. */}
+      <h1 className="text-[26px] font-semibold leading-[1.3] tracking-[-0.02em]">
         That page isn't on the shelf.
       </h1>
       <p className="mt-2.5 text-[15px] text-fg-muted">
@@ -32,12 +35,15 @@ export function RecipeError({
   onRetry: () => void;
 }) {
   return (
-    <div className="mx-auto mt-16 max-w-[560px] rounded-[20px] border border-danger-border bg-danger-fill px-7 py-6 text-center">
-      <p className="text-[15px] font-semibold text-danger">{error.message}</p>
+    <div className="mx-auto mt-16 max-w-[560px] rounded-panel border border-danger-border bg-danger-fill px-7 py-6 text-center">
+      <p className="text-[15px] font-medium text-danger">{error.message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-90"
+        /* Solid danger — the one place a fill still carries meaning rather
+           than decoration. Opacity is the hover, as on every solid button
+           here: it is the only one that reads correctly in both palettes. */
+        className="mt-4 rounded-pill bg-danger px-5 py-2 text-[13px] font-medium pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-80"
       >
         Try again
       </button>
@@ -49,8 +55,12 @@ export function RecipeError({
 export function RecipeNotARecipe({ title }: { title: string }) {
   return (
     <div className="pt-16 text-center">
-      <h1 className="font-display text-[clamp(28px,4vw,40px)] font-medium leading-[1.2]">
-        <em className="text-accent italic">{title}</em> isn't a recipe.
+      {/* The title used to be set in accent italics inside the sentence. It
+          is the item's own name, not an aside, and emphasis in this language
+          comes from weight and whitespace — the whole heading already has
+          both. */}
+      <h1 className="text-[26px] font-semibold leading-[1.3] tracking-[-0.02em]">
+        {title} isn't a recipe.
       </h1>
       <p className="mt-2.5 text-[15px] text-fg-muted">
         This shelf entry is a different kind of knowledge — the recipe view

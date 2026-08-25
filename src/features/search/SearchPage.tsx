@@ -12,7 +12,7 @@ import {
   useShelfStats,
 } from "../../api";
 import { type SearchMode, useSearch } from "../../api/search";
-import { Bloom, SearchInput } from "../../ui";
+import { SearchInput } from "../../ui";
 import { isReviewIncluded } from "../library/presentation";
 import { AiAnswers } from "./AiAnswers";
 import { AnswerCard } from "./AnswerCard";
@@ -321,23 +321,24 @@ export function SearchPage() {
 
   return (
     <div data-testid="search-page" aria-busy={search.isFetching}>
-      {/* 64px of dead space above the fold is a desktop luxury: on a phone it
+      {/* The greeting sits directly on the composer, the way the target's
+          empty state does: one line, one weight, no ornament. It used to be a
+          46px display serif with a terracotta italic clause — the single most
+          branded thing on the app, and the first casualty of the re-skin.
+          30px/semibold is the target's own greeting size.
+
+          48px of dead space above the fold is a desktop luxury: on a phone it
           pushes the search field itself below the first screen. */}
-      <Bloom
-        duration={0.7}
-        delay={0.06}
-        className="pt-16 pb-5 text-center max-[560px]:pt-8"
-      >
-        <h1 className="font-display text-[clamp(32px,4.4vw,46px)] font-medium leading-[1.2] tracking-[-0.01em]">
-          Good morning.{" "}
-          <em className="text-accent italic">What are we cooking?</em>
+      <div className="pt-12 pb-5 text-center max-[560px]:pt-6">
+        <h1 className="text-[30px] font-semibold leading-[1.25] tracking-[-0.02em] max-[560px]:text-[24px]">
+          Good morning. What are we cooking?
         </h1>
-        <p className="mt-2.5 text-[15px] text-fg-muted">
+        <p className="mt-2 text-[13.5px] text-fg-subtle">
           <ShelfStatsLine />
         </p>
-      </Bloom>
+      </div>
 
-      <Bloom duration={0.7} delay={0.12} className="mx-auto max-w-[720px]">
+      <div className="mx-auto max-w-[720px]">
         <SearchInput
           ref={inputRef}
           value={text}
@@ -345,7 +346,7 @@ export function SearchPage() {
           onSubmit={() => writeParams(text, mode)}
         />
         <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
-      </Bloom>
+      </div>
 
       {/* The LLM actions, as one group under the bar. Both ask the draft, so
           an emptied box disables them (review #1.2) — same guard askShelf
@@ -395,11 +396,7 @@ export function SearchPage() {
           mode={mode}
           from={location}
           bloomBase={0.24}
-          heading={
-            <>
-              What the shelf <em className="text-accent italic">does</em> know
-            </>
-          }
+          heading={<>What the shelf does know</>}
           subline={
             <>
               {fallbackData.results.length} match

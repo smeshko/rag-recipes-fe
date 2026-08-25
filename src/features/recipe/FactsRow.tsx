@@ -43,12 +43,12 @@ export function FactsRow({
       {list.map((fact) => (
         <div
           key={fact.label}
-          className="rounded-[12px] border border-border bg-surface-raised px-4 py-2.5 text-[13px] shadow-card"
+          className="rounded-reco border border-border bg-surface-raised px-3.5 py-2 text-[13px]"
         >
-          <span className="font-bold tracking-[0.06em] text-fg-subtle uppercase">
+          <span className="font-medium tracking-[0.06em] text-fg-subtle uppercase">
             {fact.label}
           </span>{" "}
-          <span className="font-semibold text-fg">{fact.value}</span>
+          <span className="font-medium text-fg">{fact.value}</span>
           {fact.label === "Serves" && yieldMark ? (
             <LowScoreMark mark={yieldMark} label="Yield" testId="yield-score" />
           ) : null}

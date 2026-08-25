@@ -8,11 +8,11 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
   const schema = item.knowledge_item.structured_data.schema;
 
   return (
-    <div
-      className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5"
-      style={{ background: "var(--gradient-warm)" }}
-    >
-      <p className="text-[13.5px] text-fg-muted">
+    /* A flat inset panel, one step off the page. It used to paint the warm
+       gradient via an inline style; the token is flat now, and a utility keeps
+       the fill on the same theming path as every other surface here. */
+    <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-panel border border-border bg-surface-inset px-7 py-6 max-[560px]:px-5 max-[560px]:py-5">
+      <p className="text-[13px] text-fg-muted">
         Extracted
         {doc.isSuccess ? (
           <>
@@ -37,7 +37,7 @@ export function Provenance({ item }: { item: KnowledgeItemResponse }) {
             needs is carried by things that are true: the status pill (needs_review
             iff the payload has warnings) and the confidence figure beside it. */}
       </p>
-      <p className="flex flex-wrap gap-4 text-[12.5px] text-fg-subtle">
+      <p className="flex flex-wrap gap-4 text-[13px] text-fg-subtle">
         {schema ? (
           <span>
             schema <b className="text-fg-muted">{schema}</b>

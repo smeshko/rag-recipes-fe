@@ -372,6 +372,39 @@ export const libraryBookList: DocumentListItem[] = libraryBooks.map(
   (b) => b.list,
 );
 
+/**
+ * The handwritten shelf: the book the backend creates on the first manually
+ * added recipe. `source_type: "manual"` is the whole point — it is what tells
+ * the row there is no PDF behind it, so no page count and no Reprocess.
+ *
+ * Deliberately NOT in `libraryBooks`: that roster is the mockup's five, and
+ * the shelf tests assert its row count and its header math. Tests that want
+ * this one register it alongside.
+ */
+export const handwrittenBook: LibraryBookFixture = (() => {
+  const base = book(
+    "doc_manual_shelf",
+    "Handwritten",
+    "ready",
+    {
+      source_spans: 0,
+      knowledge_items: 3,
+      ready_items: 3,
+      needs_review_items: 0,
+      chunks: 14,
+    },
+    { author: "", created_at: "2026-08-25T09:00:00Z" },
+  );
+  const list: DocumentListItem = { ...base.list, source_type: "manual" };
+  return {
+    list,
+    detail: {
+      ...base.detail,
+      document: { ...base.detail.document, source_type: "manual" },
+    },
+  };
+})();
+
 /* 4.2's review fixtures key their items to `doc_baking`-style ids while the
    shelf's books use `book-*` ids — separate data sets (phase 4.3 RESEARCH,
    "Fixture-id mismatch"). Remapping the fixture items onto the shelf ids is

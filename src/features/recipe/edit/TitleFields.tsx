@@ -11,9 +11,11 @@ export interface TitleFieldsProps {
 
 /**
  * The recipe's own two lines — title and summary — as editable faces of the
- * read page's `TitleBlock`. The type sizes deliberately echo it (display 26px
- * semibold, display 16px italic muted) so the edit surface still reads as
- * Sunday Kitchen rather than as a settings panel.
+ * read page's `TitleBlock`. The title field keeps the page-title size (26px
+ * semibold, tight tracking) so what you type looks like the heading it will
+ * become; the summary drops to plain muted body text, because the retired
+ * italic serif was the one flourish on this surface and nothing here is
+ * decorative any more.
  *
  * `TitleBlock` itself is untouched: this is a parallel component in `edit/`,
  * not a mode flag threaded through a read-mode file.
@@ -53,16 +55,13 @@ export function TitleFields({ form, isValid, setField }: TitleFieldsProps) {
           onChange={(event) => setField("title", event.target.value)}
           aria-invalid={isValid ? undefined : true}
           aria-describedby={isValid ? undefined : hintId}
-          className={`${fieldClass} mt-1.5 font-display text-[26px] font-semibold leading-[1.2] text-fg`}
+          className={`${fieldClass} mt-1.5 text-[26px] font-semibold tracking-[-0.02em] leading-[1.2] text-fg`}
         />
         {isValid ? null : (
           /* Rendered, not merely announced: the Save button this rule also
              drives arrives with the action row in TASK-006, so until then the
              hint is the whole visible consequence of an empty title. */
-          <p
-            id={hintId}
-            className="mt-1.5 text-[12.5px] font-semibold text-danger"
-          >
+          <p id={hintId} className="mt-1.5 text-[13px] text-danger">
             A recipe needs a title.
           </p>
         )}
@@ -77,7 +76,7 @@ export function TitleFields({ form, isValid, setField }: TitleFieldsProps) {
           rows={2}
           value={form.summary}
           onChange={(event) => setField("summary", event.target.value)}
-          className={`${fieldClass} mt-1.5 resize-none font-display text-[16px] text-fg-muted italic`}
+          className={`${fieldClass} mt-1.5 resize-none text-fg-muted`}
         />
       </div>
     </div>

@@ -3,18 +3,20 @@ import { Link } from "react-router";
 export function NotFoundPage() {
   return (
     <section data-testid="notfound-page" className="bloom pt-16 text-center">
-      <h1 className="font-display text-[clamp(28px,4vw,40px)] font-medium leading-[1.2]">
-        Nothing simmering <em className="text-accent italic">here</em>.
+      <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
+        Nothing simmering here.
       </h1>
       <p className="mt-2.5 text-[15px] text-fg-muted">
         That page isn't on the shelf.
       </p>
       <p className="mt-5">
-        {/* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
-            Ask button for the measured pairs (plan D12). */}
+        {/* The black solid — the one primary fill in this language, and the
+            same one SearchInput's send button spends. Hover FADES rather than
+            darkening: --color-surface-inverted is near-white in dark mode, so
+            a darker hover token would need a `dark:` arm and opacity does not. */}
         <Link
           to="/"
-          className="rounded-pill bg-accent-strong px-[26px] py-[13px] pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-sm font-bold text-fg-on-accent transition-colors hover:bg-accent-pressed"
+          className="rounded-pill bg-surface-inverted px-5 py-2.5 pointer-coarse:inline-flex pointer-coarse:items-center pointer-coarse:min-h-11 text-[14px] font-medium text-fg-inverted transition-opacity hover:opacity-80"
         >
           Back to the kitchen
         </Link>

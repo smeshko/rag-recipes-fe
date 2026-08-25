@@ -51,9 +51,9 @@ describe("theme store", () => {
     expect(getThemeSnapshot()).toEqual({ choice: "dark", resolved: "dark" });
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
-    /* jsdom normalises the #16110C the pre-paint script also writes. */
+    /* jsdom normalises the #212121 the pre-paint script also writes. */
     expect(document.documentElement.style.backgroundColor).toBe(
-      "rgb(22, 17, 12)",
+      "rgb(33, 33, 33)",
     );
     expect(listener).toHaveBeenCalledTimes(1);
   });

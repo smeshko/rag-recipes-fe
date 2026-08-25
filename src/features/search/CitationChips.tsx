@@ -32,14 +32,20 @@ function Chip({ citation }: { citation: AnswerCitation }) {
          exemption mechanically instead of a human waving at the output; see
          the plan's TASK-006. */
       data-citation-chip=""
-      /* The hover fill is `accent-strong`, not `accent`: `fg-on-accent` on
-         light `accent` is 3.61:1 and this chip is the fourth of the four
-         solid-accent surfaces carrying `fg-on-accent` (plan D12). On
-         `accent-strong` it is 4.63:1 in light and 10.05:1 in dark. The chip's
-         REST state (`bg-accent-fill text-accent`, 3.01:1 in light) is one of
-         the seven light shortfalls deferred to the accessibility pass — see
-         RESEARCH.md's light table; do not "fix" it here. */
-      className="mx-0.5 inline-block rounded-chip bg-accent-fill px-[7px] py-[2px] align-[2px] font-body text-[11.5px] font-bold text-accent transition-colors hover:bg-accent-strong hover:text-fg-on-accent"
+      /* Contrast, remeasured against the re-skinned palette (2026-08-25) —
+         the note here used to record a deferred shortfall, and the new values
+         cleared it, so it would now read as a warning about a bug that no
+         longer exists.
+
+         REST (`bg-accent-fill text-accent`): #0b5ed7 on #eaf2fd is 5.18:1 in
+         light. It was 3.01:1 under the apricot palette and was on the
+         accessibility pass's list of seven light shortfalls; changing the
+         accent from a mid-tone orange to a dark blue fixed it outright.
+         HOVER (`bg-accent-strong text-fg-on-accent`): white on #0a4fb4 is
+         7.53:1. `accent-strong` rather than `accent` is now a hover
+         convention (fills darken) rather than a contrast workaround — plain
+         `accent` would pass too, at 5.84:1. */
+      className="mx-0.5 inline-block rounded-chip bg-accent-fill px-[7px] py-[2px] align-[2px] text-[12px] font-medium text-accent transition-colors hover:bg-accent-strong hover:text-fg-on-accent"
     >
       {citation.label}
     </Link>
@@ -113,9 +119,11 @@ export function AnswerText({ text, map }: { text: string; map: CitationMap }) {
   flushList();
 
   return (
-    <div className="font-display text-[19.5px] leading-[1.65] text-fg">
-      {rendered}
-    </div>
+    /* Answer prose: 15px on the body stack, one step up in leading from the
+       chrome around it. The old 19.5px display serif made a generated answer
+       look like an essay; the target reads its answers at body size and lets
+       the whitespace do the separating. */
+    <div className="text-[15px] leading-[1.7] text-fg">{rendered}</div>
   );
 }
 
@@ -141,7 +149,7 @@ export function TrailingChips({
     return null;
   }
   return (
-    <p className="mt-5 text-[12px] font-bold tracking-[0.06em] text-fg-subtle uppercase">
+    <p className="mt-5 text-[11px] font-semibold tracking-[0.08em] text-fg-subtle uppercase">
       Cited pages{" "}
       {remaining.map((citation) => (
         <Chip key={citation.citation_id} citation={citation} />

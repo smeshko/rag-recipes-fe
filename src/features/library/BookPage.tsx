@@ -20,8 +20,9 @@ import { RecipeRow } from "./RecipeRow";
    only counts, and /review shows only what is still flagged, so an approved
    book was previously reachable one recipe at a time through search.
 
-   Bloom cadence copies the library and review pages: head 0.06, chip 0.10,
-   list items base .18 step .04.
+   The <Bloom> wrappers are inert — `.bloom` is a no-op class and nothing here
+   animates in. They remain as the layout divs their className props make them,
+   and go when Bloom itself is retired.
 
    ?status=<status> narrows the list. The URL is the single source of truth
    (SearchPage's pattern, restated on ReviewPage): the value is derived every
@@ -121,21 +122,27 @@ export function BookPage() {
         delay={0.06}
         className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
       >
-        <h1 className="font-display text-[clamp(30px,4vw,40px)] font-medium">
+        {/* LibraryPage's page-title size, fixed rather than clamped: the book
+            title is chrome, and chrome does not scale with the viewport. */}
+        <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
           {title}
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{countLine}</div>
       </Bloom>
 
       <Bloom duration={0.7} delay={0.1} className="mt-4 flex flex-wrap gap-2">
+        {/* ModeChips' shape: ghost chips with one near-black solid marking the
+            selection. Selection used to be an accent tint, which on this screen
+            put a blue-on-blue chip directly above a row of tinted status pills
+            and read as one more status rather than as the active filter. */}
         <button
           type="button"
           aria-pressed={status === undefined}
           onClick={() => setStatus(undefined)}
-          className={`rounded-pill border px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 transition-colors ${
+          className={`rounded-pill border px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 transition-colors ${
             status === undefined
-              ? "border-accent bg-accent-fill text-accent"
-              : "border-border bg-transparent text-fg-muted hover:text-fg"
+              ? "border-transparent bg-surface-inverted text-fg-inverted"
+              : "border-border bg-transparent text-fg-muted hover:bg-surface-hover hover:text-fg"
           }`}
         >
           All
@@ -146,10 +153,10 @@ export function BookPage() {
             type="button"
             aria-pressed={status === filter.value}
             onClick={() => setStatus(filter.value)}
-            className={`rounded-pill border px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 transition-colors ${
+            className={`rounded-pill border px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 transition-colors ${
               status === filter.value
-                ? "border-accent bg-accent-fill text-accent"
-                : "border-border bg-transparent text-fg-muted hover:text-fg"
+                ? "border-transparent bg-surface-inverted text-fg-inverted"
+                : "border-border bg-transparent text-fg-muted hover:bg-surface-hover hover:text-fg"
             }`}
           >
             {filter.label}

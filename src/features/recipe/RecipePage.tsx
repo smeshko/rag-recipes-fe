@@ -18,7 +18,10 @@ function TitleSkeleton() {
         <div className="h-[29px] w-28 animate-pulse rounded-pill bg-skeleton/60" />
         <div className="h-[29px] w-20 animate-pulse rounded-pill bg-skeleton/40" />
       </div>
-      <div className="mt-5 h-10 w-2/3 animate-pulse rounded bg-skeleton/60" />
+      {/* Tracks the real head: h-8 is the 26px title's line box, so the
+          placeholder and the title it stands in for occupy the same height and
+          nothing below them jumps when the payload lands. */}
+      <div className="mt-5 h-8 w-2/3 animate-pulse rounded bg-skeleton/60" />
       <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-skeleton/40" />
     </div>
   );

@@ -23,7 +23,7 @@ export function LowScoreMark({
       title={title}
       role="img"
       aria-label={title}
-      className="ml-2 inline-flex items-center rounded-pill border border-warning-border bg-warning-fill px-1.5 py-px align-middle font-mono text-[11px] font-bold text-warning"
+      className="ml-2 inline-flex items-center rounded-pill border border-warning-border bg-warning-fill px-1.5 py-px align-middle font-mono text-[11px] font-medium text-warning"
     >
       {formatScore(mark.score)}
     </span>

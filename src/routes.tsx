@@ -3,6 +3,7 @@ import { FavouritesPage } from "./features/favourites/FavouritesPage";
 import { BookPage } from "./features/library/BookPage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { NotFoundPage } from "./features/notfound/NotFoundPage";
+import { RecipeNewPage } from "./features/recipe/create/RecipeNewPage";
 import { RecipeEditPage } from "./features/recipe/edit/RecipeEditPage";
 import { RecipePage } from "./features/recipe/RecipePage";
 import { ReviewPage } from "./features/review/ReviewPage";
@@ -25,6 +26,14 @@ export const routes: RouteObject[] = [
         path: "/",
         element: <SearchPage />,
         handle: { width: "wide", footer: true } satisfies ShellHandle,
+      },
+      {
+        /* Above `/recipes/:id` for readability only — the router ranks a
+           static segment over a dynamic one regardless of order, so `new` can
+           never be read as an item id. */
+        path: "/recipes/new",
+        element: <RecipeNewPage />,
+        handle: { width: "narrow" } satisfies ShellHandle,
       },
       {
         path: "/recipes/:id",

@@ -1,8 +1,10 @@
 import { Bloom } from "../../ui";
 
-/* The designed warning-toned fallback (sk-fallback.html): content, not an
-   alert — role="status", never error styling. The body is the API's own
-   warning verbatim (answer.text is the same string; render it once). */
+/* The warning-toned fallback: content, not an alert — role="status", never
+   error styling. The body is the API's own warning verbatim (answer.text is
+   the same string; render it once).
+   (The sk-fallback.html mockup it was drawn from is retired — see theme.css on
+   the design/ folder; the tone tokens are the spec now.) */
 export function FallbackNotice({
   warnings,
   hasResults,
@@ -16,11 +18,11 @@ export function FallbackNotice({
     <Bloom duration={0.7} delay={0.14} className="mt-14">
       <div
         role="status"
-        className="flex flex-wrap items-start gap-5 rounded-[20px] border border-warning-border bg-warning-fill px-8 py-7"
+        className="flex flex-wrap items-start gap-4 rounded-panel border border-warning-border bg-warning-fill px-6 py-5"
       >
         <span
           aria-hidden="true"
-          className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-warning/12"
+          className="flex h-9 w-9 flex-none items-center justify-center rounded-reco bg-warning/12"
         >
           <svg
             viewBox="0 0 24 24"
@@ -34,20 +36,25 @@ export function FallbackNotice({
           </svg>
         </span>
         <div className="min-w-[260px] flex-1">
-          <h3 className="font-display text-[21px] font-medium text-warning">
+          <h3 className="text-[15px] font-semibold text-warning">
             I couldn't put together a grounded answer for this one.
           </h3>
-          <p className="mt-2 text-[15px] text-fg-muted">{warnings.join(" ")}</p>
+          <p className="mt-2 text-[14px] text-fg-muted">{warnings.join(" ")}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {hasResults ? (
-              <code className="rounded-[6px] bg-warning/10 px-2 py-1 font-body text-[11.5px] font-bold text-warning">
+              <code className="rounded-chip bg-warning/10 px-2 py-1 text-[12px] font-medium text-warning">
                 warning: answer_fallback · retrieval still ran
               </code>
             ) : null}
             <button
               type="button"
               onClick={onRephrase}
-              className="rounded-pill border-[1.5px] border-warning-border px-4 py-1.5 text-[13.5px] font-bold text-warning pointer-coarse:min-h-11 transition-colors hover:bg-warning/8"
+              /* Ghost button in the notice's own tone rather than the neutral
+                 one: it is the only control inside a warning-coloured box, and
+                 a grey chip in there reads as belonging to the page behind it.
+                 Hairline, though — the old 1.5px outline was the loudest edge
+                 on the screen. */
+              className="rounded-pill border border-warning-border px-4 py-1.5 text-[13px] font-medium text-warning pointer-coarse:min-h-11 transition-colors hover:bg-warning/8"
             >
               Try rephrasing ↻
             </button>

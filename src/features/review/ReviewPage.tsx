@@ -87,8 +87,8 @@ export function ReviewPage() {
         delay={0.06}
         className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
       >
-        <h1 className="font-display text-[clamp(30px,4vw,40px)] font-medium">
-          Needs a <em className="text-accent italic">second look.</em>
+        <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
+          Needs a second look.
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{countLine}</div>
       </Bloom>

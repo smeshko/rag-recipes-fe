@@ -43,7 +43,7 @@ function errorCopy(item: UploadOutcomeItem): string {
 
 function CalmLine({ children }: { children: React.ReactNode }) {
   return (
-    <p role="status" className="mt-3 text-[13.5px] text-fg-muted">
+    <p role="status" className="mt-3 text-[14px] text-fg-muted">
       {children}
     </p>
   );
@@ -66,7 +66,7 @@ function SingleOutcome({ item }: { item: UploadOutcomeItem }) {
     return isUnconfirmedFailure(item) ? (
       <CalmLine>{errorCopy(item)}</CalmLine>
     ) : (
-      <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
+      <p role="alert" className="mt-3 text-[14px] font-semibold text-danger">
         {errorCopy(item)}
       </p>
     );
@@ -85,7 +85,7 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   if (error) {
     const refused = classifyFailure(error) === "refused";
     return refused ? (
-      <p role="alert" className="mt-3 text-[13.5px] font-semibold text-danger">
+      <p role="alert" className="mt-3 text-[14px] font-semibold text-danger">
         {error.message}
       </p>
     ) : (
@@ -115,7 +115,7 @@ export function UploadOutcome({ summary, error }: UploadOutcomeProps) {
   const unconfirmed = errored.filter(({ item }) => isUnconfirmedFailure(item));
   const refused = errored.filter(({ item }) => !isUnconfirmedFailure(item));
   return (
-    <div className="mt-3 text-[13.5px]">
+    <div className="mt-3 text-[14px]">
       <p role="status" className="text-fg-muted">
         {summary.created} added · {summary.duplicates} already on the shelf ·{" "}
         {refused.length} failed

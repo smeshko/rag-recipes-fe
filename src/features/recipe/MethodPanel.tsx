@@ -42,16 +42,18 @@ export function MethodPanel({
 
   return (
     <Panel>
-      <h2 className="font-display text-[19px] font-semibold">Method</h2>
+      <h2 className="text-[18px] font-semibold tracking-[-0.01em]">Method</h2>
       {steps.length === 0 ? (
-        <p className="mt-3 text-[13.5px] text-fg-subtle italic">
+        /* Plain, not italic — the same fact-stating voice as the ingredients
+           panel's empty arm, which sits beside it on the same row. */
+        <p className="mt-3 text-[13px] text-fg-subtle">
           {status === "extracting"
             ? "Still being extracted…"
             : "No structured method was extracted."}
         </p>
       ) : (
         <>
-          <p className="mt-1 text-[12.5px] text-fg-subtle">
+          <p className="mt-1 text-[13px] text-fg-subtle">
             {steps.length} steps{fragment}
           </p>
           <ol className="mt-4 flex flex-col gap-4">
@@ -65,7 +67,12 @@ export function MethodPanel({
                     : ""
                 }`}
               >
-                <span className="font-display text-[17px] font-semibold text-accent italic">
+                {/* A plain sans numeral in subtle grey, set at the step text's
+                    own size and line-height so the two share a baseline. It
+                    used to be an oversized accent-blue italic — a decorated
+                    numeral that outweighed the instruction beside it, and blue
+                    ink on something nobody can click. */}
+                <span className="text-[15px] font-semibold leading-[1.65] text-fg-subtle">
                   {step.number}.
                 </span>
                 <span className="text-[15px] leading-[1.65] text-fg">

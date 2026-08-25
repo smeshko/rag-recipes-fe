@@ -4,7 +4,9 @@ Status: agreed 2026-07-31 (grilling session). Design direction and API contract 
 
 ## What this is
 
-A single-user web frontend for the rag-recipes backend: search the recipe library, get grounded LLM answers with page citations, browse recipe details, and manage cookbook ingestion. Design direction is **Sunday Kitchen** — see `design/` for the four high-fidelity mockups (`index.html` to browse them). The mockups are the visual spec: cream/apricot palette, Petrona (display serif) + Figtree (body), no food photography — typography and book/page provenance carry the design.
+A single-user web frontend for the rag-recipes backend: search the recipe library, get grounded LLM answers with page citations, browse recipe details, and manage cookbook ingestion.
+
+- **Design direction (superseded 2026-08-25):** was **Sunday Kitchen** — cream/apricot palette, Petrona (display serif) + Figtree (body), lifted cards, staggered `bloom` reveals, with the four mockups in `design/` as the visual spec. Replaced by a re-skin modelled on **ChatGPT's web app**: flat surfaces separated by hairlines, near-white page against a grey nav rail, one near-black solid for primary actions, blue for links, the system sans stack, and no ornament. Structure moved with it — the top pill-bar header became a persistent left sidebar that collapses to a drawer below 880px. The mockups in `design/` are now history, not spec; `src/theme.css` is the authority. What carried over unchanged: no food photography, and typography plus book/page provenance still doing the work.
 
 ## Decisions
 
@@ -17,8 +19,10 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 ### Stack
 
 - **Vite + React + TypeScript**, plain SPA. No SSR framework — nothing here needs it.
-- **Tailwind CSS v4** with the Sunday Kitchen tokens mapped into a custom theme (`@theme`: cream `#FBF7EF`, ink `#2B241A`, apricot `#C96F3B`, sage/butter/terra book-accents, radius/shadow scale). Hand-tuned pieces from the mockups (staggered `bloom` reveals, flat soft-fill card headers with an accent ink) live in a small CSS layer rather than being forced into utilities.
-- Fonts self-hosted via `@fontsource/petrona` + `@fontsource/figtree` (the app will be tunnel-exposed; no Google CDN dependency).
+- **Tailwind CSS v4** with the design tokens mapped into a custom theme (`@theme`), and dark mode as a value-only override of the same token names under `html[data-theme="dark"]`. Because every token is named for its ROLE (surface / fg / accent / border / status) rather than its pigment, the 2026-08-25 re-skin was almost entirely a value edit — the ~250 utility call sites re-themed without a class change.
+  - **Superseded 2026-08-25:** the tokens were the Sunday Kitchen set (cream `#FBF7EF`, ink `#2B241A`, apricot `#C96F3B`), and a small CSS layer carried hand-tuned pieces from the mockups — staggered `bloom` reveals and flat soft-fill card headers with an accent ink. Both are gone: the entrance animation is a no-op (nothing in the new language fades in) and the card-header fills were replaced by ink-only book accents. The layer now holds only the ingestion progress animations, which are feedback rather than decoration.
+- **No webfonts.** Type is the system sans stack (`ui-sans-serif, system-ui, -apple-system, …`) — the same fallback the design target ships behind its custom face. Renders natively everywhere and stays off the critical path.
+  - **Superseded 2026-08-25:** was self-hosted `@fontsource/petrona` + `@fontsource/figtree` (the app is tunnel-exposed, so a Google CDN dependency was ruled out). That constraint still holds; it is simply moot with no webfonts to host.
 
 ### Data layer
 
@@ -36,7 +40,9 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 
 **React Router**. The primary screens (the table predates `/recipes/:id/edit` and `/library/:documentId`, which `src/routes.tsx` owns):
 
-| Route | Screen | Mockup |
+The Mockup column records which `design/` file each screen was built from. Those mockups were superseded on 2026-08-25 (see "What this is"), so the column is provenance, not a spec to check against.
+
+| Route | Screen | Mockup (retired) |
 |---|---|---|
 | `/` (`?q=`) | Search + on-demand answer | `e-sunday-kitchen.html` (+ `sk-fallback.html` state) |
 | `/recipes/:id` | Recipe detail (`GET /knowledge-items/{id}`) | `sk-recipe.html` |
@@ -94,7 +100,7 @@ The four designed screens only: search+answer, recipe detail, library (upload, p
 ```
 frontend/
   ARCHITECTURE.md        this file
-  design/                Sunday Kitchen mockups (visual spec, keep)
+  design/                retired Sunday Kitchen mockups (history, not spec)
   src/
     api/                 fetch client, generated schema.d.ts, query hooks
     features/

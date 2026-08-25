@@ -231,8 +231,8 @@ export function RecipeEditForm({
             {status.label}
           </Pill>
         </div>
-        <h1 className="mt-5 font-display text-[clamp(30px,4vw,40px)] font-medium">
-          Repair this <em className="text-accent italic">extraction.</em>
+        <h1 className="mt-5 text-[26px] font-semibold tracking-[-0.02em]">
+          Repair this extraction.
         </h1>
         {/* Above the fields, below the head: whichever trigger raised it, a
             conflict is the first thing to read after the title — not a line
@@ -246,12 +246,14 @@ export function RecipeEditForm({
             drops its chunks and queues a re-embed, so it leaves search for as
             long as that takes. A reviewer correcting a typo deserves to know
             that before pressing Save, not to discover it by failing to find
-            the recipe afterwards. Calm register and its own tone, so it is
-            never mistaken for `SaveConflict` sitting directly above it. */}
+            the recipe afterwards. A neutral inset fill rather than a tint: the
+            two tinted fills on this surface both belong to `SaveConflict`
+            directly above, and a third colour there turned a cost into what
+            looked like a third kind of problem. */}
         {shelved && (
           <p
             data-testid="edit-reindex-notice"
-            className="mt-4 rounded-[14px] border border-border bg-accent-fill px-5 py-3 text-[13px] text-fg-muted"
+            className="mt-4 rounded-reco border border-border bg-surface-inset px-5 py-3 text-[13px] text-fg-muted"
           >
             This recipe is on the shelf. Saving re-indexes it, so it will drop
             out of search for a moment before coming back.
@@ -290,7 +292,7 @@ export function RecipeEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-pill border border-border px-5 py-2 text-[13px] font-bold text-fg-muted pointer-coarse:min-h-11 hover:text-fg"
+          className="rounded-pill border border-border px-5 py-2 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg pointer-coarse:min-h-11"
         >
           Cancel
         </button>
@@ -299,11 +301,14 @@ export function RecipeEditForm({
           data-testid="edit-save"
           onClick={submit("save")}
           disabled={submitDisabled}
-          /* accent-strong, not accent — the fifth solid-accent surface carrying
-             `fg-on-accent`, and one 5.6's D12 enumeration missed: white on light
-             `accent` measures 3.61:1, on `accent-strong` 4.63:1. Theme-agnostic
-             like its four siblings; see SearchInput's Ask button. */
-          className="rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold text-fg-on-accent pointer-coarse:min-h-11 disabled:opacity-40"
+          /* THE primary solid: `surface-inverted`, not an accent fill. The
+             accent is interactive ink now (links, focus), and a blue pill here
+             would be the loudest thing on a page otherwise made of hairlines.
+             Hover lightens by opacity rather than by a darker token, because
+             the same token is near-white in dark mode — opacity is the one
+             hover that reads correctly in both palettes without a `dark:` arm.
+             See SearchInput's send button. */
+          className="rounded-pill bg-surface-inverted px-5 py-2 text-[13px] font-medium text-fg-inverted transition-opacity hover:opacity-80 disabled:opacity-40 pointer-coarse:min-h-11"
         >
           {/* `&& !decide.isPending`: query-core holds the patch mutation
               `pending` until this seam's callback resolves, so during the
@@ -322,8 +327,11 @@ export function RecipeEditForm({
             disabled={submitDisabled}
             /* Approve's own vocabulary, verbatim from `ReviewItemCard` (D13):
                the two surfaces name the same verb the same way, so a reviewer
-               reads one control, not two. */
-            className="rounded-pill bg-success-fill px-5 py-2 text-[13px] font-bold text-success pointer-coarse:min-h-11 disabled:opacity-40"
+               reads one control, not two. That is also why the success tint
+               survives a re-skin that flattened everything around it — the
+               status colours are the queue's shared language, and dropping it
+               here alone would break the pairing D13 exists to hold. */
+            className="rounded-pill bg-success-fill px-5 py-2 text-[13px] font-medium text-success transition-opacity hover:opacity-80 disabled:opacity-40 pointer-coarse:min-h-11"
           >
             {decide.isPending ? "Approving…" : "Save & approve"}
           </button>

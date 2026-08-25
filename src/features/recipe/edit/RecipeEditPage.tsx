@@ -16,7 +16,9 @@ function EditSkeleton() {
         <div className="h-[29px] w-24 animate-pulse rounded-pill bg-skeleton/60" />
         <div className="h-[29px] w-28 animate-pulse rounded-pill bg-skeleton/40" />
       </div>
-      <div className="mt-5 h-10 w-2/3 animate-pulse rounded bg-skeleton/60" />
+      {/* h-8 tracks the real head: the h1 is 26px at 1.2 leading (~31px), so a
+          40px block would settle into a visibly shorter title. */}
+      <div className="mt-5 h-8 w-2/3 animate-pulse rounded bg-skeleton/60" />
       <div className="mt-4 h-4 w-1/2 animate-pulse rounded bg-skeleton/40" />
     </div>
   );

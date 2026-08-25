@@ -106,13 +106,13 @@ export function RecipeRow({
   );
 
   return (
-    <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
+    <article className="rounded-card border border-border bg-surface-raised px-6 py-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
+          <h3 className="text-[15px] font-semibold leading-[1.35]">
             {item.title}
           </h3>
-          <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
+          <small className="mt-1 block text-[13px] text-fg-subtle">
             {span ?? "page unknown"}
             {/* The edited marker rides on the provenance line at the same
                 weight, not as a Pill: it is provenance — someone has already
@@ -151,7 +151,7 @@ export function RecipeRow({
       {item.summary && (
         <p
           data-testid="recipe-row-summary"
-          className="mt-2 text-[13.5px] text-fg-muted"
+          className="mt-2 text-[14px] text-fg-muted"
         >
           {item.summary}
         </p>
@@ -162,7 +162,7 @@ export function RecipeRow({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-3">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
-          className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+          className="text-[13px] font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
         >
           View recipe →
         </Link>
@@ -172,14 +172,18 @@ export function RecipeRow({
              line above the buttons. "Keep" stays last, which in a column puts
              the safe choice nearest the thumb. */
           <div className="flex flex-wrap items-center justify-end gap-3 max-[560px]:flex-col max-[560px]:items-stretch">
-            <p className="text-[12.5px] font-semibold text-danger">
+            <p className="text-[13px] font-medium text-danger">
               Deleting is permanent — recovery is reprocessing the whole book.
             </p>
+            {/* Danger keeps its solid — it is the one place colour still
+                carries meaning rather than decoration. Hover fades rather than
+                darkens, matching every other solid in the app, so the same
+                class works whichever way the token moves between themes. */}
             <button
               type="button"
               disabled={remove.isPending}
               onClick={() => remove.mutate()}
-              className="rounded-pill bg-danger px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-colors hover:bg-danger/85 disabled:opacity-50"
+              className="rounded-pill bg-danger px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Delete recipe
             </button>
@@ -187,7 +191,7 @@ export function RecipeRow({
               type="button"
               disabled={remove.isPending}
               onClick={() => setConfirmingDelete(false)}
-              className="rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-accent-fill disabled:opacity-50"
+              className="rounded-pill border border-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg disabled:opacity-50"
             >
               Keep
             </button>
@@ -201,7 +205,7 @@ export function RecipeRow({
             {editable && (
               <Link
                 to={withReturnTo(`/recipes/${item.id}/edit`, location)}
-                className="inline-flex items-center rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:text-fg"
+                className="inline-flex items-center rounded-pill border border-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
               >
                 Edit
               </Link>
@@ -209,7 +213,7 @@ export function RecipeRow({
             <button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="rounded-pill border border-danger-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill"
+              className="rounded-pill border border-danger-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill"
             >
               Delete
             </button>
@@ -218,10 +222,7 @@ export function RecipeRow({
       </div>
       {deleteError && (
         /* BookRow's error idiom — announced, danger-toned, message verbatim. */
-        <p
-          role="alert"
-          className="mt-2 text-[12.5px] font-semibold text-danger"
-        >
+        <p role="alert" className="mt-2 text-[13px] font-medium text-danger">
           {deleteError}
         </p>
       )}

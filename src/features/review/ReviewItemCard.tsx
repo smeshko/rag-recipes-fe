@@ -11,8 +11,9 @@ import { withReturnTo } from "../../ui";
 
 /* The flagged-item card (phase 4.3, TASK-002). A vertical-list composition of
    primitives — NOT `Card`, which is the 3-col grid shape — on the BookRow
-   surface, minus the hover lift: the card itself is not clickable, only its
-   link (and TASK-004's action buttons) are.
+   surface: a hairline box, with no hover treatment at all, because the card
+   itself is not clickable. Only its link (and TASK-004's action buttons) are,
+   and each of those answers for its own hover.
 
    Flags come FIRST and every one renders. Messages are sentence-length
    backend-authored copy rendered verbatim — a line, not a `Pill` (Pill is
@@ -116,7 +117,7 @@ export function ReviewItemCard({
   });
 
   return (
-    <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
+    <article className="rounded-card border border-border bg-surface-raised px-6 py-5">
       {/* Success tone, not danger, and an explicit line rather than nothing:
           a card that simply loses its flag line is indistinguishable from one
           that never had flags, and "the reviewer sees which warnings their fix
@@ -152,10 +153,8 @@ export function ReviewItemCard({
         </p>
       ))}
 
-      <h3 className="mt-2 font-display text-[20px] font-semibold leading-[1.25]">
-        {item.title}
-      </h3>
-      <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
+      <h3 className="mt-2 text-[15px] font-semibold">{item.title}</h3>
+      <small className="mt-1 block text-[13px] text-fg-subtle">
         {span ? `${item.document.title} · ${span}` : item.document.title}
         {/* The edited marker (5.4 D9) rides on the provenance line at the same
             `text-fg-subtle` weight, not as a Pill or a tone of its own: it is
@@ -175,7 +174,7 @@ export function ReviewItemCard({
       {item.summary && (
         <p
           data-testid="review-item-summary"
-          className="mt-2 text-[13.5px] text-fg-muted"
+          className="mt-2 text-[14px] text-fg-muted"
         >
           {item.summary}
         </p>
@@ -191,7 +190,7 @@ export function ReviewItemCard({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 max-[560px]:flex-col max-[560px]:items-stretch max-[560px]:gap-3">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
-          className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+          className="text-[13px] font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
         >
           View recipe →
         </Link>
@@ -203,14 +202,19 @@ export function ReviewItemCard({
              335px. Button order is unchanged: "Keep" stays last, which in a
              column puts the safe choice nearest the thumb. */
           <div className="flex flex-wrap items-center justify-end gap-3 max-[560px]:flex-col max-[560px]:items-stretch">
-            <p className="text-[12.5px] font-semibold text-danger">
+            <p className="text-[13px] font-semibold text-danger">
               Rejecting is permanent — recovery is reprocessing the whole book.
             </p>
+            {/* The one solid in the row, and it is the danger solid rather than
+                the black one: this is the destructive confirm, so the fill is
+                carrying a warning, not just primacy. Hover fades instead of
+                darkening, the same reason every solid here does — the token
+                inverts between themes and opacity reads correctly in both. */}
             <button
               type="button"
               disabled={decide.isPending}
               onClick={() => decide.mutate("rejected")}
-              className="rounded-pill bg-danger px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-colors hover:bg-danger/85 disabled:opacity-50"
+              className="rounded-pill bg-danger px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Reject item
             </button>
@@ -218,7 +222,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => setConfirmingReject(false)}
-              className="rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-accent-fill disabled:opacity-50"
+              className="rounded-pill border border-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg disabled:opacity-50"
             >
               Keep
             </button>
@@ -242,15 +246,20 @@ export function ReviewItemCard({
                 so the danger outline stays unique to Reject. */}
             <Link
               to={withReturnTo(`/recipes/${item.id}/edit`, location)}
-              className="inline-flex items-center rounded-pill border border-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:text-fg"
+              className="inline-flex items-center rounded-pill border border-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
             >
               Edit
             </Link>
+            {/* Approve and Reject keep their status TINTS while Edit stays a
+                neutral ghost — the one place colour still does work in this
+                row, because a reviewer picking between three same-shaped pills
+                needs to see which one is safe and which is terminal. Both are
+                tints, not solids: the solid is reserved for the confirm. */}
             <button
               type="button"
               disabled={decide.isPending}
               onClick={() => decide.mutate("approved")}
-              className="rounded-pill bg-success-fill px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-success transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="rounded-pill bg-success-fill px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-success transition-opacity hover:opacity-80 disabled:opacity-50"
             >
               Approve
             </button>
@@ -258,7 +267,7 @@ export function ReviewItemCard({
               type="button"
               disabled={decide.isPending}
               onClick={() => setConfirmingReject(true)}
-              className="rounded-pill border border-danger-border bg-transparent px-4 py-[7px] text-[12.5px] font-bold pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill disabled:opacity-50"
+              className="rounded-pill border border-danger-border bg-transparent px-4 py-[7px] text-[13px] font-medium pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill disabled:opacity-50"
             >
               Reject
             </button>
@@ -267,10 +276,7 @@ export function ReviewItemCard({
       </div>
       {decisionError && (
         /* BookRow's error idiom — announced, danger-toned, message verbatim. */
-        <p
-          role="alert"
-          className="mt-2 text-[12.5px] font-semibold text-danger"
-        >
+        <p role="alert" className="mt-2 text-[13px] font-semibold text-danger">
           {decisionError}
         </p>
       )}

@@ -71,15 +71,21 @@ export function FavouriteButton({
             : `Save ${title ?? "this recipe"} to favourites`
         }
         onClick={() => toggle.mutate(!starred)}
-        className={`inline-flex ${box} items-center justify-center rounded-pill border transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${
-          starred
-            ? "border-accent-fill bg-accent-fill text-accent hover:bg-accent-fill/70"
-            : "border-border bg-surface-raised text-fg-subtle hover:border-accent-fill hover:bg-accent-fill hover:text-accent"
+        /* A borderless icon button on a hover fill — the shape every icon
+           control in this language takes, and the reason the tinted pill went:
+           a filled chip around the star made a toggle read as a badge, and on a
+           search card it competed with the card's own hairline. What is left
+           carries the state entirely in the glyph (below) and in its ink:
+           accent when saved, subtle grey when not. */
+        className={`inline-flex ${box} items-center justify-center rounded-pill transition-colors hover:bg-surface-hover pointer-coarse:min-h-11 pointer-coarse:min-w-11 ${
+          starred ? "text-accent" : "text-fg-subtle"
         } ${className}`}
       >
-        {/* One path, filled when starred and stroked when not: the same glyph
-            either way, so the two states differ in weight rather than shape
-            and the control does not jump as it toggles. */}
+        {/* One path, filled when starred and stroked when not. This is the
+            app's one deliberately-filled icon: outline-vs-filled IS how the
+            control says saved, so the two shapes stay even though nothing else
+            here is filled — and being the same path either way, the control
+            does not jump as it toggles. */}
         <svg
           width={glyph}
           height={glyph}

@@ -206,6 +206,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Knowledge Item
+         * @description Write a recipe by hand, with no PDF and no extraction behind it.
+         *
+         *     The one way a knowledge item enters this system without an ingest run. It
+         *     lands on the shared **handwritten shelf** — a single Document that
+         *     ``ensure_manual_shelf`` creates on first use and every manual recipe
+         *     thereafter shares (see ``ingestion/manual`` for why the FKs demand a source
+         *     chain at all, and why there is one rather than one per recipe).
+         *
+         *     **Straight to the shelf, never to the queue.** The item is born ``indexing``
+         *     and an ``index_knowledge_item`` job chunks, embeds and flips it to ``ready``
+         *     — the approve path's second half, reached without the first, because there
+         *     is no extraction to second-guess. Soft-validation warnings are still derived
+         *     and stored (``authored_recipe``), they just do not gate the status: a typed
+         *     recipe with no method carries ``no_steps`` for a later edit to clear,
+         *     without being held back from search over it.
+         *
+         *     Two consequences of that, both shared with approve and with editing a
+         *     shelved item. The recipe is **absent from search until the worker
+         *     finishes**, which is the price of not blocking the request on an embedding
+         *     round-trip — the 201 says ``indexing`` and means it. And if the job exhausts
+         *     its retries, ``sweep_stuck_jobs``' item-level pass returns the row to
+         *     ``needs_review``, which is honest: the row genuinely has no chunks, and that
+         *     is exactly what ``needs_review`` means.
+         *
+         *     The DB commit and the Redis enqueue are not one transaction. On an enqueue
+         *     failure the compensation **deletes the row** rather than parking it in the
+         *     review queue the way approve and edit do — their compensation returns an
+         *     item to a state it came from, while here there is no earlier state to return
+         *     to. A 500 that also left a half-created recipe behind would make the obvious
+         *     retry a duplicate. If the delete itself fails, the stuck-indexing sweep
+         *     still rescues the row into ``needs_review``, so nothing is unrecoverable.
+         */
+        post: operations["create_knowledge_item_api_v1_knowledge_items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge-items/{item_id}": {
         parameters: {
             query?: never;
@@ -830,6 +880,50 @@ export interface components {
             /** Terminal */
             terminal: boolean;
             failure?: components["schemas"]["IngestionFailureInfo"] | null;
+        };
+        /**
+         * KnowledgeItemCreateRequest
+         * @description A recipe a human typed rather than one an extractor found.
+         *
+         *     The create-side twin of ``KnowledgeItemUpdateRequest``, with deliberately
+         *     the same field set and the same rules — a recipe you can author is exactly
+         *     a recipe you can correct, and a field that appears here but not there would
+         *     be one nobody could ever fix.
+         *
+         *     Two differences, both forced by there being no existing row:
+         *
+         *     - ``title`` is required, not optional. Absent means nothing to leave alone.
+         *     - the two lists default to empty rather than to absent. Whole-array
+         *       replacement has no "unchanged" to express on a row that does not exist
+         *       yet, so an omitted list is an empty section.
+         *
+         *     Same exclusions as the update request, for the same reason: ``confidence``,
+         *     ``source_span_ids``, ``schema``, ``item_type`` and ``warnings`` are
+         *     machine-owned provenance. Here the machine that owns them is
+         *     ``ingestion/manual.authored_recipe``, which derives every one of them from
+         *     the text below.
+         *
+         *     Note what is NOT required: a recipe with no ingredients and no steps is
+         *     accepted, because ``PATCH`` accepts emptying both and a create rule the edit
+         *     rule does not share would just be a trap on the way in.
+         */
+        KnowledgeItemCreateRequest: {
+            /** Title */
+            title: string;
+            /** Summary */
+            summary?: string | null;
+            /** Yield */
+            yield?: string | null;
+            /** Prep Time */
+            prep_time?: string | null;
+            /** Cook Time */
+            cook_time?: string | null;
+            /** Total Time */
+            total_time?: string | null;
+            /** Ingredients */
+            ingredients?: string[];
+            /** Steps */
+            steps?: string[];
         };
         /** KnowledgeItemDetail */
         KnowledgeItemDetail: {
@@ -1759,6 +1853,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MenuResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_knowledge_item_api_v1_knowledge_items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeItemCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemResponse"];
                 };
             };
             /** @description Validation Error */

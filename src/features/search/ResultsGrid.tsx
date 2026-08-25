@@ -45,14 +45,14 @@ export function ResultsGrid({
     <section className={dimmed ? "opacity-60 transition-opacity" : undefined}>
       <Bloom duration={0.7} delay={0.26}>
         <div className="mt-14 mb-[22px] flex items-baseline justify-between">
-          <h2 className="font-display text-[27px] font-semibold">
+          <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
             {heading ?? (
               <>
                 {results.length} match{results.length === 1 ? "" : "es"}
               </>
             )}
           </h2>
-          <span className="text-[13.5px] text-fg-subtle">
+          <span className="text-[13px] text-fg-subtle">
             {subline ?? <>ranked by {mode} score · needs-review excluded</>}
           </span>
         </div>

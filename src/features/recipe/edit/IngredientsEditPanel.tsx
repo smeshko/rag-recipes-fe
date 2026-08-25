@@ -11,8 +11,8 @@ export type IngredientsEditPanelProps = Pick<
 
 /**
  * The writable face of `IngredientsPanel`: the same `Panel` shell and the same
- * 19px display heading, so the edit surface reads as the read surface with the
- * rows made typeable.
+ * panel heading, so the edit surface reads as the read surface with the rows
+ * made typeable.
  *
  * Two deliberate departures from read mode (D18): no sticky positioning — edit
  * mode is one full-width column (D11) — and no 17px checkbox square, because
@@ -26,8 +26,10 @@ export function IngredientsEditPanel({
 }: IngredientsEditPanelProps) {
   return (
     <Panel>
-      <h2 className="font-display text-[19px] font-semibold">Ingredients</h2>
-      <p className="mt-1 text-[12.5px] text-fg-subtle">
+      <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
+        Ingredients
+      </h2>
+      <p className="mt-1 text-[13px] text-fg-subtle">
         {rows.length} lines · one ingredient per line
       </p>
       <LineListEditor

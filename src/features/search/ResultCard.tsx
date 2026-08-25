@@ -58,16 +58,18 @@ export function ResultCard({
             </>
           }
         >
-          <h3 className="font-display text-[19.5px] font-semibold leading-[1.28] transition-colors group-hover:text-accent">
+          {/* The card's only hover cue beyond Card's own border step: the
+              title takes link ink, which is what the whole card is. */}
+          <h3 className="text-[15px] font-semibold leading-[1.4] transition-colors group-hover:text-accent">
             {result.display.title}
           </h3>
           {result.display.snippet ? (
-            <p className="mt-2 flex-1 text-[13.5px] text-fg-muted">
+            <p className="mt-2 flex-1 text-[14px] text-fg-muted">
               {result.display.snippet}
             </p>
           ) : null}
           {ingredients.length > 0 ? (
-            <p className="mt-3 text-[12.5px] text-fg-subtle italic">
+            <p className="mt-3 text-[13px] text-fg-subtle">
               {ingredients.join(" · ")}
             </p>
           ) : null}
@@ -86,11 +88,12 @@ export function ResultCard({
       {/* items-end so a failed toggle's message stacks ABOVE the star and
           stays inside the card rather than pushing off its right edge. */}
       <div className="absolute right-3 bottom-3 z-10 flex flex-col items-end gap-1.5">
+        {/* No shadow to separate it from the card underneath: the button
+            carries its own border and opaque fill, which is enough. */}
         <FavouriteButton
           itemId={result.item.id}
           favourited={favourited}
           title={result.display.title}
-          className="shadow-card"
         />
       </div>
     </div>

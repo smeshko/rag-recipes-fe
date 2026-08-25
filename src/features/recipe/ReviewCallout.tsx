@@ -41,7 +41,7 @@ function FlagDetail({ flag }: { flag: ReviewFlag }) {
   return detail ? (
     <p
       data-testid="review-flag-detail"
-      className="font-mono text-[11.5px] font-semibold text-warning/70"
+      className="font-mono text-[12px] font-medium text-warning/70"
     >
       {detail}
     </p>
@@ -63,7 +63,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
       data-testid="review-callout"
       /* Panel's radius, role tokens only. Warning while something is still
          flagged; success once the list empties — the tone IS the state. */
-      className={`mt-8 flex flex-wrap items-start justify-between gap-4 rounded-[20px] border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5 ${
+      className={`mt-8 flex flex-wrap items-start justify-between gap-4 rounded-panel border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5 ${
         cleared
           ? "border-success-fill bg-success-fill"
           : "border-warning-border bg-warning-fill"
@@ -73,7 +73,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
         {cleared ? (
           <p
             data-testid="review-callout-cleared"
-            className="text-[13.5px] font-semibold text-success"
+            className="text-[15px] font-medium text-success"
           >
             Nothing is flagged any more — approve it from the queue.
           </p>
@@ -81,7 +81,9 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
           <>
             <p
               data-testid="recipe-flag-lead"
-              className="text-[13.5px] font-semibold text-warning"
+              /* Body size, medium weight. The tone token already says this is
+                 a warning; size and colour together were saying it twice. */
+              className="text-[15px] font-medium text-warning"
             >
               {flagText(lead)}
             </p>
@@ -96,7 +98,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
               <div key={`${flag.code}:${flag.message}`}>
                 <p
                   data-testid="recipe-flag-secondary"
-                  className="mt-1 text-[12.5px] font-semibold text-warning/85"
+                  className="mt-1 text-[13px] font-medium text-warning/85"
                 >
                   {flagText(flag)}
                 </p>
@@ -114,7 +116,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
             <time
               data-testid="recipe-edited-marker"
               dateTime={edited_at}
-              className="text-[12px] font-semibold text-fg-subtle"
+              className="text-[13px] font-medium text-fg-subtle"
             >
               Edited
             </time>

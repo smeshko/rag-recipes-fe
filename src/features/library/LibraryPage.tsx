@@ -4,11 +4,14 @@ import {
   useDocuments,
 } from "../../api";
 import { Bloom, Panel } from "../../ui";
+import { WriteByHandCta } from "../recipe/create/WriteByHandCta";
 import { BookRow, type DetailState } from "./BookRow";
 import { Dropzone } from "./Dropzone";
 
-/* Section blooms follow the mockup's 0/.06/(.1)/.14 chrome stagger — 0 is
-   the Shell header, .1 is the dropzone's slot (arrives in phase 3.2). */
+/* The <Bloom> wrappers below are inert — `.bloom` is a no-op class now and
+   nothing on this page fades or staggers in. They survive only as the layout
+   divs their className props make them, and go when Bloom itself is retired;
+   the delay/index props are dead numbers, not a cadence to preserve. */
 
 const plural = (n: number, word: string) => (n === 1 ? word : `${word}s`);
 
@@ -67,8 +70,11 @@ export function LibraryPage() {
   return (
     <div>
       <Bloom duration={0.7} delay={0.06} className="pt-10 pb-2">
-        <h1 className="font-display text-[clamp(30px,4vw,40px)] font-medium">
-          The shelf, <em className="text-accent italic">as it stands.</em>
+        {/* One fixed size, not a clamp: the page title is chrome, and chrome
+            in this language does not grow with the viewport. The accent-italic
+            second clause went with it — emphasis is weight and whitespace. */}
+        <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
+          The shelf, as it stands.
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{statsLine}</div>
         {settled && unavailable > 0 && (
@@ -80,6 +86,12 @@ export function LibraryPage() {
 
       <Bloom duration={0.7} delay={0.1} className="mt-7">
         <Dropzone />
+        {/* Inside the dropzone's own bloom slot, not a new one: the two are one
+            "how a recipe gets here" block, and staggering them apart would read
+            as two unrelated sections. */}
+        <div className="mt-4">
+          <WriteByHandCta />
+        </div>
       </Bloom>
 
       <Bloom
@@ -87,7 +99,9 @@ export function LibraryPage() {
         delay={0.14}
         className="mt-11 mb-[18px] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
       >
-        <h2 className="font-display text-[24px] font-semibold">On the shelf</h2>
+        <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
+          On the shelf
+        </h2>
         <span className="text-[13px] text-fg-subtle">
           sorted by most recently added
         </span>
@@ -98,14 +112,14 @@ export function LibraryPage() {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="mb-4 h-[88px] animate-pulse rounded-[18px] border border-border bg-surface-raised/70"
+              className="mb-4 h-[88px] animate-pulse rounded-card border border-border bg-surface-raised/70"
             />
           ))}
         </div>
       )}
 
       {documents.isError && (
-        <Panel className="text-[13.5px] text-fg-muted">
+        <Panel className="text-[14px] text-fg-muted">
           <p role="alert">
             The shelf could not be reached. Try reloading in a moment.
           </p>
@@ -114,10 +128,8 @@ export function LibraryPage() {
 
       {documents.isSuccess && docs.length === 0 && (
         <Panel className="text-center">
-          <p className="font-display text-[18px] font-semibold">
-            Nothing on the shelf yet.
-          </p>
-          <p className="mt-1 text-[13.5px] text-fg-muted">
+          <p className="text-[15px] font-semibold">Nothing on the shelf yet.</p>
+          <p className="mt-1 text-[14px] text-fg-muted">
             Books you add will appear here, sorted by most recently added.
           </p>
         </Panel>

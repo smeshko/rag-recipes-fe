@@ -29,7 +29,7 @@ export interface LineListEditorProps {
   newRow: () => LineRow;
   /** "ingredient" | "step" — drives every accessible name. */
   noun: string;
-  /** Steps render the apricot ordinal; ingredients render nothing. */
+  /** Steps render the ordinal; ingredients render nothing. */
   ordered?: boolean;
   addLabel: string;
 }
@@ -172,7 +172,13 @@ export function LineListEditor({
         type="button"
         ref={addRef}
         onClick={add}
-        className="mt-3 w-full rounded-[10px] border border-border-strong border-dashed py-2 text-[13px] font-bold text-accent pointer-coarse:min-h-11 hover:bg-accent-fill"
+        /* The dashed edge is the one place `border-strong` is spent on this
+           surface, and it earns it the same way the dropzone's does: dashes
+           read as "a row could go here", which a solid hairline identical to
+           every real row's would not. Ghost ink, fill on hover — the accent is
+           reserved for links now, and an accent-tinted full-width bar under
+           every list was louder than the rows it adds to. */
+        className="mt-3 w-full rounded-reco border border-dashed border-border-strong py-2 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg pointer-coarse:min-h-11"
       >
         {addLabel}
       </button>
@@ -180,8 +186,11 @@ export function LineListEditor({
   );
 }
 
+/* The three per-row controls (↑ ↓ ×). Ink-only: a hover that darkens the glyph
+   is the whole affordance — three bordered buttons per row would out-weigh the
+   line they belong to, and there are as many rows as the recipe has lines. */
 const controlClass =
-  "grid place-items-center text-[13px] font-bold text-fg-subtle hover:text-accent disabled:cursor-default disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
+  "grid place-items-center text-[13px] text-fg-subtle transition-colors hover:text-fg disabled:cursor-default disabled:opacity-40 disabled:hover:text-fg-subtle pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
 interface RowProps {
   row: LineRow;
@@ -278,14 +287,20 @@ function Row({
           : "grid-cols-[minmax(0,1fr)_auto] max-[560px]:grid-cols-[minmax(0,1fr)]"
       } ${
         row.flagged
-          ? "-ml-3 rounded-[10px] border-l-[3px] border-warning-border bg-warning-fill py-1 pl-3"
+          ? "-ml-3 rounded-reco border-l-[3px] border-warning-border bg-warning-fill py-1 pl-3"
           : ""
       }`}
     >
       {ordered ? (
         /* Derived from render position, never stored — a reorder renumbers by
-           construction. */
-        <span className="mt-2 w-[26px] font-display text-[17px] font-semibold text-accent italic">
+           construction.
+
+           A plain tabular-looking sans numeral, not the retired italic serif in
+           accent: the ordinal is a coordinate for the row beside it, and a
+           coloured flourish made a column of them read as decoration running
+           down the panel. The 26px track is kept so two-digit steps do not
+           shunt the fields out of alignment. */
+        <span className="mt-2 w-[26px] text-[15px] font-medium text-fg-subtle">
           {position}.
         </span>
       ) : null}
@@ -305,11 +320,16 @@ function Row({
         }
         value={row.text}
         onChange={(event) => onText(index, event.target.value)}
-        /* text-base on phones: under 16px, iOS zooms the viewport on focus,
+        /* `fieldChrome`'s treatment, written out rather than imported: this is
+           a textarea with its own auto-grow and leading, and the shared
+           constant is shaped for the scalar fields. Any change to one is a
+           change to both.
+
+           text-base on phones: under 16px, iOS zooms the viewport on focus,
            and these textareas are what a reviewer actually types into. The
            auto-grow layout effect re-measures on every change, so the larger
            face just means a taller box, not a clipped one. */
-        className="w-full resize-none rounded-[10px] border border-border bg-surface-inset px-3 py-2 text-[14px] leading-[1.5] text-fg pointer-coarse:min-h-11 pointer-coarse:text-base focus:border-accent focus:shadow-focus focus:outline-none"
+        className="w-full resize-none rounded-reco border border-border bg-surface-raised px-3 py-2 text-[15px] leading-[1.5] text-fg outline-none transition-[border-color,box-shadow] focus:border-fg-subtle focus:shadow-focus pointer-coarse:min-h-11 pointer-coarse:text-base"
       />
       {/* col-start-2 on the ordered arm keeps the controls under the field
           rather than under the ordinal; justify-end puts them on the thumb

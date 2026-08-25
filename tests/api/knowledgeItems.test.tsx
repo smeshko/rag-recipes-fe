@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import type {
+  KnowledgeItemCreateRequest,
   KnowledgeItemResponse,
   KnowledgeItemUpdateRequest,
 } from "../../src/api";
@@ -14,11 +15,13 @@ import {
 } from "../../src/api";
 import { useDocument } from "../../src/api/documents";
 import {
+  useCreateKnowledgeItem,
   useKnowledgeItem,
   useUpdateKnowledgeItem,
 } from "../../src/api/knowledgeItems";
 import {
   applyPatch,
+  createScenario,
   decidedItemFixture,
   editableItemsFixture,
   editScenario,
@@ -27,6 +30,7 @@ import {
   knowledgeItemErrorHandler,
   knowledgeItemNotFoundEnvelope,
   knowledgeItemPatchHandler,
+  MANUAL_SHELF_DOCUMENT_ID,
   reviewItemStaleEnvelope,
   reviewNotPendingEnvelope,
   SOFT_WARNING_MESSAGES,
@@ -1336,4 +1340,126 @@ describe("useUpdateKnowledgeItem", () => {
       expect(apiError.details).toEqual(row.envelope.error.details);
     });
   }
+});
+
+describe("useCreateKnowledgeItem", () => {
+  const RECIPE: KnowledgeItemCreateRequest = {
+    title: "Roast Tomato Soup",
+    ingredients: ["500 g tomatoes"],
+    steps: ["Roast, then blitz."],
+  };
+
+  it("returns the created item, already indexing", async () => {
+    server.use(...createScenario());
+    const { wrapper } = makeWrapper();
+    const { result } = renderHook(() => useCreateKnowledgeItem(), { wrapper });
+
+    const response = await result.current.mutateAsync(RECIPE);
+
+    expect(response.knowledge_item.title).toBe("Roast Tomato Soup");
+    expect(response.knowledge_item.document_id).toBe(MANUAL_SHELF_DOCUMENT_ID);
+    /* Not `ready`: the server queues the chunk-and-embed and answers first. */
+    expect(response.knowledge_item.status).toBe("indexing");
+  });
+
+  it("writes the response into the item cache rather than invalidating it", async () => {
+    /* The 201 IS the GET body, so the recipe page this navigates to must not
+       have to refetch what the server just handed us. */
+    server.use(...createScenario());
+    const { queryClient, wrapper } = makeWrapper();
+    const { result } = renderHook(() => useCreateKnowledgeItem(), { wrapper });
+
+    const response = await result.current.mutateAsync(RECIPE);
+
+    const id = response.knowledge_item.id;
+    const cached = queryClient.getQueryData<KnowledgeItemResponse>([
+      "knowledge-item",
+      id,
+    ]);
+    expect(cached).toEqual(response);
+    expect(
+      queryClient.getQueryState(["knowledge-item", id])?.isInvalidated,
+    ).toBe(false);
+  });
+
+  it("refreshes the shelf, the book listing and the book's own counts", async () => {
+    server.use(...createScenario());
+    const { queryClient, wrapper } = makeWrapper();
+    /* Seeded, not fetched: `isInvalidated` is what is under test, and a query
+       has to exist to carry the flag. */
+    queryClient.setQueryData(["documents"], { documents: [] });
+    queryClient.setQueryData(
+      ["knowledge-items", MANUAL_SHELF_DOCUMENT_ID, null],
+      {
+        knowledge_items: [],
+      },
+    );
+    queryClient.setQueryData(["document", MANUAL_SHELF_DOCUMENT_ID], null);
+    /* The polling entry the exact-invalidation rule exists to protect. */
+    queryClient.setQueryData(
+      ["document", MANUAL_SHELF_DOCUMENT_ID, "status"],
+      null,
+    );
+    const { result } = renderHook(() => useCreateKnowledgeItem(), { wrapper });
+
+    await result.current.mutateAsync(RECIPE);
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      );
+    });
+    expect(
+      queryClient.getQueryState([
+        "knowledge-items",
+        MANUAL_SHELF_DOCUMENT_ID,
+        null,
+      ])?.isInvalidated,
+    ).toBe(true);
+    expect(
+      queryClient.getQueryState(["document", MANUAL_SHELF_DOCUMENT_ID])
+        ?.isInvalidated,
+    ).toBe(true);
+    /* `exact` — refiring the status poll for a book that is not ingesting is
+       the trap documents.ts documents. */
+    expect(
+      queryClient.getQueryState([
+        "document",
+        MANUAL_SHELF_DOCUMENT_ID,
+        "status",
+      ])?.isInvalidated,
+    ).toBe(false);
+  });
+
+  it("still refreshes the shelf when the save fails", async () => {
+    /* The 500 the endpoint raises when it cannot queue the indexing job comes
+       AFTER the insert, so a failure can have committed a row. */
+    server.use(
+      http.post("/api/v1/knowledge-items", () =>
+        HttpResponse.json(
+          {
+            error: {
+              code: "internal_error",
+              message: "Failed to enqueue the indexing job.",
+              details: {},
+            },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["documents"], { documents: [] });
+    const { result } = renderHook(() => useCreateKnowledgeItem(), { wrapper });
+
+    const failure = await result.current.mutateAsync(RECIPE).catch((e) => e);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).code).toBe("internal_error");
+    await waitFor(() => {
+      expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(
+        true,
+      );
+    });
+  });
 });

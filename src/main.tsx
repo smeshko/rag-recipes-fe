@@ -3,16 +3,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import "@fontsource/petrona/latin-400.css";
-import "@fontsource/petrona/latin-400-italic.css";
-import "@fontsource/petrona/latin-500.css";
-import "@fontsource/petrona/latin-500-italic.css";
-import "@fontsource/petrona/latin-600.css";
-import "@fontsource/figtree/latin-400.css";
-import "@fontsource/figtree/latin-400-italic.css";
-import "@fontsource/figtree/latin-500.css";
-import "@fontsource/figtree/latin-600.css";
-import "@fontsource/figtree/latin-700.css";
+/* No webfont imports. The type stack is the system sans (see --font-body in
+   theme.css) — the same fallback the target ships behind its own custom face,
+   which renders natively on every platform and costs nothing to load. The
+   @fontsource/petrona and @fontsource/figtree packages are now unreferenced
+   and can be uninstalled. */
 import "./theme.css";
 import { createQueryClient } from "./api";
 import { routes } from "./routes";

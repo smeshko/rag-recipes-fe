@@ -328,6 +328,15 @@ export interface KnowledgeItemUpdateRequest {
   steps?: string[];
 }
 
+/* POST /knowledge-items body — a recipe typed by hand rather than extracted
+   from a book. Aliased straight to the generated schema, unlike its update
+   sibling above: `title` is required there (so no `| null` to narrow away) and
+   the two lists are `list[str]` with an empty default rather than optional, so
+   the generated type already says exactly what the endpoint accepts. There is
+   nothing here for a hand-written narrowing to add. */
+export type KnowledgeItemCreateRequest =
+  components["schemas"]["KnowledgeItemCreateRequest"];
+
 /* ---------- review (4.2, generated since 4.4) ---------- */
 
 /* Generated re-exports, no longer hand-written: aliases into the backend's

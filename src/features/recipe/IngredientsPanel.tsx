@@ -69,16 +69,20 @@ export function IngredientsPanel({
 
   return (
     <Panel className="max-[880px]:static sticky top-6 self-start">
-      <h2 className="font-display text-[19px] font-semibold">Ingredients</h2>
+      <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
+        Ingredients
+      </h2>
       {resolution.kind === "empty" ? (
-        <p className="mt-3 text-[13.5px] text-fg-subtle italic">
+        /* Plain, not italic: an empty panel is stating a fact about the
+           payload, and italics made it read as an apology. */
+        <p className="mt-3 text-[13px] text-fg-subtle">
           {status === "extracting"
             ? "Still being extracted…"
             : "No ingredients were extracted."}
         </p>
       ) : (
         <>
-          <p className="mt-1 text-[12.5px] text-fg-subtle">
+          <p className="mt-1 text-[13px] text-fg-subtle">
             {rows.length} items · tap to check off
           </p>
           <ul className="mt-4 flex flex-col gap-1.5">
@@ -100,7 +104,11 @@ export function IngredientsPanel({
                     type="button"
                     aria-pressed={done}
                     onClick={() => toggle(index)}
-                    className="flex w-full items-start gap-3 rounded-[10px] px-2 py-1.5 text-left transition-colors hover:bg-surface-inset pointer-coarse:min-h-11"
+                    /* --color-surface-hover, not -inset: inset is the resting
+                       fill of chips and code, so using it as a hover made a
+                       hovered row look like a filled control that had somehow
+                       stayed pressed. */
+                    className="flex w-full items-start gap-3 rounded-[10px] px-2 py-1.5 text-left transition-colors hover:bg-surface-hover pointer-coarse:min-h-11"
                   >
                     <span
                       aria-hidden="true"
@@ -111,7 +119,7 @@ export function IngredientsPanel({
                       }`}
                     />
                     <span
-                      className={`text-[14px] leading-[1.5] ${
+                      className={`text-[15px] leading-[1.5] ${
                         done ? "text-fg-subtle line-through" : "text-fg"
                       }`}
                     >

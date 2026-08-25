@@ -28,12 +28,12 @@ function StopNotice({
   checkAgain: () => void;
 }) {
   return (
-    <div role="status" className="mt-2 text-[12.5px] text-fg-muted">
+    <div role="status" className="mt-2 text-[13px] text-fg-muted">
       {STOP_COPY[reason]}{" "}
       <button
         type="button"
         onClick={checkAgain}
-        className="font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+        className="font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
       >
         Check again
       </button>
@@ -42,10 +42,14 @@ function StopNotice({
 }
 
 /**
- * The mockup's processing variant (design/sk-library.html): progress label
- * row, 8px shimmer bar, seven-stage stepper. `pages_total: null` renders
- * the numberless indeterminate treatment — true both for early stages and
- * for a reuse-mode reprocess, which reports (0, null) for its whole run.
+ * The processing variant of a book row: progress label row, 8px shimmer bar,
+ * seven-stage stepper. `pages_total: null` renders the numberless
+ * indeterminate treatment — true both for early stages and for a reuse-mode
+ * reprocess, which reports (0, null) for its whole run.
+ *
+ * The bar's pulse and the current-stage dot are the one animation the re-skin
+ * kept: they are FEEDBACK, not ornament — a still bar and a frozen page count
+ * are indistinguishable from a hung request.
  */
 export function IngestionProgress({
   fallbackStatus,
@@ -68,7 +72,7 @@ export function IngestionProgress({
 
   return (
     <div className="py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5">
-      <div className="mb-2 flex justify-between text-[12.5px] font-semibold text-fg-muted">
+      <div className="mb-2 flex justify-between text-[13px] font-medium text-fg-muted">
         <span>{stageLabel(status)}</span>
         {determinate && (
           <b className="text-accent">
@@ -104,7 +108,7 @@ export function IngestionProgress({
         /* Seven stages (stages.ts), each with a possible ✓ or ● marker, plus
            six gaps — it does not fit 335px on one line, so it wraps rather
            than pushing the row wide. */
-        className="mt-2.5 flex list-none flex-wrap gap-x-1.5 gap-y-1 text-[10.5px] font-bold tracking-[0.04em] text-fg-subtle uppercase"
+        className="mt-2.5 flex list-none flex-wrap gap-x-1.5 gap-y-1 text-[10.5px] font-semibold tracking-[0.04em] text-fg-subtle uppercase"
       >
         {PIPELINE_STAGES.map((stage, index) => {
           const state = states[index];

@@ -27,12 +27,12 @@ export function NotEditable({
   return (
     <div className="pt-16">
       <Panel className="mx-auto max-w-[560px] text-center">
-        <p className="font-display text-[18px] font-semibold">
+        <p className="text-[18px] font-semibold tracking-[-0.01em]">
           {status === "indexing"
             ? "This one is being re-indexed."
             : "This one can't be edited."}
         </p>
-        <p className="mt-1 text-[13.5px] text-fg-muted">
+        <p className="mt-1 text-[15px] text-fg-muted">
           {status === "indexing" ? (
             <>
               A save is still working its way through — try again in a moment.
@@ -47,7 +47,7 @@ export function NotEditable({
         <p className="mt-5">
           <Link
             to={`/recipes/${id}`}
-            className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+            className="text-[13px] font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
           >
             View the recipe →
           </Link>
@@ -109,11 +109,9 @@ function ConflictBanner({
        the reviewer touching anything, so it has to announce. */
     <div
       role="alert"
-      className={`mt-6 rounded-[20px] border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5 ${TONE[tone].panel}`}
+      className={`mt-6 rounded-panel border px-7 py-6 max-[560px]:px-5 max-[560px]:py-5 ${TONE[tone].panel}`}
     >
-      <p className={`text-[13.5px] font-semibold ${TONE[tone].text}`}>
-        {children}
-      </p>
+      <p className={`text-[15px] font-medium ${TONE[tone].text}`}>{children}</p>
     </div>
   );
 }
@@ -175,8 +173,8 @@ export function SaveConflict({
       {/* The emphasis spans "now {label}" rather than the label alone: the
           news is the CHANGE, and the head already carries a Pill reading the
           bare status. */}
-      <b className="font-bold">now {statusTone(status).label}</b>. Your changes
-      are still here, but saving them may be refused.
+      <b className="font-semibold">now {statusTone(status).label}</b>. Your
+      changes are still here, but saving them may be refused.
     </ConflictBanner>
   );
 }

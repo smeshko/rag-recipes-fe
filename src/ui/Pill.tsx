@@ -14,9 +14,12 @@ export type PillTone =
   | "failed"
   | "book";
 
+/* Tighter and lighter than the old pair. Weight went from bold to medium
+   across the board: at 11–12px, bold small-caps on a tinted fill is shouting,
+   and in this language a chip is a quiet label, not a badge. */
 const SIZE: Record<PillSize, string> = {
-  sm: "text-[11.5px] px-[11px] py-[4px] border",
-  md: "text-[12px] px-[14px] py-[6px]",
+  sm: "text-[11.5px] px-2.5 py-[3px] border",
+  md: "text-[12px] px-3 py-[5px]",
 };
 
 const TONE: Record<PillTone, string> = {
@@ -52,7 +55,7 @@ export function Pill({
          recipe head, a citation label — pushed the page sideways at 375px no
          matter what the body's overflow-wrap said. These let it shrink; the
          call site decides whether the text truncates or wraps. */
-      className={`inline-flex min-w-0 max-w-full items-center rounded-pill font-bold ${SIZE[size]} ${TONE[tone]} ${caps} ${className}`}
+      className={`inline-flex min-w-0 max-w-full items-center rounded-pill font-medium ${SIZE[size]} ${TONE[tone]} ${caps} ${className}`}
     >
       {children}
     </span>

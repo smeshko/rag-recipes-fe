@@ -2,12 +2,12 @@ import { useRef, useState } from "react";
 import { useUploadBooks } from "../../api";
 import { UploadOutcome } from "./UploadOutcome";
 
-/* Mockup-faithful surface (sk-library.html:71-102): dashed border-strong
-   edge, translucent surface-raised bg, accent hover — deliberately NOT a
-   Panel.
-   The busy state and the outcome area below are declared design extensions;
-   the mockup has neither. No `accept` filter on the input and no client-side
-   type check: the server's magic-byte 415 is the authority. */
+/* Deliberately NOT a Panel: a dashed edge is the one border in the app that
+   says "drop something here", and Panel's hairline would make this read as
+   just another box. --color-border-strong exists for exactly this edge, and
+   the accent it takes on hover/drag is interactive ink, not decoration.
+   No `accept` filter on the input and no client-side type check: the server's
+   magic-byte 415 is the authority. */
 
 export function Dropzone() {
   const upload = useUploadBooks();
@@ -47,7 +47,7 @@ export function Dropzone() {
            children — a 54px tile and a button — so at 375px it could not
            shrink and simply overflowed. On the phone tier it becomes a
            stack; note `items-start`, so the icon does not stretch. */
-        className={`flex cursor-pointer items-center gap-6 rounded-[20px] border-2 border-dashed p-[34px] transition-colors duration-200 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-4 max-[560px]:p-6 ${zoneLook}`}
+        className={`flex cursor-pointer items-center gap-6 rounded-panel border-2 border-dashed p-[34px] transition-colors duration-150 max-[560px]:flex-col max-[560px]:items-start max-[560px]:gap-4 max-[560px]:p-6 ${zoneLook}`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => event.preventDefault()}
         onDragEnter={(event) => {
@@ -71,10 +71,10 @@ export function Dropzone() {
           </svg>
         </div>
         <div>
-          <b className="block font-display text-[18px] font-semibold">
+          <b className="block text-[15px] font-semibold">
             {upload.isPending ? "Adding to the shelf…" : "Drop cookbooks here"}
           </b>
-          <small className="mt-[3px] block text-[13.5px] text-fg-muted">
+          <small className="mt-[3px] block text-[14px] text-fg-muted">
             PDF only · duplicates are detected automatically · batches go
             through Anthropic overnight pricing
           </small>
@@ -82,13 +82,15 @@ export function Dropzone() {
         <button
           type="button"
           disabled={upload.isPending}
-          /* accent-strong / accent-pressed, theme-agnostic — see SearchInput's
-             Ask button for the measured pairs (plan D12). */
+          /* The near-black solid every primary action in the app now wears
+             (SearchInput's send button is the same pair). Hover fades instead
+             of darkening because the token inverts between themes — one class
+             reads correctly in both, where a darker-shade hover would not. */
           /* ml-auto is what pushes it right in the row; in the stacked arm it
              does nothing useful and would fight w-full, so it is dropped
              there. Drag-and-drop is meaningless on a phone — this button is
              the only real affordance, hence full width. */
-          className="ml-auto flex-none rounded-pill bg-accent-strong px-6 py-3 text-sm font-bold text-fg-on-accent pointer-coarse:min-h-11 transition-colors duration-200 hover:bg-accent-pressed disabled:opacity-60 max-[560px]:ml-0 max-[560px]:w-full"
+          className="ml-auto flex-none rounded-pill bg-surface-inverted px-6 py-3 text-[14px] font-medium text-fg-inverted pointer-coarse:min-h-11 transition-opacity duration-150 hover:opacity-80 disabled:opacity-60 max-[560px]:ml-0 max-[560px]:w-full"
           onClick={(event) => {
             /* The zone's own click handler also opens the picker — without
                stopPropagation one click would open it twice. */

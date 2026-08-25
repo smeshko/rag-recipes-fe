@@ -17,8 +17,8 @@ export interface UnsavedGuardProps {
 /**
  * "You have unsaved work" — as a panel in the app's own idiom, never the
  * browser's native confirm dialog (D15), which is unstylable, jsdom-hostile
- * and nothing like Sunday Kitchen. The grep that keeps it out of the codebase
- * is literal, so this comment does not spell the call.
+ * and nothing like the rest of the app. The grep that keeps it out of the
+ * codebase is literal, so this comment does not spell the call.
  *
  * Mounted by `RecipeEditForm`, never by `RecipeEditPage`: both hooks below sit
  * unconditionally in the render body, and the page's four early returns would
@@ -91,25 +91,28 @@ export function UnsavedGuard({ isDirty, discardingRef }: UnsavedGuardProps) {
       <Panel className="border-danger-border bg-danger-fill">
         <p
           id={headingId}
-          className="font-display text-[18px] font-semibold text-fg"
+          className="text-[18px] font-semibold tracking-[-0.01em] text-fg"
         >
           Discard your changes?
         </p>
-        <p className="mt-1 text-[13.5px] text-fg-muted">
+        <p className="mt-1 text-[15px] text-fg-muted">
           Nothing has been saved yet.
         </p>
         <div className="mt-5 flex items-center gap-4">
           <button
             type="button"
             onClick={() => blocker.proceed?.()}
-            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-bold text-fg-on-accent pointer-coarse:min-h-11"
+            /* The destructive solid keeps `bg-danger`, not the black one: this
+               is the only button in the app that throws work away, and it is
+               the one place the palette's loudest token is the honest choice. */
+            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-medium text-fg-on-accent transition-opacity hover:opacity-80 pointer-coarse:min-h-11"
           >
             Discard
           </button>
           <button
             type="button"
             onClick={() => blocker.reset?.()}
-            className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+            className="text-[13px] font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
           >
             Keep editing
           </button>

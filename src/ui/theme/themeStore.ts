@@ -32,8 +32,8 @@ const DARK_QUERY = "(prefers-color-scheme: dark)";
    pair — change one, change the other (and theme.css's --color-surface with
    them). They are the only colours outside theme.css. */
 const PAGE_COLOR: Record<ResolvedTheme, string> = {
-  light: "#FBF7EF",
-  dark: "#16110C",
+  light: "#ffffff",
+  dark: "#212121",
 };
 
 /* Every storage access is guarded: localStorage can throw (private windows,

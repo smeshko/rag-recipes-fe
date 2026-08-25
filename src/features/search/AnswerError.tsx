@@ -12,13 +12,15 @@ export function AnswerError({
   return (
     <div
       role="alert"
-      className="mx-auto mt-10 flex max-w-[720px] flex-wrap items-center justify-between gap-3 rounded-[14px] border border-danger-border bg-danger-fill px-5 py-4"
+      className="mx-auto mt-10 flex max-w-[720px] flex-wrap items-center justify-between gap-3 rounded-reco border border-danger-border bg-danger-fill px-5 py-4"
     >
       <p className="text-[14px] font-semibold text-danger">{error.message}</p>
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-pill bg-danger px-4 py-1.5 pointer-coarse:min-h-11 text-[12.5px] font-bold text-fg-on-accent transition-opacity hover:opacity-90"
+        /* The danger solid, not the black one: this is the one action on the
+           page whose colour is carrying meaning rather than emphasis. */
+        className="rounded-pill bg-danger px-4 py-1.5 pointer-coarse:min-h-11 text-[13px] font-medium text-fg-on-accent transition-opacity hover:opacity-80"
       >
         Try again
       </button>

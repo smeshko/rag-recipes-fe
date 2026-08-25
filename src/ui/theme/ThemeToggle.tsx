@@ -79,19 +79,21 @@ const SEGMENTS: readonly Segment[] = [
   { value: "system", label: "System", Icon: MonitorIcon },
 ];
 
-/* Nav's two pill states at icon size. Deliberately a copy of the shape rather
-   than an import of Nav's private helper: Nav styles links with text padding,
-   this styles square icon buttons, and coupling them would make one file's
-   density change silently move the other. */
-/* Icon-only segments, so they need a floor on BOTH axes — 32x32 at rest.
-   grid place-items-center keeps the icon centred once the box grows. */
+/* Icon-only segments, so they need a floor on BOTH axes — 30x30 at rest.
+   grid place-items-center keeps the icon centred once the box grows.
+
+   The selected segment is a RAISED pill, not the inverted black one: this
+   control lives in the sidebar footer, and the black solid is spoken for by
+   primary actions (send, save, upload). A white pill with a hairline on the
+   rail's grey is the platform-standard segmented-control idiom and is what the
+   target uses. Both states carry a border so selecting one shifts nothing. */
 const SEGMENT_BASE =
-  "grid place-items-center rounded-pill p-2 pointer-coarse:min-h-11 pointer-coarse:min-w-11";
+  "grid place-items-center rounded-pill border p-[7px] transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
 function segmentClass(selected: boolean): string {
   return selected
-    ? `${SEGMENT_BASE} bg-surface-inverted text-fg-inverted`
-    : `${SEGMENT_BASE} text-fg-muted transition-colors hover:bg-accent-fill hover:text-fg`;
+    ? `${SEGMENT_BASE} border-border bg-surface-raised text-fg`
+    : `${SEGMENT_BASE} border-transparent text-fg-subtle hover:text-fg`;
 }
 
 export function ThemeToggle() {
@@ -144,7 +146,7 @@ export function ThemeToggle() {
       role="radiogroup"
       aria-label="Theme"
       onKeyDown={handleKeyDown}
-      className="inline-flex items-center gap-0.5 rounded-pill border border-border p-0.5"
+      className="inline-flex items-center gap-0.5 rounded-pill border border-border bg-surface-inset p-0.5"
     >
       {SEGMENTS.map(({ value, label, Icon }, index) => (
         // biome-ignore lint/a11y/useSemanticElements: <input type="radio"> would have to be visually hidden behind a styled <label> to carry the pill fill, which is more markup and a less honest control than the APG button pattern this file implements.

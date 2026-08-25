@@ -65,23 +65,29 @@ export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
           {/* A full sentence, so on a phone it takes its own line above the
               buttons rather than competing with them for 335px. "Keep" stays
               last, which in a column puts the safe choice nearest the thumb. */}
-          <p className="text-[12.5px] font-semibold text-danger">
+          <p className="text-[13px] font-medium text-danger">
             Deleting is permanent — recovery is reprocessing the whole book.
           </p>
+          {/* The one solid fill left on this row, and it is danger rather than
+              the black primary: the confirm step is the only place on the read
+              page where colour is carrying the meaning. */}
           <button
             type="button"
             data-testid="recipe-delete-confirm"
             disabled={remove.isPending}
             onClick={() => remove.mutate()}
-            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-colors hover:bg-danger/85 disabled:opacity-50"
+            className="rounded-pill bg-danger px-5 py-2 text-[13px] font-medium pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-80 disabled:opacity-50"
           >
             {remove.isPending ? "Deleting…" : "Delete recipe"}
           </button>
+          {/* Ghost, and deliberately the quietest control in the row: hovering
+              the safe choice fills it grey rather than tinting it accent-blue,
+              which read as the recommended action sitting next to a red one. */}
           <button
             type="button"
             disabled={remove.isPending}
             onClick={() => setConfirmingDelete(false)}
-            className="rounded-pill border border-border bg-transparent px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-accent-fill disabled:opacity-50"
+            className="rounded-pill border border-border bg-transparent px-5 py-2 text-[13px] font-medium pointer-coarse:min-h-11 text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg disabled:opacity-50"
           >
             Keep
           </button>
@@ -107,7 +113,11 @@ export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
             <Link
               to={editHref}
               data-testid="recipe-edit-link"
-              className="inline-flex items-center rounded-pill bg-accent-strong px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-fg-on-accent transition-opacity hover:opacity-90"
+              /* The near-black solid — the page's one primary action. Hover
+                 lightens by opacity rather than by a darker fill because the
+                 same token is near-white in dark mode, where a "darker" hover
+                 would move the wrong way. */
+              className="inline-flex items-center rounded-pill bg-surface-inverted px-5 py-2 text-[13px] font-medium pointer-coarse:min-h-11 text-fg-inverted transition-opacity hover:opacity-80"
             >
               Edit this recipe
             </Link>
@@ -116,7 +126,7 @@ export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
             type="button"
             data-testid="recipe-delete"
             onClick={() => setConfirmingDelete(true)}
-            className="rounded-pill border border-danger-border bg-transparent px-5 py-2 text-[13px] font-bold pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill"
+            className="rounded-pill border border-danger-border bg-transparent px-5 py-2 text-[13px] font-medium pointer-coarse:min-h-11 text-danger transition-colors hover:bg-danger-fill"
           >
             Delete
           </button>
@@ -125,10 +135,7 @@ export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
       {remove.isError && (
         /* The house rule: the backend's own sentence, verbatim, announced.
            The row survives a failed delete — nothing navigated. */
-        <p
-          role="alert"
-          className="w-full text-[12.5px] font-semibold text-danger"
-        >
+        <p role="alert" className="w-full text-[13px] font-medium text-danger">
           {remove.error.message}
         </p>
       )}

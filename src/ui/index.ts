@@ -4,6 +4,18 @@ export { Bloom } from "./Bloom";
 export type { CardAccent, CardProps } from "./Card";
 export { Card } from "./Card";
 export { Eyebrow } from "./Eyebrow";
+export {
+  IconClose,
+  IconCompose,
+  IconLibrary,
+  IconMenuList,
+  IconSearch,
+  IconSend,
+  IconSidebar,
+  IconSparkle,
+  IconStar,
+} from "./icons";
+export type { NavProps } from "./Nav";
 export { Nav } from "./Nav";
 export type { PanelProps } from "./Panel";
 export { Panel } from "./Panel";
@@ -21,4 +33,6 @@ export type { SearchInputProps } from "./SearchInput";
 export { SearchInput } from "./SearchInput";
 export type { ShellHandle } from "./Shell";
 export { Shell } from "./Shell";
+export type { SidebarProps } from "./Sidebar";
+export { Sidebar } from "./Sidebar";
 export { ThemeToggle } from "./theme/ThemeToggle";

@@ -39,16 +39,14 @@ export function FavouriteCard({ item }: { item: KnowledgeItemSummary }) {
   const status = statusTone(item.status);
 
   return (
-    <article className="rounded-[18px] border border-border bg-surface-raised px-6 py-5 shadow-card">
+    <article className="rounded-card border border-border bg-surface-raised px-6 py-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
-            {item.title}
-          </h3>
+          <h3 className="text-[15px] font-semibold">{item.title}</h3>
           {/* The book is the headline provenance here, not the page: this list
               is cross-shelf, so "which book is this from" is the question a
               row actually raises. */}
-          <small className="mt-1 block text-[12.5px] font-semibold text-fg-subtle">
+          <small className="mt-1 block text-[13px] text-fg-subtle">
             {item.document.title}
             {span ? ` · ${span}` : ""}
             {item.favourited_at ? (
@@ -76,13 +74,13 @@ export function FavouriteCard({ item }: { item: KnowledgeItemSummary }) {
       </div>
 
       {item.summary && (
-        <p className="mt-2 text-[13.5px] text-fg-muted">{item.summary}</p>
+        <p className="mt-2 text-[14px] text-fg-muted">{item.summary}</p>
       )}
 
       <div className="mt-4">
         <Link
           to={withReturnTo(`/recipes/${item.id}`, location)}
-          className="text-[12.5px] font-bold text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
+          className="text-[13px] font-medium text-accent hover:underline inline-flex items-center pointer-coarse:min-h-11"
         >
           View recipe →
         </Link>
