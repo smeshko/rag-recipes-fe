@@ -135,8 +135,11 @@ describe("ReviewCallout", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("review-callout")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("recipe-edit-link")).not.toBeInTheDocument();
     expect(screen.queryByTestId(/^recipe-flag-/)).not.toBeInTheDocument();
+    /* The EDIT LINK, by contrast, is present — it lives in `RecipeActions`
+       now and no longer depends on the callout. A shelved recipe having no way
+       to be corrected was the gap that move closed; see recipeActions.test. */
+    expect(screen.getByTestId("recipe-edit-link")).toBeInTheDocument();
   });
 
   it("says so explicitly once every warning has cleared", async () => {

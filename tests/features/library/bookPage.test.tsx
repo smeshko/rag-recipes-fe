@@ -368,6 +368,42 @@ describe("getting there and back", () => {
     ).toHaveAttribute("href", "/library");
   });
 
+  it("makes the whole card clickable, not just the title", async () => {
+    /* Stretched link: the title is still the only <a>, but its ::after covers
+       the card. Asserted structurally, because jsdom has no layout — a click
+       on the row cannot be simulated, so the overlay class and the raised
+       sibling controls are the checkable claim. */
+    renderAt("/library");
+
+    const title = await screen.findByRole("link", {
+      name: "One Pan to Rule Them All",
+    });
+    expect(title.className).toContain("after:absolute");
+    expect(title.className).toContain("after:inset-0");
+
+    const card = title.closest("article");
+    expect(card?.className).toContain("relative");
+    expect(card?.className).toContain("isolate");
+
+    /* The controls that share the card must sit ABOVE the overlay, or the
+       card-wide hit area swallows them. */
+    const reprocess = screen.getAllByRole("button", { name: /reprocess/i })[0];
+    expect(reprocess.closest("div")?.className).toContain("z-10");
+  });
+
+  it("keeps the row's own controls working under the overlay", async () => {
+    const user = userEvent.setup();
+    const { router } = renderAt("/library");
+
+    /* A click on the review link must go to the queue, not to the book. */
+    const queueLink = (
+      await screen.findAllByRole("link", { name: /open review queue/i })
+    )[0];
+    await user.click(queueLink);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/review"));
+  });
+
   it("does not link a book that has nothing to list yet", async () => {
     renderAt("/library");
     /* Queued: still extracting, so the title stays plain text. */

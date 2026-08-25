@@ -1,6 +1,4 @@
-import { Link, useSearchParams } from "react-router";
 import type { KnowledgeItemResponse, ReviewFlag } from "../../api";
-import { readReturnTo, withReturnTo } from "../../ui";
 
 /* The read page's review block (5.4 TASK-005): one surface doing three jobs
    for a `needs_review` item — what is still flagged, whether anyone has
@@ -21,22 +19,20 @@ import { readReturnTo, withReturnTo } from "../../ui";
    empty `review_reasons` on a still-undecided item renders an explicit line,
    in the success tone, rather than nothing.
 
-   THE EDIT LINK forwards the recipe's own VALIDATED return target, not the
-   recipe's URL. Capturing `/recipes/:id` would pass `readReturnTo` and then
-   classify as `null` in `returnSection`, so the editor's back link would fall
-   through to its fourth arm and drop the reviewer on search instead of the
-   queue they were working through. This is `RecipeEditForm`'s `readHref`
-   idiom run in the opposite direction.
+   THE EDIT LINK LIVES ELSEWHERE NOW. It moved to `RecipeActions`, which
+   renders on every recipe rather than only a flagged one — leaving it here as
+   well would put two Edit buttons on the same page. The return-target
+   forwarding it depended on moved with it, unchanged.
 
    NOT rendered for a decided item, even though the backend projects
-   `review_reasons: []` for one: a settled recipe has no review affordance,
-   and the editor would refuse it anyway (`NotEditable`). */
+   `review_reasons: []` for one: a settled recipe has nothing flagged to say.
+   The verbs are no longer gated on this, so a shelved recipe still gets its
+   Edit and Delete from `RecipeActions` above. */
 
 const flagText = (flag: ReviewFlag) => flag.message || flag.code;
 
 export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
-  const [searchParams] = useSearchParams();
-  const { id, status, review_reasons: flags, edited_at } = item.knowledge_item;
+  const { status, review_reasons: flags, edited_at } = item.knowledge_item;
 
   if (status !== "needs_review") {
     return null;
@@ -44,11 +40,6 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
 
   const [lead, ...secondaries] = flags;
   const cleared = lead === undefined;
-
-  const target = readReturnTo(searchParams);
-  const editHref = target
-    ? withReturnTo(`/recipes/${id}/edit`, { pathname: target.to, search: "" })
-    : `/recipes/${id}/edit`;
 
   return (
     <section
@@ -110,17 +101,6 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
           </p>
         ) : null}
       </div>
-      <Link
-        to={editHref}
-        data-testid="recipe-edit-link"
-        className={`inline-flex items-center rounded-pill border-[1.5px] px-4 py-1.5 text-[13px] font-bold pointer-coarse:min-h-11 transition-colors ${
-          cleared
-            ? "border-success/40 text-success hover:bg-success/8"
-            : "border-warning-border text-warning hover:bg-warning/8"
-        }`}
-      >
-        Edit this recipe →
-      </Link>
     </section>
   );
 }

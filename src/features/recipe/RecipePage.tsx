@@ -5,6 +5,7 @@ import { FactsRow } from "./FactsRow";
 import { IngredientsPanel } from "./IngredientsPanel";
 import { MethodPanel } from "./MethodPanel";
 import { Provenance } from "./Provenance";
+import { RecipeActions } from "./RecipeActions";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "./RecipeStates";
 import { ReviewCallout } from "./ReviewCallout";
 import { TitleBlock } from "./TitleBlock";
@@ -52,6 +53,12 @@ export function RecipePage() {
         <Bloom duration={0.7} delay={0.08} className="pt-8">
           <TitleBlock item={data} />
           <FactsRow sd={data.knowledge_item.structured_data} />
+          {/* Page-level verbs sit with the head, not at the foot: they belong
+              to the recipe as a whole, and a reader who came to fix or remove
+              this one should not have to scroll past the method to find them.
+              The callout below stays the *contextual* surface — what is
+              flagged — now that the Edit button has moved up here. */}
+          <RecipeActions item={data} />
         </Bloom>
         {/* Between the head and the panels, on its own step of the cadence:
             what is still flagged is the first thing a reviewer needs after the

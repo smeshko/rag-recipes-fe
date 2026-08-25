@@ -151,21 +151,33 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
 
   return (
     <Bloom index={index} base={0.18} step={0.04} className="mb-4">
-      <article className="grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-border bg-surface-raised shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-row-hover max-[880px]:grid-cols-[6px_1fr]">
+      {/* `relative isolate` is the positioning context for the title link's
+          stretched hit area below — `isolate` so the z-10 the sibling controls
+          carry is scoped to this card and cannot outrank anything outside it. */}
+      <article className="relative isolate grid grid-cols-[6px_minmax(0,1.4fr)_minmax(0,2fr)_auto] items-center gap-6 overflow-hidden rounded-[18px] border border-border bg-surface-raised shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-[3px] hover:shadow-row-hover max-[880px]:grid-cols-[6px_1fr]">
         <span
           aria-hidden="true"
           className={`self-stretch ${spineAccent(doc.status, doc.id)}`}
         />
         <div className="py-5">
-          {/* The title is the way into the book's contents — but only once
-              there is something to list. A queued or mid-extraction book has
-              no items yet, so it stays plain text rather than a link that
-              lands on an empty page. */}
+          {/* The whole card is the way into the book's contents — but only
+              once there is something to list. A queued or mid-extraction book
+              has no items yet, so it stays plain text rather than a link that
+              lands on an empty page.
+
+              STRETCHED LINK, not a wrapping <a>: this row also holds a review
+              link and a Reprocess button, and an anchor around them would be
+              invalid HTML and would swallow their clicks. So the title stays
+              the one real link and grows an `::after` overlay across the card,
+              while the sibling controls sit above it on `z-10`. The accessible
+              name stays the book's title — a screen reader announces one link,
+              not a card-sized mystery — and ⌘-click, middle-click and "copy
+              link address" all still work anywhere on the row. */}
           <h3 className="font-display text-[20px] font-semibold leading-[1.25]">
             {isReadyIsh(doc.status) ? (
               <Link
                 to={withReturnTo(`/library/${doc.id}`, location)}
-                className="transition-colors hover:text-accent"
+                className="transition-colors hover:text-accent after:absolute after:inset-0 after:content-['']"
               >
                 {doc.title}
               </Link>
@@ -188,6 +200,11 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
               "The API doesn't expose the reason yet."}
           </div>
         ) : (
+          /* Not raised above the stretched overlay, and does not need to be:
+             this branch is the `else` of `isReadyIsh`, which is the exact
+             condition the overlay renders under — a row never has both. If the
+             title ever becomes a link for non-ready books, this component's
+             "check again" button needs `relative z-10` or it goes dead. */
           <IngestionProgress
             fallbackStatus={doc.status}
             data={ingest.data}
@@ -195,7 +212,10 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
             checkAgain={ingest.checkAgain}
           />
         )}
-        <div className="py-5 pr-6 text-right max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5 max-[880px]:pr-0 max-[880px]:text-left">
+        {/* `relative z-10`: above the title's stretched overlay, so the review
+            link and Reprocess stay clickable rather than being covered by the
+            card-wide hit area. */}
+        <div className="relative z-10 py-5 pr-6 text-right max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pb-5 max-[880px]:pr-0 max-[880px]:text-left">
           <Pill size="md" tone={pill.tone}>
             {pill.label}
           </Pill>

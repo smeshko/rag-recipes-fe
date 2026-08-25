@@ -93,9 +93,13 @@ export const documentKnowledgeItemsErrorHandler = (
  * asserting the optimistic removal against a list that immediately undoes it —
  * green for the wrong reason, or red for a bug that is not there. Pass a
  * per-test copy of the fixture, never the shared one.
+ *
+ * `items` is typed by the only field this handler reads, so a caller with no
+ * listing in play (the read page's own delete) can pass a bare `[{ id }]`
+ * instead of manufacturing a full row it will never serve.
  */
 export const knowledgeItemDeleteHandler = (
-  items: KnowledgeItemSummary[],
+  items: { id: string }[],
   onDelete?: (itemId: string) => void,
 ) =>
   http.delete("/api/v1/knowledge-items/:itemId", ({ params }) => {
