@@ -1,19 +1,24 @@
-import { IconSearch, IconSend } from "./icons";
+import type { ReactNode } from "react";
+import { IconSend } from "./icons";
 
 /* The composer. Controlled: the screen needs the live value for URL writes and
-   the AI actions strip, and controlled props make Back/Forward resync the
-   caller's problem (one useEffect at the call site) instead of a reseed dance
-   in here.
+   for the actions in the footer, and controlled props make Back/Forward resync
+   the caller's problem (one useEffect at the call site) instead of a reseed
+   dance in here.
  *
- * Shaped like the target's composer — a fully rounded field, hairline border,
- * one whisper of shadow, and a SOLID CIRCULAR send button rather than a
- * labelled pill. The leading magnifier stays: this is a search field, not a
- * chat box, and the target's own search input carries one too.
+ * Geometry read off chatgpt.com rather than guessed (2026-08-25): 28px radius,
+ * a 768px column, 16px/26px text. It is a TWO-ROW box — the field on top, a
+ * row of quiet controls beneath it — which is the shape every current AI
+ * composer has converged on (theirs, Grok's, Gemini's, Cursor's). The second
+ * row is what lets the expensive actions live inside the field instead of in a
+ * bordered strip underneath it.
  *
- * The button is icon-only but keeps the accessible name "Search". A voice
- * control user says "click Search"; nothing about the visible glyph changes
- * that, and WCAG 2.5.3 is satisfied because there is no competing visible
- * label to disagree with. */
+ * 16px on the input, not 15: iOS Safari zooms the viewport on focus for any
+ * input under 16px, and this is the one field on every screen.
+ *
+ * No leading magnifier any more. It was a holdover from when this was only a
+ * search box; with a control row spelling out what the box does, an icon
+ * repeating "search" is noise. */
 export interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -24,6 +29,11 @@ export interface SearchInputProps {
       announced name to contain the visible text, so a voice-control user can
       say what they see. Overriding it with unrelated wording breaks that. */
   label?: string;
+  /** The footer row's left side — menus, toggles. Rendered inside the box, so
+      whatever goes here is visually part of the field. */
+  controls?: ReactNode;
+  /** Accessible name for the submit button. Defaults to "Search". */
+  submitLabel?: string;
   /** React 19 ref-as-prop for the inner input (focus/select from outside). */
   ref?: React.Ref<HTMLInputElement>;
 }
@@ -34,45 +44,53 @@ export function SearchInput({
   onSubmit,
   placeholder = "What are we cooking?",
   label,
+  controls,
+  submitLabel = "Search",
   ref,
 }: SearchInputProps) {
   return (
     <form
-      /* focus-within moves the border rather than adding a lift — depth is not
+      /* ONE row, controls inline to the right of the field — measured off the
+         target, whose composer is ~56px tall with its model picker, mic and
+         send button all on the same line as the placeholder. A two-row box
+         (which Cursor and Gemini use) came out at 88px here and read as a
+         panel rather than a field.
+
+         It wraps on the phone tier instead of shrinking: at 375px the field,
+         two menus and the button do not fit on one line, and squeezing them
+         leaves nothing to type into. Wrapped, the input takes the first row
+         and the controls the second — `ml-auto` on the button then does real
+         work, holding it to the right edge of that second row.
+
+         focus-within moves the border rather than adding a lift — depth is not
          how this language signals focus. The ring shadow rides along for the
-         2px halo that keyboard users need; --shadow-focus is now just that
-         halo, with none of the old 40px glow. */
-      className="flex items-center gap-2.5 rounded-[26px] border border-border bg-surface-raised py-2 pr-2 pl-4 shadow-card transition-[border-color,box-shadow] duration-150 focus-within:border-fg-subtle focus-within:shadow-focus max-[560px]:gap-2 max-[560px]:pl-3.5"
+         2px halo keyboard users need. */
+      className="flex items-center gap-1.5 rounded-[28px] border border-border bg-surface-raised px-2 py-2 shadow-card transition-[border-color,box-shadow] duration-150 focus-within:border-fg-subtle focus-within:shadow-focus max-[560px]:flex-wrap"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
     >
-      {/* Decorative: the placeholder and the Search button carry the meaning,
-          so the icon is hidden from the a11y tree (aria-hidden is baked into
-          the icon set — see ui/icons.tsx). */}
-      <IconSearch className="h-[18px] w-[18px] text-fg-subtle" />
       <input
         ref={ref}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         aria-label={label ?? placeholder}
         placeholder={placeholder}
-        /* 16px, not 15: iOS Safari zooms the viewport on focus for any input
-           under 16px, and a composer is the one field on every screen. */
-        className="min-w-0 flex-1 border-none bg-transparent text-[16px] text-fg outline-none placeholder:text-fg-subtle pointer-coarse:min-h-11"
+        /* min-w-0 so a long draft shrinks the field rather than pushing the
+           controls out of the box. */
+        className="min-w-0 flex-1 border-none bg-transparent px-2 text-[16px] leading-[26px] text-fg outline-none placeholder:text-fg-subtle max-[560px]:basis-full max-[560px]:pb-1"
       />
-      {/* Plain submit. The LLM actions (Ask the shelf, Compose a menu) live in
-          the AI actions strip under the bar, not in the field: Enter and this
-          button only ever run the plain search. */}
+      {controls}
       <button
         type="submit"
-        aria-label="Search"
-        /* The black solid, and one of the few places it is spent. Hover
-           lightens rather than darkens because in dark mode the same token is
-           near-white — opacity is the one hover that reads correctly in both
-           palettes without a `dark:` arm. */
-        className="grid h-9 w-9 flex-none place-items-center rounded-full bg-surface-inverted text-fg-inverted transition-opacity duration-150 hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-30 pointer-coarse:h-11 pointer-coarse:w-11"
+        aria-label={submitLabel}
+        /* Blue, not the black solid — the one place the target spends a
+             coloured fill, and the reason --color-accent-solid exists. White
+             glyph on #3a83f7 is 3.64:1, over the 3:1 a non-text control needs.
+             Hover fades rather than darkening so the single value works in
+             both themes without a `dark:` arm. */
+        className="ml-auto grid h-9 w-9 flex-none place-items-center rounded-full bg-accent-solid text-white transition-opacity duration-150 hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:w-11"
       >
         <IconSend className="h-[18px] w-[18px]" />
       </button>

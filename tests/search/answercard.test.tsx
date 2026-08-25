@@ -15,6 +15,7 @@ import {
   groundedRepeatedCiteFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
+import { aiAnswersTrigger, runAiAction } from "./composer";
 
 function renderAsked(fixture = groundedAnswerFixture) {
   server.use(answersHandler(fixture));
@@ -34,10 +35,8 @@ function renderAsked(fixture = groundedAnswerFixture) {
 
 async function ask() {
   const user = userEvent.setup();
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Ask the shelf" })).toBeEnabled(),
-  );
-  await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+  await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
+  await runAiAction(user, "Ask the shelf");
 }
 
 describe("answer card", () => {

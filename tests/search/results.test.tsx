@@ -12,6 +12,7 @@ import {
   searchFixture,
 } from "../msw/handlers";
 import { server } from "../msw/server";
+import { chooseMode } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -123,7 +124,7 @@ describe("results grid", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata");
     await screen.findByText(first.item.title);
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
 
     /* Vector is selected in the URL, but the grid still holds hybrid results:
        the subline must say so. */

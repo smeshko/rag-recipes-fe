@@ -6,6 +6,7 @@ import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
 import { answersHandler, groundedAnswerFixture } from "../msw/answers";
 import { server } from "../msw/server";
+import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -43,7 +44,9 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const askButton = () => screen.getByRole("button", { name: "Ask the shelf" });
+const askButton = () => aiAnswersTrigger();
+const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>
+  runAiAction(user, "Ask the shelf");
 const answerCard = () => screen.queryByText(/Grounded in your books/);
 
 async function settleGrid() {
@@ -56,7 +59,7 @@ async function settleGrid() {
     the answer. Leaves the router on the recipe page. */
 async function askThenOpenRecipe(user: ReturnType<typeof userEvent.setup>) {
   await settleGrid();
-  await user.click(askButton());
+  await clickAsk(user);
   await screen.findByText(/Grounded in your books/);
   expect(answersCalls).toBe(1);
 
@@ -113,7 +116,7 @@ describe("an answer survives a detour through a recipe", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     const card = (await screen.findByText(/Grounded in your books/)).closest(
       "section",
     ) as HTMLElement;
@@ -147,7 +150,7 @@ describe("an answer survives a detour through a recipe", () => {
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
     /* The CTA is back, because the new query has no answer of its own. */
-    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
+    expect(aiAnswersTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 
@@ -177,7 +180,7 @@ describe("asked=1 is the ask", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe("?q=breakfast&asked=1");
     expect(answersCalls).toBe(1);
@@ -191,7 +194,7 @@ describe("asked=1 is the ask", () => {
     await settleGrid();
     /* The entry before the click never had an answer on it. */
     expect(answerCard()).toBeNull();
-    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
+    expect(aiAnswersTrigger()).toBeInTheDocument();
 
     await act(async () => {
       await router.navigate(1);
@@ -216,11 +219,11 @@ describe("asked=1 is the ask", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe("?q=breakfast&asked=1");
 
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(askButton()).toBeEnabled());
     expect(router.state.location.search).toBe("?q=breakfast&asked=1");
 
@@ -245,7 +248,7 @@ describe("asked=1 is the ask", () => {
       await router.navigate("/?mode=vector&q=breakfast&asked=1");
     });
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe(
       "?q=breakfast&mode=vector&asked=1",
@@ -267,7 +270,7 @@ describe("asked=1 is the ask", () => {
     renderAt("/?q=breakfast&asked=1");
     await settleGrid();
     expect(answerCard()).toBeNull();
-    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
+    expect(aiAnswersTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(0);
   });
 
@@ -278,17 +281,17 @@ describe("asked=1 is the ask", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
 
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=breakfast&mode=vector"),
     );
     await settleGrid();
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
-    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
+    expect(aiAnswersTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 });

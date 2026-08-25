@@ -14,6 +14,7 @@ import {
   NO_RESULTS_WARNING,
 } from "../msw/answers";
 import { server } from "../msw/server";
+import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -48,10 +49,8 @@ afterEach(() => {
 
 async function ask() {
   const user = userEvent.setup();
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "Ask the shelf" })).toBeEnabled(),
-  );
-  await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+  await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
+  await runAiAction(user, "Ask the shelf");
   return user;
 }
 
@@ -123,14 +122,8 @@ describe("fallback", () => {
       ),
     );
     renderAt("/?q=wine+pairing");
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Ask the shelf" }),
-      ).toBeEnabled(),
-    );
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
+    await runAiAction(userEvent.setup(), "Ask the shelf");
     await screen.findByRole("status");
     /* The search failure still surfaces; it is not an answer-layer concern. */
     expect(
@@ -143,7 +136,7 @@ describe("fallback", () => {
     renderAt("/?q=wine+pairing");
     const user = await ask();
     await screen.findByRole("status");
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
     /* Live search grid returns (search-grid heading, not the fallback one). */
     await waitFor(() =>
       expect(screen.getByText("2 matches")).toBeInTheDocument(),
@@ -153,7 +146,7 @@ describe("fallback", () => {
        the answer it belonged to, and the CTA offers the new question. Not a
        second round-trip: the fallback stays in the cache, one Back away. */
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByTestId("ai-answers")).toBeInTheDocument();
+    expect(aiAnswersTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 

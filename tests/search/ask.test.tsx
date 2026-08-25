@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { delay, HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import type { AnswerResponse } from "../../src/api";
 import { routes } from "../../src/routes";
 import {
   answersHandler,
@@ -11,6 +13,19 @@ import {
   groundedAnswerFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
+import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
+
+/* An answer that takes long enough to observe mid-flight. The default
+   handler resolves within a tick, so anything asserted after an awaited
+   interaction would already see the settled state. */
+const slowAnswersHandler = (fixture: AnswerResponse) =>
+  http.post("/api/v1/answers", async () => {
+    /* Deliberately does NOT record the call — a `request:start` listener in
+       beforeEach already counts every /answers POST, and pushing here too
+       would double-count each one. */
+    await delay(300);
+    return HttpResponse.json(fixture);
+  });
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -45,7 +60,12 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const askButton = () => screen.getByRole("button", { name: "Ask the shelf" });
+/* The trigger, for enabled/disabled assertions. The two LLM actions now live
+   behind it (ComposerControls), and it is what carries the empty-draft guard
+   the old always-visible button carried. To RUN the ask, use runAiAction. */
+const askButton = () => aiAnswersTrigger();
+const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>
+  runAiAction(user, "Ask the shelf");
 
 async function settleGrid() {
   await waitFor(() =>
@@ -70,7 +90,7 @@ describe("ask affordance", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast&mode=vector");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(1));
     expect(answersCalls[0]?.body).toEqual({
       query: "breakfast",
@@ -91,7 +111,7 @@ describe("ask affordance", () => {
     await settleGrid();
     await user.clear(searchBox());
     await user.type(searchBox(), "weekend brunch");
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(1));
     const firstBody = answersCalls[0]?.body as { query: string } | undefined;
     expect(firstBody?.query).toBe("weekend brunch");
@@ -117,9 +137,9 @@ describe("ask affordance", () => {
     const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(1));
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
     await settleGrid();
     expect(answersCalls).toHaveLength(1);
   });
@@ -129,7 +149,7 @@ describe("ask affordance", () => {
     const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     /* Pending skeleton appears while the LLM works. */
     await waitFor(() =>
       expect(screen.queryByTestId("answer-skeleton")).toBeNull(),
@@ -146,26 +166,38 @@ describe("ask affordance", () => {
     expect(answersCalls).toHaveLength(1);
   });
 
-  it("rapid repeated Ask clicks buy exactly one LLM round-trip", async () => {
-    server.use(answersHandler(groundedAnswerFixture));
+  it("refuses a second Ask while one is still in flight", async () => {
+    server.use(slowAnswersHandler(groundedAnswerFixture));
     const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
-    /* Two clicks dispatched inside one frame — no re-render in between, so
-       the disabled attribute cannot have applied yet. Only the synchronous
-       in-flight latch can stop the second one. */
-    const button = askButton();
-    fireEvent.click(button);
-    fireEvent.click(button);
-    await waitFor(() => expect(answersCalls).toHaveLength(1));
-    /* And the button is disabled for the duration of the flight. */
-    await waitFor(() => expect(askButton()).toBeEnabled());
+    /* This used to dispatch two clicks inside ONE frame on an always-visible
+       button — no re-render between them, so only a synchronous latch could
+       stop the second. That vector no longer exists: the action lives in a
+       menu that closes the moment it is chosen, so it cannot be fired twice in
+       a frame at all. The guard that DOES still exist, and the one worth
+       pinning, is that the action reports itself unavailable for as long as
+       the round-trip is open. */
+    await clickAsk(user);
+    await user.click(aiAnswersTrigger());
+    expect(
+      await screen.findByRole("menuitem", { name: /^Ask the shelf/ }),
+    ).toBeDisabled();
+    await user.keyboard("{Escape}");
     expect(answersCalls).toHaveLength(1);
+
+    /* Waited on the ANSWER, not on the trigger: the trigger is disabled only
+       by an empty draft, never by the flight, so asserting it is enabled here
+       would pass instantly and prove nothing — and the second ask below would
+       then land while the first was still open, be refused, and fail the
+       count for the wrong reason. */
+    await screen.findByText(/Grounded in your books/);
+    expect(askButton()).toBeEnabled();
 
     /* The latch releases: a later Ask on a new query still works. */
     await user.clear(searchBox());
     await user.type(searchBox(), "scones");
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(2));
   });
 
@@ -174,19 +206,22 @@ describe("ask affordance", () => {
     const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
-    fireEvent.click(askButton());
+    await clickAsk(user);
     /* Reset the mutation mid-flight by changing ?q= — this detaches the
        observer, so anything keyed to a per-mutate callback would stick. */
     await user.clear(searchBox());
     await user.type(searchBox(), "scones{Enter}");
     await settleGrid();
     await waitFor(() => expect(askButton()).toBeEnabled());
-    await user.click(askButton());
+    await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(2));
   });
 
   it("announces the answer lifecycle in a polite live region", async () => {
-    server.use(answersHandler(groundedAnswerFixture));
+    /* Slow, so "Asking the shelf…" is still on screen once the awaited click
+       returns — the default handler settles within a tick. */
+    server.use(slowAnswersHandler(groundedAnswerFixture));
+    const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
     /* Present from mount, empty — a live region injected together with its
@@ -198,7 +233,7 @@ describe("ask affordance", () => {
        uniquely addressable one. */
     expect(screen.queryByRole("status")).toBeNull();
 
-    fireEvent.click(askButton());
+    await clickAsk(user);
     expect(region).toHaveTextContent("Asking the shelf…");
     await waitFor(() =>
       expect(region).toHaveTextContent("The answer is ready."),
@@ -210,7 +245,7 @@ describe("ask affordance", () => {
     const user = userEvent.setup();
     renderAt("/?q=wine+pairing");
     await settleGrid();
-    await user.click(askButton());
+    await clickAsk(user);
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent(FALLBACK_WARNING);
     /* Blank, so the warning is not announced twice. */

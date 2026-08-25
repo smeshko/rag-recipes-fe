@@ -67,11 +67,11 @@ function activePill({
    reserved for the primary action (send, save, upload) — spending it on a nav
    row would leave the actual buttons with nothing louder to be. */
 const ROW_BASE =
-  "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[14px] transition-colors pointer-coarse:min-h-11";
+  "flex w-full items-center gap-1.5 rounded-[10px] px-2.5 py-[7px] text-[14px] transition-colors pointer-coarse:min-h-11";
 
 function rowClass(active: boolean): string {
   return active
-    ? `${ROW_BASE} bg-surface-hover font-medium text-fg`
+    ? `${ROW_BASE} bg-surface-hover text-fg`
     : `${ROW_BASE} text-fg-muted hover:bg-surface-hover hover:text-fg`;
 }
 

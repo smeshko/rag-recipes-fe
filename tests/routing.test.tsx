@@ -10,6 +10,7 @@ import { answersHandler, groundedAnswerFixture } from "./msw/answers";
 import { libraryShelfHandlers, shelfKeyedReviewItems } from "./msw/handlers";
 import { fullItemFixture } from "./msw/knowledgeItems";
 import { server } from "./msw/server";
+import { runAiAction } from "./search/composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -138,9 +139,7 @@ const openReviewCard = async (user: User, title: string) => {
 };
 
 const askTheShelf = async (user: User) => {
-  await user.click(
-    await screen.findByRole("button", { name: "Ask the shelf" }),
-  );
+  await runAiAction(user, "Ask the shelf");
   await screen.findByText(/Grounded in your books/);
 };
 

@@ -60,9 +60,9 @@
   /* --- Surfaces --- */
   --color-surface: #ffffff; /* the page wash / main pane */
   --color-surface-sidebar: #f9f9f9; /* the nav rail, one step off the page */
-  --color-surface-inset: #f4f4f4; /* chips, code, the user's own turn */
+  --color-surface-inset: #f3f3f3; /* chips, code, the user's own turn */
   --color-surface-raised: #ffffff; /* cards, panels, the composer */
-  --color-surface-hover: #ececec; /* row / icon-button hover fill */
+  --color-surface-hover: #e8e8e8; /* row / icon-button hover fill */
   --color-surface-inverted: #0d0d0d; /* THE primary solid: buttons, active nav */
   --color-surface-warm: #f9f9f9; /* aside fill, light stop (now neutral) */
   --color-surface-warm-strong: #f4f4f4; /* aside fill, deep stop */
@@ -75,20 +75,32 @@
   --color-fg-on-accent: #ffffff; /* text on an accent or danger solid */
 
   /* --- Accent ---
-     Interactive ink only: links, active icons, focus. It is NOT the fill of a
-     primary button — that is --color-surface-inverted, the black pill, which
-     is what makes the language read as ChatGPT rather than as a blue SaaS app.
-     `accent-strong` / `-pressed` are the hover/active ink for accent TEXT, so
-     they darken in light and lighten in dark. #0b5ed7 measures 5.84:1 on white
-     and #0a4fb4 7.53:1; dark's #7ab7ff measures 7.70:1 on #212121. */
-  --color-accent: #0b5ed7; /* link and interactive ink */
-  --color-accent-strong: #0a4fb4; /* accent-text hover */
-  --color-accent-pressed: #083d8c; /* accent-text active */
-  --color-accent-fill: #eaf2fd; /* accent tint background */
+     Every value in this file was read off chatgpt.com's own custom properties
+     (2026-08-25) rather than eyeballed, which is why the surfaces and text
+     tones are exact. The accent is the ONE deliberate deviation: their
+     --blue-400 is #3a83f7, which measures 3.64:1 on white and fails AA for
+     body text. Since `text-accent` here paints real links in running prose,
+     light uses #1a6dd9 — same blue family, 4.96:1. Dark takes their
+     --text-accent (#63a8f8) verbatim, which already passes at 6.51:1.
+
+     Interactive INK only: links, active icons, focus. It is not a button fill.
+     `accent-strong` / `-pressed` are hover/active ink for accent text, so they
+     darken in light and lighten in dark.
+
+     --color-accent-solid IS a fill, and the exception to the rule above: it is
+     their #3a83f7 unchanged, spent on exactly one control — the composer's
+     send button, which the target paints blue rather than black. As a non-text
+     UI component it needs 3:1, and 3.64:1 clears that. Same value in both
+     themes, because theirs is (--bg-accent-static does not re-theme). */
+  --color-accent: #1a6dd9; /* link and interactive ink */
+  --color-accent-strong: #14539f; /* accent-text hover */
+  --color-accent-pressed: #0f3f7a; /* accent-text active */
+  --color-accent-fill: #eaf2fe; /* accent tint background */
+  --color-accent-solid: #3a83f7; /* the composer send button, white icon */
 
   /* --- Lines --- */
-  --color-border: #e5e5e5; /* every hairline border */
-  --color-border-strong: #cdcdcd; /* the dropzone's dashed edge */
+  --color-border: rgba(0, 0, 0, 0.1); /* every hairline border */
+  --color-border-strong: rgba(0, 0, 0, 0.15); /* the dropzone's dashed edge */
   --color-skeleton: #ececec; /* loading placeholder blocks */
 
   /* --- Status --- */
@@ -168,7 +180,7 @@
   /* The focus ring's halo. Deliberately not a --color-* token: it has no
      utility to mint, and it must be translucent so it reads on every surface
      the ring can land on. */
-  --ring-tint: rgba(11, 94, 215, 0.4);
+  --ring-tint: rgba(26, 109, 217, 0.4);
 
   /* Depth is nearly gone on purpose. --shadow-card is the composer's whisper
      and the only resting shadow in the app; the two -hover shadows are
@@ -210,31 +222,37 @@ html[data-theme="dark"] {
 
   /* --- Surfaces --- */
   --color-surface: #212121; /* the page wash / main pane */
-  --color-surface-sidebar: #181818; /* the nav rail, one step off the page */
-  --color-surface-inset: #3a3a3a; /* chips, code, the user's own turn */
-  --color-surface-raised: #2f2f2f; /* cards, panels, the composer */
-  --color-surface-hover: #2a2a2a; /* row / icon-button hover fill */
-  --color-surface-inverted: #ececec; /* THE primary solid: buttons, active nav */
+  --color-surface-sidebar: #000000; /* the nav rail, one step off the page */
+  --color-surface-inset: #414141; /* chips, code, the user's own turn */
+  --color-surface-raised: #303030; /* cards, panels, the composer */
+  --color-surface-hover: #303030; /* row / icon-button hover fill */
+  --color-surface-inverted: #ffffff; /* THE primary solid: buttons, active nav */
   --color-surface-warm: #2a2a2a; /* aside fill, light stop */
   --color-surface-warm-strong: #262626; /* aside fill, deep stop */
 
   /* --- Foregrounds --- */
-  --color-fg: #ececec; /* body text on a dark surface */
-  --color-fg-muted: #b4b4b4; /* secondary text, labels */
-  --color-fg-subtle: #8f8f8f; /* tertiary text, meta, placeholders */
+  --color-fg: #ffffff; /* body text on a dark surface */
+  --color-fg-muted: #cdcdcd; /* secondary text, labels */
+  --color-fg-subtle: #afafaf; /* tertiary text, meta, placeholders */
   --color-fg-inverted: #0d0d0d; /* text on --color-surface-inverted */
   --color-fg-on-accent: #0d0d0d; /* text on an accent or danger solid */
 
   /* --- Accent --- */
-  --color-accent: #7ab7ff; /* link and interactive ink */
-  --color-accent-strong: #a3cdff; /* accent-text hover (lightens, not darkens) */
-  --color-accent-pressed: #c6e0ff; /* accent-text active */
-  --color-accent-fill: #1e3a5f; /* accent tint background (5.50:1 under #7ab7ff) */
+  --color-accent: #63a8f8; /* link and interactive ink */
+  --color-accent-strong: #8fc0fa; /* accent-text hover (lightens, not darkens) */
+  --color-accent-pressed: #b5d6fc; /* accent-text active */
+  --color-accent-fill: #1c3a5c; /* accent tint background */
+  --color-accent-solid: #3a83f7; /* unchanged across themes, like theirs */
 
   /* --- Lines --- */
-  --color-border: #3d3d3d; /* every hairline border */
-  --color-border-strong: #565656; /* the dropzone's dashed edge */
-  --color-skeleton: #333333; /* loading placeholder blocks */
+  --color-border: rgba(255, 255, 255, 0.15); /* every hairline border */
+  --color-border-strong: rgba(
+    255,
+    255,
+    255,
+    0.22
+  ); /* the dropzone's dashed edge */
+  --color-skeleton: #303030; /* loading placeholder blocks */
 
   /* --- Status --- */
   --color-success: #5cc47a; /* success ink */
@@ -264,8 +282,8 @@ html[data-theme="dark"] {
   --shadow-tint-strong: rgba(0, 0, 0, 0.55);
 
   /* Dark's own accent, translucent, so the ring stays visible on the page, on
-     a raised card and on the black-on-white solid alike. */
-  --ring-tint: rgba(122, 183, 255, 0.45);
+     a raised card and on the white-on-black solid alike. */
+  --ring-tint: rgba(99, 168, 248, 0.45);
 }
 
 /* Tailwind preflight leaves body at system sans 16px/1.5. The target's chrome

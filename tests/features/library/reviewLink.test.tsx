@@ -13,6 +13,7 @@ import {
   shelfKeyedReviewItems,
 } from "../../msw/handlers";
 import { server } from "../../msw/server";
+import { chooseMode, runAiAction } from "../../search/composer";
 
 function renderAt(path: string) {
   const client = new QueryClient({
@@ -115,7 +116,7 @@ describe("review queue link-out", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=scones&review=included");
 
-    await user.click(screen.getByRole("button", { name: "Keyword only" }));
+    await chooseMode(user, "Keyword only");
 
     const params = new URLSearchParams(router.state.location.search);
     expect(params.get("mode")).toBe("keyword");
@@ -186,7 +187,7 @@ describe("review=included search request body", () => {
     renderAt("/?review=included");
 
     await user.type(screen.getByRole("textbox"), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await runAiAction(user, "Ask the shelf");
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toMatchObject({
@@ -211,7 +212,7 @@ describe("review=included search request body", () => {
     renderAt("/");
 
     await user.type(screen.getByRole("textbox"), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await runAiAction(user, "Ask the shelf");
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).not.toHaveProperty("filters");
@@ -223,7 +224,7 @@ describe("review=included search request body", () => {
     renderAt("/?q=scones&review=included");
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
 
     await waitFor(() => expect(bodies).toHaveLength(2));
     expect(bodies[1]).toMatchObject({

@@ -77,7 +77,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <Link
         to="/"
         onClick={onClose}
-        className="mt-1 mb-1 flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[14px] font-medium text-fg transition-colors hover:bg-surface-hover pointer-coarse:min-h-11"
+        className="mt-1 mb-1 flex items-center gap-1.5 rounded-[10px] px-2.5 py-[7px] text-[14px] text-fg transition-colors hover:bg-surface-hover pointer-coarse:min-h-11"
       >
         <IconCompose className="h-[18px] w-[18px] flex-none" />
         New search

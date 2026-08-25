@@ -120,6 +120,15 @@ export function IconMenuList({ className }: IconProps) {
   );
 }
 
+/** Chevron — the disclosure on the composer's menu triggers. */
+export function IconChevronDown({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M6 9.5l6 6 6-6" />
+    </Svg>
+  );
+}
+
 /** Arrow-up in the composer's solid send button. */
 export function IconSend({ className }: IconProps) {
   return (

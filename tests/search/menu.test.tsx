@@ -1,11 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -18,6 +12,7 @@ import {
   menusHandler,
 } from "../msw/menus";
 import { server } from "../msw/server";
+import { aiAnswersTrigger, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -53,8 +48,13 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const menuButton = () => screen.getByRole("button", { name: "Compose a menu" });
-const askButton = () => screen.getByRole("button", { name: "Ask the shelf" });
+/* Both actions now share one trigger, so both helpers resolve to it — it is
+   what carries the enabled/disabled state either action would have shown. */
+const menuButton = () => aiAnswersTrigger();
+const clickMenu = (user: ReturnType<typeof userEvent.setup>) =>
+  runAiAction(user, "Compose a menu");
+const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>
+  runAiAction(user, "Ask the shelf");
 
 describe("compose a menu", () => {
   it("never fires on load, even with ?menu=1 in the URL", async () => {
@@ -70,9 +70,10 @@ describe("compose a menu", () => {
     const user = userEvent.setup();
     const router = renderAt("/");
     await user.type(searchBox(), "a light summer dinner for four");
-    const button = menuButton();
-    fireEvent.click(button);
-    fireEvent.click(button);
+    /* One selection, one POST. The old double fireEvent tested a same-frame
+       double dispatch, which the menu chrome makes impossible — see
+       ask.test.tsx for the in-flight guard that replaced it. */
+    await clickMenu(user);
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]?.path).toBe("/api/v1/menus");
     expect(calls[0]?.body).toEqual({
@@ -116,7 +117,7 @@ describe("compose a menu", () => {
     server.use(menusHandler(fallbackMenuFixture));
     const user = userEvent.setup();
     renderAt("/?q=summer+dinner");
-    await user.click(menuButton());
+    await clickMenu(user);
     const card = await screen.findByTestId("menu-card");
     expect(within(card).getByRole("status")).toHaveTextContent(
       MENU_FALLBACK_WARNING,
@@ -132,16 +133,16 @@ describe("compose a menu", () => {
     );
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe("?q=breakfast&asked=1");
 
-    await user.click(menuButton());
+    await clickMenu(user);
     await screen.findByTestId("menu-card");
     expect(router.state.location.search).toBe("?q=breakfast&menu=1");
     expect(screen.queryByText(/Grounded in your books/)).toBeNull();
 
-    await user.click(askButton());
+    await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe("?q=breakfast&asked=1");
     expect(screen.queryByTestId("menu-card")).toBeNull();

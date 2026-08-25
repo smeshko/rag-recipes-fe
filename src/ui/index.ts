@@ -3,8 +3,11 @@ export type { BloomProps } from "./Bloom";
 export { Bloom } from "./Bloom";
 export type { CardAccent, CardProps } from "./Card";
 export { Card } from "./Card";
+export type { ComposerMenuItem, ComposerMenuProps } from "./ComposerMenu";
+export { ComposerMenu } from "./ComposerMenu";
 export { Eyebrow } from "./Eyebrow";
 export {
+  IconChevronDown,
   IconClose,
   IconCompose,
   IconLibrary,

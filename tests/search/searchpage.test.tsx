@@ -7,6 +7,7 @@ import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
 import { fixtureReadyRecipes, searchFixture } from "../msw/handlers";
 import { server } from "../msw/server";
+import { chooseMode, currentMode, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -63,7 +64,7 @@ describe("SearchPage URL ↔ state", () => {
     const user = userEvent.setup();
     const router = renderAt("/");
     await user.type(searchBox(), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await runAiAction(user, "Ask the shelf");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=scones&asked=1"),
     );
@@ -74,7 +75,7 @@ describe("SearchPage URL ↔ state", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata");
     await waitFor(() => expect(bodies).toHaveLength(1));
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata&mode=vector"),
     );
@@ -85,7 +86,7 @@ describe("SearchPage URL ↔ state", () => {
   it("selecting Hybrid clears ?mode=", async () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata&mode=vector");
-    await user.click(screen.getByRole("button", { name: "Hybrid" }));
+    await chooseMode(user, "Hybrid");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata"),
     );
@@ -93,23 +94,17 @@ describe("SearchPage URL ↔ state", () => {
 
   it("deep-loaded ?mode=vector restores the active chip", async () => {
     renderAt("/?q=frittata&mode=vector");
-    expect(screen.getByRole("button", { name: "Vector only" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "Hybrid" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    /* The three chips became one menu, so "which is active" is no longer an
+       aria-pressed on a visible button — it is what the closed trigger
+       reports, which is also the only thing a reader can see without
+       opening it. */
+    expect(currentMode()).toBe("Vector only");
   });
 
   it("?mode=garbage falls back to Hybrid and never reaches the API", async () => {
     const bodies = captureSearchBodies();
     renderAt("/?q=frittata&mode=garbage");
-    expect(screen.getByRole("button", { name: "Hybrid" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(currentMode()).toBe("Hybrid");
     await waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({ query: "frittata", mode: "hybrid" });
   });
@@ -119,7 +114,7 @@ describe("SearchPage URL ↔ state", () => {
     const router = renderAt("/?q=alpha");
     await user.clear(searchBox());
     await user.type(searchBox(), "beta");
-    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await runAiAction(user, "Ask the shelf");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=beta&asked=1"),
     );

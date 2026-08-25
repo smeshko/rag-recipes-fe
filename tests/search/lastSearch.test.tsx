@@ -14,6 +14,7 @@ import { routes } from "../../src/routes";
 import { answersHandler, groundedAnswerFixture } from "../msw/answers";
 import { searchFixture } from "../msw/handlers";
 import { server } from "../msw/server";
+import { chooseMode, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -134,7 +135,7 @@ describe("last-search persistence (storage writes)", () => {
   it("stores a non-hybrid mode exactly as the URL carries it", async () => {
     const user = userEvent.setup();
     renderAt("/?q=frittata");
-    await user.click(screen.getByRole("button", { name: "Vector only" }));
+    await chooseMode(user, "Vector only");
     await waitFor(() =>
       expect(storedLastSearch()).toBe("/?q=frittata&mode=vector"),
     );
@@ -155,7 +156,7 @@ describe("last-search persistence (storage writes)", () => {
     const user = userEvent.setup();
     renderAt("/");
     await user.type(searchBox(), "scones");
-    await user.click(screen.getByRole("button", { name: "Ask the shelf" }));
+    await runAiAction(user, "Ask the shelf");
     await waitFor(() => expect(storedLastSearch()).toBe("/?q=scones&asked=1"));
   });
 
@@ -174,7 +175,7 @@ describe("last-search persistence (storage writes)", () => {
     sessionStorage.setItem(LAST_SEARCH_KEY, "/?q=frittata");
     const user = userEvent.setup();
     renderAt("/");
-    await user.click(screen.getByRole("button", { name: "Keyword only" }));
+    await chooseMode(user, "Keyword only");
     expect(storedLastSearch()).toBe("/?q=frittata");
     expect(cookPill()).toHaveAttribute("href", "/?q=frittata");
   });

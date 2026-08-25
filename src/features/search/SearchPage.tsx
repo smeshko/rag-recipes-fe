@@ -14,15 +14,14 @@ import {
 import { type SearchMode, useSearch } from "../../api/search";
 import { SearchInput } from "../../ui";
 import { isReviewIncluded } from "../library/presentation";
-import { AiAnswers } from "./AiAnswers";
 import { AnswerCard } from "./AnswerCard";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
+import { ComposerControls } from "./ComposerControls";
 import { FallbackNotice } from "./FallbackNotice";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { MenuCard } from "./MenuCard";
 import { MenuSkeleton } from "./MenuSkeleton";
-import { ModeChips } from "./ModeChips";
 import { parseMode } from "./mode";
 import { ResultsGrid } from "./ResultsGrid";
 import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
@@ -330,34 +329,36 @@ export function SearchPage() {
           48px of dead space above the fold is a desktop luxury: on a phone it
           pushes the search field itself below the first screen. */}
       <div className="pt-12 pb-5 text-center max-[560px]:pt-6">
-        <h1 className="text-[30px] font-semibold leading-[1.25] tracking-[-0.02em] max-[560px]:text-[24px]">
+        <h1 className="text-[24px] leading-[1.3] max-[560px]:text-[21px]">
           Good morning. What are we cooking?
         </h1>
-        <p className="mt-2 text-[13.5px] text-fg-subtle">
+        <p className="mt-2 text-[13px] text-fg-subtle">
           <ShelfStatsLine />
         </p>
       </div>
 
-      <div className="mx-auto max-w-[720px]">
+      {/* 768px, the target's own composer column. Everything that used to sit
+          in strips under this box — the two LLM buttons, the three mode chips
+          — is now inside it, in the footer row. */}
+      <div className="mx-auto max-w-[768px]">
         <SearchInput
           ref={inputRef}
           value={text}
           onChange={setText}
           onSubmit={() => writeParams(text, mode)}
+          controls={
+            <ComposerControls
+              mode={mode}
+              onModeSelect={(next) => writeParams(q, next)}
+              onAsk={askShelf}
+              onMenu={composeMenu}
+              disabled={text.trim() === ""}
+              asking={answer.isFetching}
+              composing={menu.isFetching}
+            />
+          }
         />
-        <ModeChips active={mode} onSelect={(next) => writeParams(q, next)} />
       </div>
-
-      {/* The LLM actions, as one group under the bar. Both ask the draft, so
-          an emptied box disables them (review #1.2) — same guard askShelf
-          and composeMenu apply on their own. */}
-      <AiAnswers
-        onAsk={askShelf}
-        onMenu={composeMenu}
-        disabled={text.trim() === ""}
-        asking={answer.isFetching}
-        composing={menu.isFetching}
-      />
 
       {/* Mounted unconditionally: a live region has to exist before its
           content changes for the change to be announced reliably. */}
