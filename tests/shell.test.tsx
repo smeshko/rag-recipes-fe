@@ -73,13 +73,21 @@ describe("shell nav active state", () => {
   /* Scoped with within(): on /library the shelf fixtures legitimately render
      their own links (e.g. "Open review queue →"), so a document-wide query
      would overcount. */
-  it("renders exactly the Cook and Library pills in the nav", () => {
-    for (const path of ["/", "/library", "/review", "/recipes/abc", "/nope"]) {
+  it("renders exactly the Cook, Favourites and Library pills in the nav", () => {
+    for (const path of [
+      "/",
+      "/favourites",
+      "/library",
+      "/review",
+      "/recipes/abc",
+      "/nope",
+    ]) {
       const { unmount } = renderAt(path);
       const nav = screen.getByRole("navigation");
       const pills = within(nav).getAllByRole("link");
       expect(pills.map((pill) => pill.textContent)).toEqual([
         "Cook",
+        "Favourites",
         "Library",
       ]);
       unmount();

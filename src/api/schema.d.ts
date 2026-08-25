@@ -189,6 +189,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/menus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compose Menu */
+        post: operations["compose_menu_api_v1_menus_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge-items/{item_id}": {
         parameters: {
             query?: never;
@@ -302,6 +319,75 @@ export interface paths {
          *     keep their own 409.
          */
         get: operations["list_document_knowledge_items_api_v1_documents__document_id__knowledge_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge-items/{item_id}/favourite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Add Favourite
+         * @description Star a recipe. 200 with the star's timestamp, whether or not it is new.
+         *
+         *     ``ON CONFLICT DO NOTHING`` plus a read-back, rather than an upsert that
+         *     restamps ``created_at``: the second PUT of a double-click must not reorder
+         *     the favourites list. The read-back is also what makes the timestamp in the
+         *     response the *server's* — a concurrent PUT that won the insert produced it.
+         *
+         *     PUT rather than POST because that is what this is: an idempotent write of a
+         *     named sub-resource whose whole content is "it exists".
+         */
+        put: operations["add_favourite_api_v1_knowledge_items__item_id__favourite_put"];
+        post?: never;
+        /**
+         * Remove Favourite
+         * @description Unstar a recipe. 204 whether or not it was starred.
+         *
+         *     Deliberately NOT a 404 on an unstarred recipe: the caller asked for a state
+         *     ("this is not favourited") that holds when the handler returns, and a UI
+         *     retrying a dropped request would otherwise be told its own success failed.
+         *     An unknown *item* is still a 404 — that is a caller mistake, not a repeat.
+         *
+         *     Nothing is logged: unlike the item delete this destroys no content, and the
+         *     row can be recreated with one click.
+         */
+        delete: operations["remove_favourite_api_v1_knowledge_items__item_id__favourite_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/favourites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Favourites
+         * @description Every starred recipe, newest star first.
+         *
+         *     The same ``limit``/``offset``, the same bounds and the same no-total,
+         *     no-cursor contract as the shelf and the review queue: clients walk pages
+         *     until one comes back short.
+         *
+         *     Ordered by the STAR's ``created_at``, not the item's — "what I saved most
+         *     recently" is the question this surface answers, and the two orders diverge
+         *     the moment an old recipe is starred. ``knowledge_item_id`` breaks ties so
+         *     the page walk cannot repeat or skip a row when two stars share a timestamp.
+         */
+        get: operations["list_favourites_api_v1_favourites_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -571,6 +657,20 @@ export interface components {
             /** Language */
             language?: string | null;
         };
+        /**
+         * CourseSelection
+         * @description The one recipe chosen for a course. ``title`` is rebuilt from the pack.
+         */
+        CourseSelection: {
+            /** Knowledge Item Id */
+            knowledge_item_id: string;
+            /** Title */
+            title: string;
+            /** Reason */
+            reason: string;
+            /** Citation Ids */
+            citation_ids: string[];
+        };
         /** DisplayProjection */
         DisplayProjection: {
             /** Title */
@@ -661,6 +761,20 @@ export interface components {
              */
             updated_at: string;
         };
+        /** Favourite */
+        Favourite: {
+            /** Knowledge Item Id */
+            knowledge_item_id: string;
+            /**
+             * Favourited At
+             * Format: date-time
+             */
+            favourited_at: string;
+        };
+        /** FavouriteResponse */
+        FavouriteResponse: {
+            favourite: components["schemas"]["Favourite"];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -749,6 +863,8 @@ export interface components {
             review_thresholds?: components["schemas"]["ReviewThresholds"] | null;
             /** Edited At */
             edited_at?: string | null;
+            /** Favourited At */
+            favourited_at?: string | null;
         };
         /** KnowledgeItemDisplay */
         KnowledgeItemDisplay: {
@@ -846,6 +962,157 @@ export interface components {
             chunk_type: string;
             /** Score */
             score: number;
+        };
+        /**
+         * MenuBody
+         * @description The menu as a whole: its name, the coherence argument, and its citations.
+         */
+        MenuBody: {
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /** Citations */
+            citations: string[];
+        };
+        /**
+         * MenuCourse
+         * @description One course: what was planned, what was retrieved, and what was chosen.
+         *
+         *     ``selection`` is ``null`` when the course could not be filled — retrieval
+         *     returned nothing for its query, or the fallback path had no candidate to pick.
+         *     A course is never dropped from the response for being unfillable: the caller
+         *     asked for it, so it is reported empty rather than silently omitted.
+         */
+        MenuCourse: {
+            /** Slot */
+            slot: string;
+            /** Query */
+            query: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            selection?: components["schemas"]["CourseSelection"] | null;
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: components["schemas"]["KnowledgeItemResult"][];
+        };
+        /**
+         * MenuDebugInfo
+         * @description Dev-only menu diagnostics, gated exactly like the search/answer debug blocks.
+         */
+        MenuDebugInfo: {
+            /** Retrieval Mode */
+            retrieval_mode: string;
+            /** Model */
+            model: string;
+            /** Plan Prompt Version */
+            plan_prompt_version: string;
+            /** Selection Prompt Version */
+            selection_prompt_version: string;
+            /** Plan Is Fallback */
+            plan_is_fallback: boolean;
+            /** Course Count */
+            course_count: number;
+            /** Candidate Count */
+            candidate_count: number;
+            /** Context Item Count */
+            context_item_count: number;
+            /** Citation Count */
+            citation_count: number;
+            /** Retrieval Debug By Slot */
+            retrieval_debug_by_slot?: {
+                [key: string]: components["schemas"]["RetrievalDebugInfo"];
+            } | null;
+        };
+        /** MenuOptions */
+        MenuOptions: {
+            /**
+             * Include Candidates
+             * @default false
+             */
+            include_candidates: boolean;
+            /**
+             * Include Debug
+             * @default false
+             */
+            include_debug: boolean;
+            /** Max Courses */
+            max_courses?: number | null;
+        };
+        /** MenuRequestBody */
+        MenuRequestBody: {
+            /** Query */
+            query: string;
+            /**
+             * Category
+             * @default recipes
+             */
+            category: string;
+            /** Subcategory */
+            subcategory?: string | null;
+            /**
+             * @default {
+             *       "item_type": "recipe",
+             *       "document_ids": [],
+             *       "exclude_needs_review": true
+             *     }
+             */
+            filters: components["schemas"]["SearchFilters"];
+            /**
+             * @default {
+             *       "mode": "hybrid"
+             *     }
+             */
+            retrieval: components["schemas"]["MenuRetrievalOptions"];
+            /**
+             * @default {
+             *       "include_candidates": false,
+             *       "include_debug": false
+             *     }
+             */
+            menu: components["schemas"]["MenuOptions"];
+        };
+        /** MenuResponse */
+        MenuResponse: {
+            /** Query */
+            query: string;
+            /**
+             * Theme
+             * @default
+             */
+            theme: string;
+            menu: components["schemas"]["MenuBody"];
+            /**
+             * Courses
+             * @default []
+             */
+            courses: components["schemas"]["MenuCourse"][];
+            /**
+             * Citations
+             * @default []
+             */
+            citations: components["schemas"]["AnswerCitation"][];
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+            debug?: components["schemas"]["MenuDebugInfo"] | null;
+        };
+        /** MenuRetrievalOptions */
+        MenuRetrievalOptions: {
+            /**
+             * Mode
+             * @default hybrid
+             */
+            mode: string;
+            /** Candidates Per Course */
+            candidates_per_course?: number | null;
         };
         /** Recommendation */
         Recommendation: {
@@ -956,6 +1223,8 @@ export interface components {
             flags: components["schemas"]["ReviewReason"][];
             /** Edited At */
             edited_at?: string | null;
+            /** Favourited At */
+            favourited_at?: string | null;
         };
         /** ReviewItemDocument */
         ReviewItemDocument: {
@@ -1470,6 +1739,39 @@ export interface operations {
             };
         };
     };
+    compose_menu_api_v1_menus_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MenuRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_knowledge_item_api_v1_knowledge_items__item_id__get: {
         parameters: {
             query?: never;
@@ -1576,6 +1878,98 @@ export interface operations {
             path: {
                 document_id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeItemListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_favourite_api_v1_knowledge_items__item_id__favourite_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FavouriteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_favourite_api_v1_knowledge_items__item_id__favourite_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_favourites_api_v1_favourites_get: {
+        parameters: {
+            query?: {
+                limit?: string | null;
+                offset?: string | null;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

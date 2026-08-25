@@ -34,14 +34,47 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 
 ### Routing
 
-**React Router**, four routes:
+**React Router**. The primary screens (the table predates `/recipes/:id/edit` and `/library/:documentId`, which `src/routes.tsx` owns):
 
 | Route | Screen | Mockup |
 |---|---|---|
 | `/` (`?q=`) | Search + on-demand answer | `e-sunday-kitchen.html` (+ `sk-fallback.html` state) |
 | `/recipes/:id` | Recipe detail (`GET /knowledge-items/{id}`) | `sk-recipe.html` |
+| `/favourites` | Saved recipes (`GET /favourites`) | no mockup — `/review`'s list chrome |
 | `/library` | Shelf + upload + ingestion status | `sk-library.html` |
 | `/review` | Later — see v1 scope | not designed yet |
+
+### Favourites
+
+A star on a recipe, and the list of starred ones. Added after v1; the backend
+keeps it in its own `knowledge_item_favourites` table rather than as a column
+on `knowledge_items` (a column would bump that row's `updated_at`, which the
+stuck-indexing sweeper reads as lifecycle progress).
+
+Three endpoints — `PUT`/`DELETE /knowledge-items/{id}/favourite` (both
+idempotent) and `GET /favourites` — and one new field, `favourited_at`, on the
+item detail and on every listing row. **Search results deliberately do not
+carry it**: `/search` projects the retrieval layer, which knows nothing about
+stars, so the search grid reads the `['favourites']` id set once and hands
+each card a boolean, while the recipe page and book rows answer from their own
+row.
+
+The star is one component (`features/favourites/FavouriteButton`) on all four
+surfaces. It holds its own optimism while a request is in flight; the toggle
+hook then WRITES the server's `favourited_at` into the item and listing caches
+rather than invalidating them (`useUpdateKnowledgeItem`'s D5 — invalidating
+would flicker the star through a refetch). `['favourites']` itself is
+invalidated on settle rather than written, because a search card has no
+listing row to insert and synthesizing one would put a half-invented recipe in
+a shared cache; the unstar path removes optimistically, since there the row is
+real.
+
+Known consequence, chosen deliberately: reprocessing a book supersedes its
+items, so a favourite survives as a star on the superseded row rather than
+following the recipe into the new generation. The list keeps showing it (with
+its status) instead of the row quietly vanishing — carrying stars across
+generations would need identity matching between generations, which does not
+exist.
 
 ### v1 scope
 

@@ -22,6 +22,13 @@ export {
   useReprocess,
   useShelfStats,
 } from "./documents";
+export {
+  favouritesQueryOptions,
+  fetchAllFavourites,
+  useFavouriteIds,
+  useFavourites,
+  useToggleFavourite,
+} from "./favourites";
 export type {
   UseDeleteKnowledgeItemOptions,
   UseUpdateKnowledgeItemOptions,
@@ -65,6 +72,7 @@ export type {
   DocumentResponse,
   DocumentStatus,
   ErrorEnvelope,
+  FavouriteResponse,
   HealthResponse,
   IngestionStatusResponse,
   Ingredient,

@@ -35,6 +35,15 @@ afterEach(() => {
   server.events.removeAllListeners();
 });
 
+/** The Ingredients panel as a query scope. The recipe page's head carries a
+    favourite star, which is also an aria-pressed button — a page-wide
+    `getAllByRole("button", {pressed: false})` would count it as a row. */
+function ingredientsPanel(): HTMLElement {
+  return screen
+    .getByRole("heading", { name: "Ingredients" })
+    .closest("section") as HTMLElement;
+}
+
 const fullIngredients =
   fullItemFixture.knowledge_item.structured_data.ingredients;
 const fullSteps = fullItemFixture.knowledge_item.structured_data.steps;
@@ -75,13 +84,18 @@ describe("panels", () => {
     const user = userEvent.setup();
     const spy = itemRequestSpy();
     renderAt("/recipes/item_full");
-    const first = (
-      await screen.findAllByRole("button", { pressed: false })
-    )[0] as HTMLElement;
+    await screen.findByRole("heading", { name: "Ingredients" });
+    const first = within(ingredientsPanel()).getAllByRole("button", {
+      pressed: false,
+    })[0] as HTMLElement;
     const before = spy.mock.calls.length;
     await user.click(first);
     expect(first).toHaveAttribute("aria-pressed", "true");
-    const others = screen.getAllByRole("button", { pressed: false });
+    /* Scoped to the panel: the page's favourite star is an aria-pressed
+       button too, and a page-wide count would silently include it. */
+    const others = within(ingredientsPanel()).getAllByRole("button", {
+      pressed: false,
+    });
     expect(others.length).toBe(fullIngredients.length - 1);
     await user.click(first);
     expect(first).toHaveAttribute("aria-pressed", "false");
@@ -100,7 +114,10 @@ describe("panels", () => {
     const user = userEvent.setup();
     const warn = vi.spyOn(console, "error").mockImplementation(() => {});
     renderAt("/recipes/item_dupes");
-    const rows = await screen.findAllByRole("button", { pressed: false });
+    await screen.findByRole("heading", { name: "Ingredients" });
+    const rows = within(ingredientsPanel()).getAllByRole("button", {
+      pressed: false,
+    });
     expect(rows).toHaveLength(3);
     /* Rows 0 and 2 carry the same text; ticking the second must not tick
        the first (index-keyed state over a text-keyed list). */

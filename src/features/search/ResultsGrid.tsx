@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useFavouriteIds } from "../../api";
 import type { SearchMode } from "../../api/search";
 import type { KnowledgeItemResult } from "../../api/types";
 import { Bloom } from "../../ui";
@@ -29,6 +30,17 @@ export function ResultsGrid({
   subline,
   bloomBase = 0.3,
 }: ResultsGridProps) {
+  /* ONE read for the whole grid, not one per card: every card would otherwise
+     mount its own hook against the same ['favourites'] entry. The prop-only
+     rule above is about RESULTS — this is the grid's own chrome, and it is
+     also the only place on this screen that knows a star exists.
+
+     No loading state: an unresolved set means no card is starred yet, which
+     is the same thing an empty set means, and the entry lands in one request.
+     A failed one leaves every star hollow but still clickable — the toggle is
+     idempotent, so pressing it says the truth to the server either way. */
+  const favourites = useFavouriteIds();
+
   return (
     <section className={dimmed ? "opacity-60 transition-opacity" : undefined}>
       <Bloom duration={0.7} delay={0.26}>
@@ -53,7 +65,11 @@ export function ResultsGrid({
             base={bloomBase}
             className="flex"
           >
-            <ResultCard result={result} from={from} />
+            <ResultCard
+              result={result}
+              from={from}
+              favourited={favourites.data?.has(result.item.id) ?? false}
+            />
           </Bloom>
         ))}
       </div>

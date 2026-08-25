@@ -1,4 +1,5 @@
 import type { RouteObject } from "react-router";
+import { FavouritesPage } from "./features/favourites/FavouritesPage";
 import { BookPage } from "./features/library/BookPage";
 import { LibraryPage } from "./features/library/LibraryPage";
 import { NotFoundPage } from "./features/notfound/NotFoundPage";
@@ -33,6 +34,11 @@ export const routes: RouteObject[] = [
       {
         path: "/recipes/:id/edit",
         element: <RecipeEditPage />,
+        handle: { width: "narrow" } satisfies ShellHandle,
+      },
+      {
+        path: "/favourites",
+        element: <FavouritesPage />,
         handle: { width: "narrow" } satisfies ShellHandle,
       },
       {

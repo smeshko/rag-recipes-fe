@@ -7,7 +7,7 @@ import { readReturnTo, returnSection } from "./returnTo";
 /* Active state is derived once from the location — NavLink can't express
    "Cook stays active on /recipes/*" (its root match ignores `end`), so these
    are plain Links with aria-current set by hand on the single active pill. */
-type ActivePill = "cook" | "library" | null;
+type ActivePill = "cook" | "favourites" | "library" | null;
 
 /* matchPath, not string prefixes: it applies the router's own matching, so a
    path only lights a pill up if it really resolves to that route. Prefixes
@@ -26,6 +26,9 @@ function activePill({
 }): ActivePill {
   /* end: false, like returnSection's own arm: a future /review/:id must not
      silently stop lighting the pill. */
+  if (matchPath("/favourites", pathname)) {
+    return "favourites";
+  }
   if (
     matchPath("/library", pathname) ||
     matchPath({ path: "/review", end: false }, pathname)
@@ -34,6 +37,9 @@ function activePill({
   }
   if (matchPath("/recipes/:id", pathname)) {
     const section = returnSection(readReturnTo(new URLSearchParams(search)));
+    if (section === "favourites") {
+      return "favourites";
+    }
     return section === "library" || section === "review" ? "library" : "cook";
   }
   if (matchPath("/", pathname)) {
@@ -70,6 +76,19 @@ export function Nav() {
         aria-current={active === "cook" ? "page" : undefined}
       >
         Cook
+      </Link>
+      {/* Between Cook and Library because that is the reading order of the
+          app: find something, keep it, then curate the shelf it came from.
+
+          A third pill is what the Shell header's flex-wrap note anticipated —
+          at 375px the bar now wraps to a second line rather than pushing the
+          page sideways, which is the designed degrade, not a regression. */}
+      <Link
+        to="/favourites"
+        className={pillClass(active === "favourites")}
+        aria-current={active === "favourites" ? "page" : undefined}
+      >
+        Favourites
       </Link>
       <Link
         to="/library"

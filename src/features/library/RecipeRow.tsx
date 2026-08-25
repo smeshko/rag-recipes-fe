@@ -7,6 +7,7 @@ import {
   useDeleteKnowledgeItem,
 } from "../../api";
 import { Pill, withReturnTo } from "../../ui";
+import { FavouriteButton } from "../favourites/FavouriteButton";
 import { statusTone } from "../recipe/statusTone";
 
 /* One recipe in a book's contents (/library/:documentId).
@@ -130,9 +131,21 @@ export function RecipeRow({
             ) : null}
           </small>
         </div>
-        <Pill size="md" tone={status.tone}>
-          {status.label}
-        </Pill>
+        {/* Status then star, reading left to right as "what this row is" then
+            "what I can do with it" — the same order the recipe page's head
+            uses. The star sits with the status rather than in the verb row
+            below because it is not one of the row's book-curation verbs; it
+            is the reader keeping the recipe. */}
+        <div className="flex items-center gap-2">
+          <Pill size="md" tone={status.tone}>
+            {status.label}
+          </Pill>
+          <FavouriteButton
+            itemId={item.id}
+            favourited={Boolean(item.favourited_at)}
+            title={item.title}
+          />
+        </div>
       </div>
 
       {item.summary && (

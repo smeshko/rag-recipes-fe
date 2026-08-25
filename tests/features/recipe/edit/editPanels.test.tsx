@@ -228,7 +228,14 @@ describe("edit panels", () => {
     expect(screen.getByTestId("recipe-page")).toBeInTheDocument();
 
     expect(container.querySelector('[class*="1.7fr"]')).not.toBeNull();
-    expect(screen.getAllByRole("button", { pressed: false })).toHaveLength(3);
+    /* Scoped to the panel: the read page's head also carries an aria-pressed
+       favourite star, which is not one of the checkable rows. */
+    const ingredients = screen
+      .getByRole("heading", { name: "Ingredients" })
+      .closest("section") as HTMLElement;
+    expect(
+      within(ingredients).getAllByRole("button", { pressed: false }),
+    ).toHaveLength(3);
     expect(screen.queryByLabelText("Ingredient 1")).not.toBeInTheDocument();
   });
 });

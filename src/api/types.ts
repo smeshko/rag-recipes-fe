@@ -276,6 +276,11 @@ export interface KnowledgeItemResponse {
        an unedited item may omit the key entirely. The `?` matches the wire,
        it is not a hedge. */
     edited_at?: string | null;
+    /* When the reader starred this recipe; null (or absent — the generated
+       `KnowledgeItemDetail` does not require it either) means it is not a
+       favourite. It moves only when the star does: the backend keeps it in a
+       separate table, so an edit or a reprocess never touches it. */
+    favourited_at?: string | null;
   };
   display: { title: string; subtitle: string | null };
   source_citations: SourceCitation[];
@@ -351,6 +356,12 @@ export type KnowledgeItemSummary = components["schemas"]["ReviewItem"];
 
 export type KnowledgeItemListResponse =
   components["schemas"]["KnowledgeItemListResponse"];
+
+/* PUT /knowledge-items/{item_id}/favourite — the star's acknowledgement.
+   `favourited_at` is when the star was FIRST set: the endpoint is idempotent
+   and deliberately does not restamp, so a second PUT returns the first one's
+   timestamp and the favourites order does not move under a double-click. */
+export type FavouriteResponse = components["schemas"]["FavouriteResponse"];
 
 export type ReviewDecision = components["schemas"]["ReviewDecision"];
 

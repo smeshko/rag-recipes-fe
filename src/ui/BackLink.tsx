@@ -56,6 +56,14 @@ export function BackLink() {
     );
   }
 
+  if (target !== null && section === "favourites") {
+    return (
+      <Link to={target.to} className={CLASSES}>
+        ← Back to favourites
+      </Link>
+    );
+  }
+
   if (target !== null && section === "library") {
     return (
       <Link to={target.to} className={CLASSES}>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { type KnowledgeItemResponse, useDeleteKnowledgeItem } from "../../api";
 import { readReturnTo, withReturnTo } from "../../ui";
+import { FavouriteButton } from "../favourites/FavouriteButton";
 import { isEditableStatus } from "./edit/editableStatus";
 
 /* The read page's own action row: Edit and Delete, on every recipe, however
@@ -28,7 +29,12 @@ import { isEditableStatus } from "./edit/editableStatus";
    it — and on the library otherwise, which is the only honest guess. */
 
 export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
-  const { id, document_id: documentId, status } = item.knowledge_item;
+  const {
+    id,
+    document_id: documentId,
+    status,
+    favourited_at: favouritedAt,
+  } = item.knowledge_item;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -82,6 +88,16 @@ export function RecipeActions({ item }: { item: KnowledgeItemResponse }) {
         </>
       ) : (
         <>
+          {/* The star leads the row: it is the only verb here a reader uses
+              repeatedly, and the only one that is not destructive or an
+              edit. It renders at every status — a superseded recipe is still
+              worth keeping, and unstarring one is how it leaves the list. */}
+          <FavouriteButton
+            itemId={id}
+            favourited={Boolean(favouritedAt)}
+            size="md"
+            title={item.display.title}
+          />
           {/* A <Link>, not a <button>: it navigates, so middle-click, ⌘-click
               and the page's own focus ring all keep working. Hidden — not
               disabled — where an edit cannot succeed: `indexing` is mid-flight

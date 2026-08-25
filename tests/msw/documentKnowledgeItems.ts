@@ -44,7 +44,10 @@ export const bookItemsFixture: KnowledgeItemSummary[] = [
     source_pages: { page_start: 88, page_end: 88 },
     summary: null,
   }),
+  /* Saved: the listing row carries `favourited_at`, so a book's contents
+     fills its own stars without a second request. */
   ROW("item_braised_beans", "Braised Beans", "needs_review", {
+    favourited_at: "2026-08-24T09:00:00Z",
     flags: [{ code: "no_steps", message: "This recipe has no method steps." }],
   }),
   ROW("item_slow_lamb", "Slow Lamb", "indexing"),

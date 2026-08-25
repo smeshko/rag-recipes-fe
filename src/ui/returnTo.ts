@@ -47,6 +47,7 @@ import { matchPath } from "react-router";
 export const RETURN_TO_ROUTES = [
   "/",
   "/recipes/:id",
+  "/favourites",
   "/library",
   "/library/:documentId",
   "/review",
@@ -116,7 +117,12 @@ export function readReturnTo(
   };
 }
 
-export type ReturnSection = "search" | "library" | "book" | "review";
+export type ReturnSection =
+  | "search"
+  | "favourites"
+  | "library"
+  | "book"
+  | "review";
 
 /**
  * Which part of the app a target belongs to — all Nav needs, and the split
@@ -139,6 +145,9 @@ export function returnSection(
   }
   if (matchPath({ path: "/review", end: false }, target.pathname)) {
     return "review";
+  }
+  if (matchPath("/favourites", target.pathname)) {
+    return "favourites";
   }
   if (matchPath("/library/:documentId", target.pathname)) {
     return "book";
