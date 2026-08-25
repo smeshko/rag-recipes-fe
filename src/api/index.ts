@@ -70,6 +70,7 @@ export type {
   ReviewFlag,
   ReviewItem,
   ReviewListResponse,
+  ReviewThresholds,
   Step,
   TerminalStatus,
   UploadResponse,

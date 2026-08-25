@@ -7,6 +7,7 @@ import { MethodPanel } from "./MethodPanel";
 import { Provenance } from "./Provenance";
 import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "./RecipeStates";
 import { ReviewCallout } from "./ReviewCallout";
+import { lowFields } from "./reviewMarks";
 import { TitleBlock } from "./TitleBlock";
 
 function TitleSkeleton() {
@@ -51,7 +52,15 @@ export function RecipePage() {
       <>
         <Bloom duration={0.7} delay={0.08} className="pt-8">
           <TitleBlock item={data} />
-          <FactsRow sd={data.knowledge_item.structured_data} />
+          <FactsRow
+            sd={data.knowledge_item.structured_data}
+            yieldMark={
+              lowFields(
+                data.knowledge_item.confidence?.fields,
+                data.knowledge_item.review_thresholds,
+              ).yield ?? null
+            }
+          />
         </Bloom>
         {/* Between the head and the panels, on its own step of the cadence:
             what is still flagged is the first thing a reviewer needs after the
@@ -64,6 +73,8 @@ export function RecipePage() {
             <IngredientsPanel
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
+              flags={data.knowledge_item.review_reasons}
+              thresholds={data.knowledge_item.review_thresholds}
             />
           </Bloom>
           <Bloom duration={0.7} delay={0.18}>
@@ -71,6 +82,7 @@ export function RecipePage() {
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
               confidence={data.knowledge_item.confidence}
+              thresholds={data.knowledge_item.review_thresholds}
             />
           </Bloom>
         </div>

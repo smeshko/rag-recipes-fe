@@ -1,16 +1,38 @@
 import { useState } from "react";
-import type { RecipeStructuredData } from "../../api";
+import type {
+  RecipeStructuredData,
+  ReviewFlag,
+  ReviewThresholds,
+} from "../../api";
 import { Panel } from "../../ui";
 import { ingredientLines } from "./ingredientLines";
+import { LowScoreMark } from "./LowScoreMark";
+import {
+  flaggedIngredientPositions,
+  type LowMark,
+  lowMark,
+} from "./reviewMarks";
 
 export function IngredientsPanel({
   sd,
   status,
+  flags = [],
+  thresholds = null,
 }: {
   sd: RecipeStructuredData;
   status: string;
+  /** The item's review reasons; only `low_normalization_confidence` ones with
+      `ingredient_positions` produce marks. */
+  flags?: ReviewFlag[];
+  thresholds?: ReviewThresholds | null;
 }) {
   const resolution = ingredientLines(sd);
+  /* Which rows to mark, and with what score. The BACKEND names the rows
+     (`ingredient_positions`); the score shown is the row's own
+     `confidence.normalization`, judged against the bound it shipped. A named
+     row whose score is missing still gets marked — the flag is the authority —
+     just without a number. */
+  const flagged = flaggedIngredientPositions(flags);
   /* Row identity is resolved here rather than in the JSX. Recipes legitimately
      repeat a line verbatim — 9 of 118 items on the live shelf do, a second
      "1 tsp sea salt" for the sauce — so keying on the text alone collides the
@@ -19,11 +41,18 @@ export function IngredientsPanel({
   const rows =
     resolution.kind === "empty"
       ? []
-      : resolution.lines.map((line, index) => ({
-          key: `${index}:${line}`,
-          index,
-          line,
-        }));
+      : resolution.lines.map((line, index) => {
+          const row =
+            resolution.kind === "structured" ? resolution.rows[index] : null;
+          const isFlagged = row !== null && flagged.has(row.position);
+          const mark: LowMark | null = isFlagged
+            ? lowMark(
+                row.ingredient.confidence?.normalization,
+                thresholds?.normalization,
+              )
+            : null;
+          return { key: `${index}:${line}`, index, line, isFlagged, mark };
+        });
   /* Purely visual; resets on navigation by design. */
   const [checked, setChecked] = useState<Set<number>>(new Set());
 
@@ -53,10 +82,20 @@ export function IngredientsPanel({
             {rows.length} items · tap to check off
           </p>
           <ul className="mt-4 flex flex-col gap-1.5">
-            {rows.map(({ key, index, line }) => {
+            {rows.map(({ key, index, line, isFlagged, mark }) => {
               const done = checked.has(index);
               return (
-                <li key={key}>
+                <li
+                  key={key}
+                  data-testid={isFlagged ? "ingredient-flagged" : undefined}
+                  /* The warning fill and a left rule, so a flagged row reads as
+                     flagged even before the eye lands on the score pill. */
+                  className={
+                    isFlagged
+                      ? "rounded-[10px] border-l-[3px] border-warning-border bg-warning-fill"
+                      : undefined
+                  }
+                >
                   <button
                     type="button"
                     aria-pressed={done}
@@ -77,6 +116,13 @@ export function IngredientsPanel({
                       }`}
                     >
                       {line}
+                      {mark ? (
+                        <LowScoreMark
+                          mark={mark}
+                          label="Normalization"
+                          testId="ingredient-score"
+                        />
+                      ) : null}
                     </span>
                   </button>
                 </li>
