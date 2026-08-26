@@ -5,6 +5,7 @@ import {
   IconMenuList,
   IconSearch,
   IconSparkle,
+  IconTune,
 } from "../../ui";
 
 /* The composer's footer row: two menus, both living inside the field, and
@@ -124,7 +125,7 @@ export function ComposerControls({
       <ComposerMenu
         label="Search mode"
         value={MODE_LABELS[mode]}
-        icon={<IconSearch className="h-4 w-4" />}
+        icon={<IconTune className="h-4 w-4" />}
         items={modeItems}
         onSelect={(key) => onModeSelect(key as SearchMode)}
       />

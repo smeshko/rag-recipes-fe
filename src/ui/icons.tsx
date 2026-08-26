@@ -120,6 +120,24 @@ export function IconMenuList({ className }: IconProps) {
   );
 }
 
+/** Sliders — the retrieval-mode menu.
+ *
+ * Deliberately NOT a magnifier. That menu sat next to the Action menu, which
+ * shows a magnifier whenever "Search" is the chosen action, so the composer
+ * carried two identical glyphs side by side and neither said which was which.
+ * Mode is not "search", it is HOW the search is weighted, and sliders is the
+ * conventional glyph for "adjust how this behaves". */
+export function IconTune({ className }: IconProps) {
+  return (
+    <Svg className={className}>
+      <path d="M4 8h9M19 8h1" />
+      <circle cx="16" cy="8" r="2.3" />
+      <path d="M4 16h3M13 16h7" />
+      <circle cx="10" cy="16" r="2.3" />
+    </Svg>
+  );
+}
+
 /** Chevron — the disclosure on the composer's menu triggers. */
 export function IconChevronDown({ className }: IconProps) {
   return (

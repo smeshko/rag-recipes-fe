@@ -17,6 +17,7 @@ export {
   IconSidebar,
   IconSparkle,
   IconStar,
+  IconTune,
 } from "./icons";
 export type { NavProps } from "./Nav";
 export { Nav } from "./Nav";
