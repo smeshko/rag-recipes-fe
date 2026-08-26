@@ -12,8 +12,8 @@ import type {
    shared this module was removed in phase 4.4 (live endpoints); the only
    remaining importer is the node test server (`tests/msw/server.ts`), so
    msw never reaches the production bundle. Src-side placement is historical
-   (4.2 DECISIONS.md D4) and kept to avoid churn. Payloads are transcribed
-   from docs/review-api-contract.md field-for-field; types come from
+   (epic 4.2) and kept to avoid churn. Payloads mirror the backend's review
+   schemas field-for-field (ARCHITECTURE.md "API contracts"); types come from
    `src/api` so contract drift breaks compilation.
 
    Fixture hygiene: synthetic ids only — nothing here may reference the

@@ -91,7 +91,7 @@ export function ReviewCallout({ item }: { item: KnowledgeItemResponse }) {
             {/* Keyed by code AND message: `code` alone is not unique. Every
                 warning the backend has no modelled copy for collapses onto
                 the single `llm_warning` fallback envelope
-                (docs/review-api-contract.md §1), so two unmodelled warnings
+                (ARCHITECTURE.md "Warnings are backend-authored"), so two unmodelled warnings
                 on one item render two siblings with the same code. The list
                 is derived, never reordered in place, so the pair is stable. */}
             {secondaries.map((flag) => (

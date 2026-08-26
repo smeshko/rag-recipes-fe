@@ -1,10 +1,15 @@
-/* Pure parser for answer.text — lightweight Markdown, verified live.
+/* Pure parser for answer.text — the lightweight Markdown the backend's answer
+ * prompt DECLARES (ARCHITECTURE.md "Answer text contract"): GitHub-flavoured
+ * Markdown with citations inline as `[cite_N]`. The shape was first observed
+ * live and then written into the versioned prompt, so this parser targets a
+ * stated contract rather than one model's habits; a prompt-version change
+ * that alters the format changes this file and tests/msw/answers.ts with it.
  *
- * It stays hand-rolled rather than pulling in a Markdown library: the input is
- * one model's prose, the output has to interleave citation chips that no
- * library knows about, and rendering arbitrary Markdown from an LLM into a
- * page is a bigger surface than this needs. But "minimal" turned out to mean
- * "wrong on valid input", so the scope is now:
+ * It stays hand-rolled rather than pulling in a Markdown library: the output
+ * has to interleave citation chips that no library knows about, and rendering
+ * arbitrary Markdown from an LLM into a page is a bigger surface than this
+ * needs. But "minimal" turned out to mean "wrong on valid input", so the scope
+ * is now:
  *
  *   blocks      blank lines separate paragraphs; a paragraph may be soft-wrapped
  *               across several lines and is rejoined with a space

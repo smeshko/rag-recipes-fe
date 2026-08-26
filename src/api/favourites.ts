@@ -19,7 +19,7 @@ import type {
    here re-describes a recipe card — it walks pages and hands back
    `KnowledgeItemListResponse` exactly as `knowledgeItems.ts` does. */
 
-/* Same page-walk contract as the shelf and the review queue (DECISIONS.md D6):
+/* Same page-walk contract as the shelf and the review queue (ARCHITECTURE.md "Page walk"):
    the response carries no total, so walk `limit`/`offset` until a page comes
    back short. Same constants as documents.ts — see the cap commentary there;
    the bound is on REQUESTS, not items. */

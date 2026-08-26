@@ -19,7 +19,7 @@ import type {
    generated schema (backend 21.3); tests keep running on the MSW handlers in
    src/mocks/review.ts. */
 
-/* Same page-walk contract as the shelf (DECISIONS.md D6): the response
+/* Same page-walk contract as the shelf (ARCHITECTURE.md "Page walk"): the response
    carries no total, so walk `limit`/`offset` pages until one comes back
    short. Same constants as documents.ts — see the cap commentary there;
    the bound is on REQUESTS, not items. */
@@ -74,7 +74,7 @@ export function useReviewItems(documentId?: string) {
   return useQuery(reviewItemsQueryOptions(documentId));
 }
 
-/** The 4.3 seam (DECISIONS.md D8): TanStack v5 accepts onSuccess/onError/
+/** The 4.3 seam (ARCHITECTURE.md "Review decision seam"): TanStack v5 accepts onSuccess/onError/
     onSettled per `mutate()` call but NOT `onMutate`, so hook-level
     pass-through is the only way 4.3 gets its optimistic snapshot/rollback
     without editing this file. 4.3 passes `onMutate` (snapshot + optimistic

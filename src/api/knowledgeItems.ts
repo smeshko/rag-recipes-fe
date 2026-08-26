@@ -16,7 +16,7 @@ import type {
   KnowledgeItemUpdateRequest,
 } from "./types";
 
-/* Same page-walk contract as the shelf and the review queue (DECISIONS.md D6):
+/* Same page-walk contract as the shelf and the review queue (ARCHITECTURE.md "Page walk"):
    the response carries no total, so walk `limit`/`offset` until a page comes
    back short. Same constants as documents.ts — see the cap commentary there;
    the bound is on REQUESTS, not items. */
@@ -133,7 +133,7 @@ export interface UseUpdateKnowledgeItemOptions<TContext = unknown> {
 /**
  * PATCH /knowledge-items/{item_id} — an in-place edit. The response is the GET
  * body field-for-field, with `review_reasons` recomputed and `edited_at`
- * stamped (docs/edit-api-contract.md).
+ * stamped (ARCHITECTURE.md "Edit semantics").
  *
  * TWO server-side paths, and the response `status` is the only way to tell
  * them apart: a `needs_review` item comes back `needs_review` (a pure row

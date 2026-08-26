@@ -27,10 +27,11 @@ The dev server runs on <http://localhost:5173>.
 | `just build` | Type-check (`tsc -b`) then production build to `dist/` |
 | `just lint` | Biome lint + format check (`biome check .`) |
 | `just format` | Biome format, safe fixes and import sorting (`biome check --write .`) |
+| `just test` | Vitest + React Testing Library + MSW |
+| `just typegen` | Regenerate `src/api/schema.d.ts` from the backend's `/openapi.json` (backend on :8004) |
+| `just typegen-check` | Same codegen with `--check` — fails when the committed schema is stale |
 
 `just` with no arguments lists everything available.
-
-`test` and `typegen` (OpenAPI codegen against the backend) arrive with the test harness in epic 01 phase 1.2.
 
 ## Layout
 
@@ -59,7 +60,7 @@ needs no per-component work.
 
 Type is the system sans stack, deliberately — that is the fallback the target
 itself ships behind its custom face, it renders natively everywhere, and it
-keeps webfonts off the critical path. There are no `@fontsource` imports.
+keeps webfonts off the critical path; no font packages are installed.
 
 `design/` holds the earlier "Sunday Kitchen" mockups (warm cream, a Petrona
 display serif, lifted cards). They are **no longer the spec** — treat them as

@@ -19,7 +19,8 @@ import type {
    nor touched. msw never reaches the production bundle — the only importers
    are the node test server and the test files.
 
-   Every payload below is transcribed from docs/edit-api-contract.md
+   Every payload below mirrors the backend's edit contract (ARCHITECTURE.md
+   "API contracts" → Edit semantics)
    field-for-field, and every type comes from `../api`, so contract drift
    breaks compilation rather than passing quietly. Fixture hygiene: synthetic
    ids only (`item_*` / `doc_*` / `span_*`), never a dev-DB UUID.
@@ -669,7 +670,7 @@ const editSteps = (existing: EditedStep[], lines: string[]): EditedStep[] => {
  * fixture array to every test, and an in-place write would reintroduce
  * exactly the cross-test leak `reviewScenario`'s header warns about.
  *
- * Semantics, per docs/edit-api-contract.md §1: an ABSENT key is untouched,
+ * Semantics, per ARCHITECTURE.md "Edit semantics": an ABSENT key is untouched,
  * an explicit `null` clears, and the two lists are whole-array replacement
  * of bare strings (22.1 `RecipeEdit.ingredients: list[str]`) matched back to
  * existing rows BY TEXT, not by position — which is what makes a pure

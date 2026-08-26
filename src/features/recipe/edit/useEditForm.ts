@@ -59,7 +59,7 @@ const normList = (rows: LineRow[]) =>
 
 /* What actually goes on the wire, which is NOT `normList`. The backend matches
    submitted lines back to existing rows *by text* and guarantees that
-   "untouched lines pass through byte-identical" (edit-api-contract §1) — so a
+   "untouched lines pass through byte-identical" (ARCHITECTURE.md "Edit semantics") — so a
    seeded row that the reviewer never touched must go out with its ORIGINAL
    bytes. `ingredientLines`' structured arm maps `raw_text` without trimming, so
    a padded line really can reach the form; normalizing it would fail the

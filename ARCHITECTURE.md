@@ -34,21 +34,26 @@ A single-user web frontend for the rag-recipes backend: search the recipe librar
 
 - **Search-only by default, answer on demand.** Typing a query fires `POST /search` (fast, no LLM) and renders result cards. The grounded answer is an explicit action — an "Ask the shelf" affordance triggers `POST /answers` (`include_results: false`) and fills the answer card when the LLM returns. Keeps token spend intentional and the default interaction instant.
 - **Fallback state** (designed in `sk-fallback.html`): when `/answers` returns non-empty `warnings`, render the amber notice — `answer.text` is the warning, not an answer — and show the `results` array the endpoint always returns on fallback. Never treat fallback as an error.
-- Search query lives in the URL (`/?q=...`) so results are restorable and shareable.
+- Search query lives in the URL (`/?q=...`) so results are restorable and shareable. Since 2026-08-26 the composer's two settings ride there too — `asked=1` / `menu=1` (mutually exclusive) name the action that was committed and `?mode=` the retrieval mode (hybrid omitted) — so Back/Forward restore the exact ask, and nothing fires until the reader submits.
+- **Compose a menu** (added 2026-08-25) is the second on-demand LLM action: `POST /menus` (`src/api/menus.ts`, a sibling of the answer hook) takes the same query and returns a course-by-course selection with citations; it degrades through the same `warnings` fallback and is never auto-fired.
+- **Answer text contract** (2026-08-26): the backend's versioned answer prompt now states the shape of `answer.text` — GitHub-flavoured Markdown, citations inline as `[cite_N]` right after the sentence they support. `src/features/search/answerText.ts` parses exactly that declared format (paragraphs, ordered/bulleted lists, bold/italic, the citation token) into React segments; it never renders HTML. If the prompt version changes the format, the parser and its fixtures in `tests/msw/answers.ts` change with it.
 
 ### Routing
 
-**React Router**. The primary screens (the table predates `/recipes/:id/edit` and `/library/:documentId`, which `src/routes.tsx` owns):
+**React Router**. `src/routes.tsx` owns the table; this is its mirror (kept current as of 2026-08-26).
 
 The Mockup column records which `design/` file each screen was built from. Those mockups were superseded on 2026-08-25 (see "What this is"), so the column is provenance, not a spec to check against.
 
 | Route | Screen | Mockup (retired) |
 |---|---|---|
-| `/` (`?q=`) | Search + on-demand answer | `e-sunday-kitchen.html` (+ `sk-fallback.html` state) |
+| `/` (`?q=`, `?mode=`, `asked=1` / `menu=1`) | Search + on-demand answer or menu | `e-sunday-kitchen.html` (+ `sk-fallback.html` state) |
+| `/recipes/new` | Write a recipe by hand (`POST /knowledge-items`, lands on the read page as `indexing`) | none — the edit form's chrome |
 | `/recipes/:id` | Recipe detail (`GET /knowledge-items/{id}`) | `sk-recipe.html` |
+| `/recipes/:id/edit` | In-place edit (`PATCH /knowledge-items/{id}`; `ready` and `needs_review` only) | none — the read page's chrome |
 | `/favourites` | Saved recipes (`GET /favourites`) | no mockup — `/review`'s list chrome |
 | `/library` | Shelf + upload + ingestion status | `sk-library.html` |
-| `/review` | Later — see v1 scope | not designed yet |
+| `/library/:documentId` | A book's contents, with edit and delete per recipe (`GET /documents/{id}/knowledge-items`) | none — `/review`'s list chrome |
+| `/review` | Review queue (`GET /review-items`, `POST /knowledge-items/{id}/review`) | none — designed in code, epic 04 |
 
 ### Favourites
 
@@ -86,6 +91,17 @@ exist.
 
 The four designed screens only: search+answer, recipe detail, library (upload, per-book counts, processing/failed states, reprocess), fallback. The **review queue is out of v1** — for now a library link filters search to `needs_review` items (read-only); a real triage UI needs its own design pass *and* a backend "mark ready" endpoint that doesn't exist yet.
 
+- **Superseded (epics 04–05, 2026-08):** the backend shipped `GET /review-items` and `POST /knowledge-items/{id}/review`, and the frontend built the queue (`/review`), in-place editing (`/recipes/:id/edit`) and the per-book contents page on top of them. The v1 line above is history; the routing table is the current scope.
+
+### API contracts the code leans on
+
+These used to live in per-epic `docs/*-api-contract.md` and `DECISIONS.md` files that are not tracked; the load-bearing rules are restated here so a code comment can cite a section that exists.
+
+- **Page walk.** Every listing (`/documents`, `/review-items`, `/documents/{id}/knowledge-items`, `/favourites`) is fetched page by page with `limit`/`offset` until a short page, deduped by id — offsets shift under concurrent writes, and the backend returns no total. A hard cap (`PaginationCapError`) stops a runaway walk.
+- **Edit semantics** (`PATCH /knowledge-items/{id}`). An ABSENT key is untouched; an explicit `null` clears a nullable field; line lists (ingredients, steps) are replaced wholesale and renumbered from list order; a submitted line whose text matches an existing one keeps that line's parse byte-identical, a new or rewritten line is marked human-authored. The body model is `extra="forbid"`, so presentation-only state (e.g. review marks) must never reach the request. The response IS the GET body and is written into `['knowledge-item', id]` rather than invalidated.
+- **Review decision seam.** `useReviewDecision` and the edit/delete hooks accept a caller-supplied `onMutate`/`onSettled` because TanStack v5 takes per-call `onSuccess`/`onError`/`onSettled` but not `onMutate`; a card that wants an optimistic removal has to be handed the hook.
+- **Warnings are backend-authored.** `review_reasons[].code` is an opaque enum used as a stable key; `message` is rendered verbatim. The frontend keeps no code→copy table, and the MSW contract mocks in `src/mocks/` model only the warnings they say they do.
+
 ### Testing
 
 **Vitest + React Testing Library + MSW**, focused on the flows where logic actually lives: fallback rendering, polling-until-terminal, error-envelope handling, 409 on reprocess. MSW fixtures mirror the real envelope shapes. No E2E suite for a personal app — "done means demonstrated" is satisfied by running against the real local backend.
@@ -114,6 +130,6 @@ frontend/
 
 ## Open questions (parked, not blocking)
 
-1. **Review queue**: needs design + backend endpoint (no way to promote `needs_review` → `ready` via API today).
+1. ~~**Review queue**: needs design + backend endpoint.~~ Resolved 2026-08 — see "v1 scope".
 2. **Answer streaming**: `/answers` is non-streaming today; if wait times annoy, revisit backend streaming later — the on-demand answer UX already absorbs most of the pain.
 3. **PDF access**: backend has no endpoint to view the source PDF/page; citations stay text labels ("page 22") until that exists.

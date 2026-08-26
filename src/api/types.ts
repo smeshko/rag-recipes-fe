@@ -286,7 +286,7 @@ export interface KnowledgeItemResponse {
   source_citations: SourceCitation[];
 }
 
-/* PATCH /knowledge-items/{item_id} body — see docs/edit-api-contract.md §1.
+/* PATCH /knowledge-items/{item_id} body — see ARCHITECTURE.md "Edit semantics".
 
    Every key is optional and the three states are distinct: an ABSENT key is
    left unchanged (the backend reads the body with `exclude_unset`), an
@@ -343,7 +343,7 @@ export type KnowledgeItemCreateRequest =
    review schemas (epic 21.3) under the names 4.2 introduced, so consumers
    compile unchanged. The structural check at each alias IS the drift
    tripwire — never hand-patch a divergence here; reconcile it through
-   docs/review-api-contract.md instead. */
+   ARCHITECTURE.md "API contracts" instead. */
 
 /** `code` is a backend-owned enum treated as an opaque string; `message` is backend-authored copy rendered verbatim. */
 export type ReviewFlag = components["schemas"]["ReviewReason"];

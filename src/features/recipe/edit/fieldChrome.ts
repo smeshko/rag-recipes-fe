@@ -28,7 +28,7 @@ export const labelClass = "text-[13px] font-medium text-fg-muted";
    Keyed to the POINTER, not to `max-[560px]`. An earlier pass keyed it to
    width and the 667x375 landscape sweep caught it immediately: a landscape
    phone is 667px wide, misses every phone tier, and is still iOS Safari —
-   so it still zoomed. Same lesson as the tap targets (DECISIONS.md D3):
+   so it still zoomed. Same lesson as the tap targets (the 44px pointer-coarse rule):
    layout is a width concern, touch behaviour is not. */
 export const fieldClass =
   "w-full rounded-reco border border-border bg-surface-raised px-3 py-2 text-[15px] outline-none transition-[border-color,box-shadow] focus:border-fg-subtle focus:shadow-focus placeholder:text-fg-subtle pointer-coarse:text-base pointer-coarse:min-h-11";
