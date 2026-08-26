@@ -6,7 +6,7 @@ import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
 import { answersHandler, groundedAnswerFixture } from "../msw/answers";
 import { server } from "../msw/server";
-import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
+import { actionTrigger, chooseAction, chooseMode, currentAction, runAiAction, submitButton } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -44,7 +44,7 @@ afterEach(() => {
 
 const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
-const askButton = () => aiAnswersTrigger();
+const askButton = () => actionTrigger();
 const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>
   runAiAction(user, "Ask the shelf");
 const answerCard = () => screen.queryByText(/Grounded in your books/);
@@ -63,7 +63,13 @@ async function askThenOpenRecipe(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByText(/Grounded in your books/);
   expect(answersCalls).toBe(1);
 
-  await user.click(screen.getByText("Spinach & Cheddar Frittata"));
+  /* From the answer's own picks, not from a result card: with "Ask the
+     shelf" selected the /search grid is no longer fetched at all, so the
+     answer IS the page. By ROLE, because the same title also appears bolded
+     in the prose above — only the pick is a link. */
+  await user.click(
+    screen.getByRole("link", { name: /Fruit-Stuffed French Toast/ }),
+  );
   await screen.findByRole("link", { name: /Back to results/ });
   /* The search page is gone, not hidden — this is what used to destroy the
      answer, and the reason it has to live in the cache. */
@@ -144,13 +150,17 @@ describe("an answer survives a detour through a recipe", () => {
     await screen.findByText(/Grounded in your books/);
 
     await user.clear(searchBox());
-    await user.type(searchBox(), "scones{Enter}");
+    await user.type(searchBox(), "scones");
+    /* Back to Search explicitly — the action is sticky, so Enter alone would
+       ask about the new query rather than search for it. */
+    await chooseAction(user, "Search");
+    await user.click(submitButton());
     await settleGrid();
 
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
     /* The CTA is back, because the new query has no answer of its own. */
-    expect(aiAnswersTrigger()).toBeInTheDocument();
+    expect(actionTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 
@@ -194,7 +204,7 @@ describe("asked=1 is the ask", () => {
     await settleGrid();
     /* The entry before the click never had an answer on it. */
     expect(answerCard()).toBeNull();
-    expect(aiAnswersTrigger()).toBeInTheDocument();
+    expect(actionTrigger()).toBeInTheDocument();
 
     await act(async () => {
       await router.navigate(1);
@@ -247,7 +257,7 @@ describe("asked=1 is the ask", () => {
     await act(async () => {
       await router.navigate("/?mode=vector&q=breakfast&asked=1");
     });
-    await settleGrid();
+    await waitFor(() => expect(currentAction()).toBe("Ask the shelf"));
     await clickAsk(user);
     await screen.findByText(/Grounded in your books/);
     expect(router.state.location.search).toBe(
@@ -268,15 +278,20 @@ describe("asked=1 is the ask", () => {
        re-asking behind the user's back would spend a round-trip nobody bought.
        `asked=1` addresses a cache entry; it does not authorise a fetch. */
     renderAt("/?q=breakfast&asked=1");
-    await settleGrid();
+    /* No settleGrid: with Ask committed there is no /search and so no grid to
+       wait for. The composer restoring "Ask the shelf" from the URL is the
+       signal the page has rendered. */
+    await waitFor(() => expect(currentAction()).toBe("Ask the shelf"));
     expect(answerCard()).toBeNull();
-    expect(aiAnswersTrigger()).toBeInTheDocument();
+    expect(actionTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(0);
   });
 
-  it("a mode chip after an ask drops asked and empties the slot", async () => {
-    /* A chip is a different question — {q, mode, corpus} is the ask — so the
-       URL stops claiming an answer belongs here (PLAN.md D9). */
+  it("switching to Search after an ask drops asked and empties the slot", async () => {
+    /* D9's rule still holds — the URL must stop claiming an answer belongs to
+       an entry that is no longer that question — but a MODE change is no
+       longer what triggers it. Nothing commits until submit, so the disarm now
+       happens on the submit that runs a plain Search instead. */
     server.use(answersHandler(groundedAnswerFixture));
     const user = userEvent.setup();
     const router = renderAt("/?q=breakfast");
@@ -285,13 +300,18 @@ describe("asked=1 is the ask", () => {
     await screen.findByText(/Grounded in your books/);
 
     await chooseMode(user, "Vector only");
+    /* Still on the answer: choosing a mode is free. */
+    expect(router.state.location.search).toBe("?q=breakfast&asked=1");
+
+    await chooseAction(user, "Search");
+    await user.click(submitButton());
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=breakfast&mode=vector"),
     );
     await settleGrid();
     expect(answerCard()).toBeNull();
     expect(screen.getByTestId("answer-status")).toHaveTextContent("");
-    expect(aiAnswersTrigger()).toBeInTheDocument();
+    expect(actionTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 });

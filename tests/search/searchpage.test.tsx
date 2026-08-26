@@ -7,7 +7,7 @@ import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
 import { fixtureReadyRecipes, searchFixture } from "../msw/handlers";
 import { server } from "../msw/server";
-import { chooseMode, currentMode, runAiAction } from "./composer";
+import { currentMode, runAiAction, runWithMode } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -43,7 +43,7 @@ describe("SearchPage URL ↔ state", () => {
     const bodies = captureSearchBodies();
     renderAt("/?q=frittata");
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ query: "frittata", mode: "hybrid" });
+    expect(bodies[0]).toEqual({ query: "frittata", mode: "hybrid", limit: 9 });
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(bodies).toHaveLength(1);
   });
@@ -75,18 +75,18 @@ describe("SearchPage URL ↔ state", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata");
     await waitFor(() => expect(bodies).toHaveLength(1));
-    await chooseMode(user, "Vector only");
+    await runWithMode(user, "Vector only");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata&mode=vector"),
     );
     await waitFor(() => expect(bodies).toHaveLength(2));
-    expect(bodies[1]).toEqual({ query: "frittata", mode: "vector" });
+    expect(bodies[1]).toEqual({ query: "frittata", mode: "vector", limit: 9 });
   });
 
   it("selecting Hybrid clears ?mode=", async () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata&mode=vector");
-    await chooseMode(user, "Hybrid");
+    await runWithMode(user, "Hybrid");
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata"),
     );
@@ -106,7 +106,7 @@ describe("SearchPage URL ↔ state", () => {
     renderAt("/?q=frittata&mode=garbage");
     expect(currentMode()).toBe("Hybrid");
     await waitFor(() => expect(bodies).toHaveLength(1));
-    expect(bodies[0]).toEqual({ query: "frittata", mode: "hybrid" });
+    expect(bodies[0]).toEqual({ query: "frittata", mode: "hybrid", limit: 9 });
   });
 
   it("back navigation resyncs the search box", async () => {

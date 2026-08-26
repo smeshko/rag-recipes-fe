@@ -7,25 +7,34 @@ import {
   IconSparkle,
 } from "../../ui";
 
-/* The composer's footer row: two menus, both living inside the field.
+/* The composer's footer row: two menus, both living inside the field, and
+ * both now PURE SETTINGS — nothing here fires a request.
  *
- * This replaces two separate strips that used to sit under the search bar — a
- * bordered "AI answers" card holding the two LLM buttons, and a centred row of
- * three search-mode chips. Five always-visible controls for a box you mostly
- * just type into. Now the box is a box, and both groups are one click inside
- * it, which is where every current AI composer puts them.
+ * That is the second iteration of this control and a deliberate reversal. The
+ * first version made the two LLM options `menuitem`s that ran on selection,
+ * which preserved the behaviour of the buttons they replaced but meant the
+ * composer had two ways to start work: the send button for a search, the menu
+ * for anything else. Choosing "Ask the shelf" and then having to find a
+ * separate button would have been the alternative, and both are worse than
+ * the rule this now follows:
  *
- * The two menus are deliberately different KINDS (see ui/ComposerMenu):
+ *     the menus decide WHAT will happen; the send button (or Enter) decides
+ *     WHEN, and exactly one thing runs.
  *
- *   Actions — Ask the shelf / Compose a menu. `menuitem`s: choosing one RUNS
- *             it. That is what keeps this a pure re-skin of the trigger rather
- *             than a behaviour change; the click still buys the round-trip.
- *   Mode    — Hybrid / Keyword / Vector. `menuitemradio`s: choosing one is a
- *             setting, and re-runs the search exactly as the old chips did.
+ * So the action menu carries all three modes — Search, Ask, Compose — with one
+ * always checked, and a plain search is now a first-class option rather than
+ * the unnamed default you got by not touching anything.
  *
- * Both read the DRAFT, so an emptied box disables the actions menu rather than
- * letting a click silently no-op — the same guard askShelf and composeMenu
- * apply on their own. */
+ * The retrieval-mode menu is a setting for the same reason, and this is the
+ * part worth flagging: it used to re-run the search the moment you picked a
+ * mode. Left that way, picking "Vector only" while "Ask the shelf" was
+ * selected would have fired a search the user never asked for and dropped the
+ * pending ask (nextSearchParams disarms `asked` on a mode change). Two
+ * controls in one box, one firing on select and one not, is not a rule anyone
+ * can hold in their head.
+ *
+ * Both menus therefore read DRAFT state, not the URL: what the field will do
+ * next, not what it last did. */
 
 const MODE_LABELS: Record<SearchMode, string> = {
   hybrid: "Hybrid",
@@ -41,44 +50,56 @@ const MODE_DESCRIPTIONS: Record<SearchMode, string> = {
 
 const MODES: readonly SearchMode[] = ["hybrid", "keyword", "vector"];
 
-export const ACTION_KEYS = { ask: "ask", menu: "menu" } as const;
+/** What the composer will do when it is submitted. */
+export type ComposerAction = "search" | "ask" | "menu";
+
+export const ACTION_LABELS: Record<ComposerAction, string> = {
+  search: "Search",
+  ask: "Ask the shelf",
+  menu: "Compose a menu",
+};
+
+const ACTION_DESCRIPTIONS: Record<ComposerAction, string> = {
+  search: "Matching recipes from your shelf",
+  ask: "A direct answer, cited from your books",
+  menu: "A whole menu built from your books",
+};
+
+const ACTION_ICONS: Record<ComposerAction, React.ReactElement> = {
+  search: <IconSearch className="h-4 w-4" />,
+  ask: <IconSparkle className="h-4 w-4" />,
+  menu: <IconMenuList className="h-4 w-4" />,
+};
+
+const ACTIONS: readonly ComposerAction[] = ["search", "ask", "menu"];
 
 export interface ComposerControlsProps {
+  action: ComposerAction;
+  onActionSelect: (action: ComposerAction) => void;
   mode: SearchMode;
   onModeSelect: (mode: SearchMode) => void;
-  onAsk: () => void;
-  onMenu: () => void;
-  /** The draft is empty — nothing to ask about. */
-  disabled?: boolean;
+  /** An action in flight — its own option is unavailable until it lands. */
   asking?: boolean;
   composing?: boolean;
 }
 
 export function ComposerControls({
+  action,
+  onActionSelect,
   mode,
   onModeSelect,
-  onAsk,
-  onMenu,
-  disabled = false,
   asking = false,
   composing = false,
 }: ComposerControlsProps) {
-  const actions: ComposerMenuItem[] = [
-    {
-      key: ACTION_KEYS.ask,
-      label: "Ask the shelf",
-      description: "A direct answer, cited from your books",
-      icon: <IconSparkle className="h-4 w-4" />,
-      disabled: asking,
-    },
-    {
-      key: ACTION_KEYS.menu,
-      label: "Compose a menu",
-      description: "A whole menu built from your books",
-      icon: <IconMenuList className="h-4 w-4" />,
-      disabled: composing,
-    },
-  ];
+  const actionItems: ComposerMenuItem[] = ACTIONS.map((value) => ({
+    key: value,
+    label: ACTION_LABELS[value],
+    description: ACTION_DESCRIPTIONS[value],
+    icon: ACTION_ICONS[value],
+    checked: value === action,
+    disabled:
+      (value === "ask" && asking) || (value === "menu" && composing) || false,
+  }));
 
   const modeItems: ComposerMenuItem[] = MODES.map((value) => ({
     key: value,
@@ -90,22 +111,16 @@ export function ComposerControls({
   return (
     <>
       <ComposerMenu
-        label="AI answers"
-        /* The trigger says what the menu is FOR, not what is selected — these
-           are actions, so there is no current value to display. */
-        value="AI answers"
-        icon={<IconSparkle className="h-4 w-4" />}
-        items={actions}
-        disabled={disabled}
+        label="Action"
+        value={ACTION_LABELS[action]}
+        icon={ACTION_ICONS[action]}
+        items={actionItems}
         busy={asking || composing}
-        onSelect={(key) => {
-          if (key === ACTION_KEYS.ask) {
-            onAsk();
-            return;
-          }
-          onMenu();
-        }}
+        onSelect={(key) => onActionSelect(key as ComposerAction)}
       />
+      {/* The retrieval mode is what Search RANKS by and what Ask and Compose
+          retrieve with, so it stays visible for all three rather than hiding
+          when the action is not a plain search. */}
       <ComposerMenu
         label="Search mode"
         value={MODE_LABELS[mode]}

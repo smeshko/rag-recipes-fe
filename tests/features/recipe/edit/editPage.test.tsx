@@ -52,7 +52,7 @@ describe("edit page ladder", () => {
     /* The catch-all did not swallow the path, and the handle resolved narrow. */
     expect(screen.queryByTestId("notfound-page")).not.toBeInTheDocument();
     const shell = container.querySelector("div.mx-auto");
-    expect(shell?.className).toContain("max-w-[768px]");
+    expect(shell?.className).toContain("max-w-[880px]");
     expect(
       screen.queryByText(/grounded in your own books/),
     ).not.toBeInTheDocument();

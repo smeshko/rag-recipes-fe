@@ -13,7 +13,7 @@ import {
   groundedAnswerFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
-import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
+import { actionTrigger, chooseAction, chooseMode, currentMode, runAiAction, submitButton } from "./composer";
 
 /* An answer that takes long enough to observe mid-flight. The default
    handler resolves within a tick, so anything asserted after an awaited
@@ -63,7 +63,7 @@ const searchBox = () =>
 /* The trigger, for enabled/disabled assertions. The two LLM actions now live
    behind it (ComposerControls), and it is what carries the empty-draft guard
    the old always-visible button carried. To RUN the ask, use runAiAction. */
-const askButton = () => aiAnswersTrigger();
+const askButton = () => actionTrigger();
 const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>
   runAiAction(user, "Ask the shelf");
 
@@ -124,24 +124,35 @@ describe("ask affordance", () => {
   });
 
   it("Ask is inert on a whitespace-only query", async () => {
+    /* The old assertion was that the Ask BUTTON was disabled. There is no Ask
+       button any more — the action is a setting, and a setting has nothing to
+       disable. The guard moved into askShelf, so the thing to pin is that
+       submitting a blank draft buys no round-trip. */
     const user = userEvent.setup();
     renderAt("/");
-    expect(askButton()).toBeDisabled();
     await user.type(searchBox(), "   ");
-    expect(askButton()).toBeDisabled();
+    await chooseAction(user, "Ask the shelf");
+    await user.click(submitButton());
     expect(answersCalls).toHaveLength(0);
   });
 
-  it("mode chip click after an answer does not refire /answers", async () => {
+  it("changing the mode after an answer refires nothing", async () => {
+    /* Stronger than the assertion it replaces. This used to be "a mode chip
+       does not refire /answers", because a chip DID fire a fresh /search.
+       Neither menu fires anything now, so the answer simply stays put and the
+       new mode is what the next submit will use. */
     server.use(answersHandler(groundedAnswerFixture));
     const user = userEvent.setup();
     renderAt("/?q=breakfast");
     await settleGrid();
     await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(1));
+
     await chooseMode(user, "Vector only");
-    await settleGrid();
+
+    expect(currentMode()).toBe("Vector only");
     expect(answersCalls).toHaveLength(1);
+    expect(screen.getByText(/Grounded in your books/)).toBeInTheDocument();
   });
 
   it("a new query via Enter clears the answer state", async () => {
@@ -155,7 +166,13 @@ describe("ask affordance", () => {
       expect(screen.queryByTestId("answer-skeleton")).toBeNull(),
     );
     await user.clear(searchBox());
-    await user.type(searchBox(), "scones{Enter}");
+    await user.type(searchBox(), "scones");
+    /* Back to a plain Search explicitly: the action is sticky, so Enter alone
+       would ask again about the new query rather than search for it. That
+       stickiness is the point of the selector — "we only fire what was
+       selected" — so the test states the switch rather than assuming it. */
+    await chooseAction(user, "Search");
+    await user.click(submitButton());
     await settleGrid();
     /* Mutation reset: no answer artifacts and no new POST. */
     expect(screen.queryByTestId("answer-skeleton")).toBeNull();
@@ -179,9 +196,9 @@ describe("ask affordance", () => {
        pinning, is that the action reports itself unavailable for as long as
        the round-trip is open. */
     await clickAsk(user);
-    await user.click(aiAnswersTrigger());
+    await user.click(actionTrigger());
     expect(
-      await screen.findByRole("menuitem", { name: /^Ask the shelf/ }),
+      await screen.findByRole("menuitemradio", { name: /^Ask the shelf/ }),
     ).toBeDisabled();
     await user.keyboard("{Escape}");
     expect(answersCalls).toHaveLength(1);
@@ -210,9 +227,10 @@ describe("ask affordance", () => {
     /* Reset the mutation mid-flight by changing ?q= — this detaches the
        observer, so anything keyed to a per-mutate callback would stick. */
     await user.clear(searchBox());
-    await user.type(searchBox(), "scones{Enter}");
+    await user.type(searchBox(), "scones");
+    await chooseAction(user, "Search");
+    await user.click(submitButton());
     await settleGrid();
-    await waitFor(() => expect(askButton()).toBeEnabled());
     await clickAsk(user);
     await waitFor(() => expect(answersCalls).toHaveLength(2));
   });

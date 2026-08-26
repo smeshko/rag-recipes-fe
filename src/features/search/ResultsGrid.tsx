@@ -57,7 +57,10 @@ export function ResultsGrid({
           </span>
         </div>
       </Bloom>
-      <div className="grid grid-cols-3 gap-[22px] max-[960px]:grid-cols-1">
+      {/* Three tiers now that the page is 1160 wide: three cards, then two,
+          then one. Without the middle step a 1000px window jumped straight
+          from three columns to a single full-width card. */}
+      <div className="grid grid-cols-3 gap-5 max-[1100px]:grid-cols-2 max-[720px]:grid-cols-1">
         {results.map((result, index) => (
           <Bloom
             key={result.item.id}

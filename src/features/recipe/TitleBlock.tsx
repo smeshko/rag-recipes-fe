@@ -21,7 +21,10 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {doc.isSuccess ? (
-          <Pill size="md" tone="book" uppercase>
+          /* Sentence case. A book title is a proper noun someone chose —
+             upper-casing it is the retired language's small-caps habit, and
+             the target has no small caps anywhere. */
+          <Pill size="md" tone="book">
             {doc.data.document.title}
           </Pill>
         ) : (
@@ -40,9 +43,16 @@ export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
             {pageLabel}
           </Pill>
         ) : null}
-        <Pill size="md" tone={status.tone}>
-          {status.label}
-        </Pill>
+        {/* Every status EXCEPT ready. "Ready" is the expected state of a
+            recipe you just opened, so a chip saying so is a permanent label
+            that never varies and carries nothing — while "Needs review",
+            "Extracting" or "Rejected" all change what the reader should do.
+            Hiding the no-op case is what makes the others read as signal. */}
+        {item.knowledge_item.status === "ready" ? null : (
+          <Pill size="md" tone={status.tone}>
+            {status.label}
+          </Pill>
+        )}
       </div>
       {/* One fixed size, no clamp. A fluid 30–42px display title was the
           loudest thing on the page, and it grew precisely where there was

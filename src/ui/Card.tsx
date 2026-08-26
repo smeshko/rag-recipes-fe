@@ -11,7 +11,10 @@ import type { ReactNode } from "react";
  *
  * That is also why the .card-head-* component classes are gone from theme.css:
  * they existed to pair a fill with its ink, and there is no fill any more, so
- * plain `text-*` utilities do the whole job. */
+ * plain `text-*` utilities do the whole job.
+ *
+ * Sentence case, not small caps: a book title is a proper noun someone chose,
+ * and the target has no small caps anywhere in its interface. */
 export type CardAccent = "terra" | "sage" | "butter";
 
 const HEAD_INK: Record<CardAccent, string> = {
@@ -38,7 +41,7 @@ export function Card({ accent, header, className = "", children }: CardProps) {
       className={`flex flex-col overflow-hidden rounded-card border border-border bg-surface-raised transition-colors duration-150 hover:border-border-strong ${className}`}
     >
       <div
-        className={`flex items-center justify-between gap-3 px-4 pt-4 text-[11px] font-semibold uppercase tracking-[0.06em] ${HEAD_INK[accent]}`}
+        className={`flex items-center justify-between gap-3 px-4 pt-4 text-[12px] font-medium ${HEAD_INK[accent]}`}
       >
         {header}
       </div>

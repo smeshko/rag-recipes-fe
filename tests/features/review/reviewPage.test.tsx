@@ -32,7 +32,7 @@ describe("review page states ladder", () => {
     expect(screen.queryByTestId("notfound-page")).not.toBeInTheDocument();
     /* Narrow Shell width, like /library — and no footer. */
     const shell = container.querySelector("div.mx-auto");
-    expect(shell?.className).toContain("max-w-[768px]");
+    expect(shell?.className).toContain("max-w-[880px]");
     expect(
       screen.queryByText(/grounded in your own books/),
     ).not.toBeInTheDocument();

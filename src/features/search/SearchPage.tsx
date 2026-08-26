@@ -17,7 +17,11 @@ import { isReviewIncluded } from "../library/presentation";
 import { AnswerCard } from "./AnswerCard";
 import { AnswerError } from "./AnswerError";
 import { AnswerSkeleton } from "./AnswerSkeleton";
-import { ComposerControls } from "./ComposerControls";
+import {
+  ACTION_LABELS,
+  type ComposerAction,
+  ComposerControls,
+} from "./ComposerControls";
 import { FallbackNotice } from "./FallbackNotice";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { MenuCard } from "./MenuCard";
@@ -128,10 +132,28 @@ export function SearchPage() {
      (no toggle UI on this screen — epic 03 owns the contract). */
   const reviewIncluded = isReviewIncluded(searchParams);
 
-  /* The URL is the source of truth; local state only holds the in-progress
-     typing. The effect resyncs the box on Back/Forward navigation. */
+  /* The URL is the source of truth for what HAPPENED; local state holds the
+     in-progress draft — what will happen next. Three things are draft now, not
+     one: the query text, the action, and the retrieval mode. Each resyncs from
+     the URL on Back/Forward, which is what makes the composer describe the
+     entry you land on rather than the one you left.
+
+     COMMITTED, from the URL — the entry's own record of what was run. Exactly
+     one of the three is true, because nextSearchParams keeps `asked` and
+     `menu` mutually exclusive. */
+  const committedAction: ComposerAction =
+    searchParams.get("asked") === "1"
+      ? "ask"
+      : searchParams.get("menu") === "1"
+        ? "menu"
+        : "search";
+
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
+  const [action, setAction] = useState<ComposerAction>(committedAction);
+  useEffect(() => setAction(committedAction), [committedAction]);
+  const [draftMode, setDraftMode] = useState(mode);
+  useEffect(() => setDraftMode(mode), [mode]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* The ask whose answer belongs on this screen — the note that says which
@@ -213,7 +235,18 @@ export function SearchPage() {
     }
   };
 
-  const search = useSearch(q, mode, reviewIncluded);
+  /* Vetoed unless the committed action is a plain Search. Ask and Compose run
+     their own retrieval server-side, so firing /search beside them would buy a
+     result set nobody asked for and stack a ten-card grid under the answer —
+     the exact thing the action selector exists to prevent. The veto is on the
+     COMMITTED action, not the draft: selecting "Ask" must not blank a grid
+     that is still legitimately on screen from the last search. */
+  const search = useSearch(
+    q,
+    mode,
+    reviewIncluded,
+    committedAction === "search",
+  );
   /* Render what the data says, not what the URL says: during a mode change
      the grid still holds the previous mode's results (D7's placeholder), so
      the header label and every card's return target must use the mode that
@@ -257,8 +290,8 @@ export function SearchPage() {
     if (asked === "") {
       return;
     }
-    const next: AnswerAsk = { query: asked, mode, reviewIncluded };
-    writeParams(asked, mode, { asked: true });
+    const next: AnswerAsk = { query: asked, mode: draftMode, reviewIncluded };
+    writeParams(asked, draftMode, { asked: true });
     answer.run(next);
   };
 
@@ -269,9 +302,23 @@ export function SearchPage() {
     if (asked === "") {
       return;
     }
-    const next: MenuAsk = { query: asked, mode, reviewIncluded };
-    writeParams(asked, mode, { menu: true });
+    const next: MenuAsk = { query: asked, mode: draftMode, reviewIncluded };
+    writeParams(asked, draftMode, { menu: true });
     menu.run(next);
+  };
+
+  /* The single entry point for "run it". The menus only ever change the draft;
+     this is the one place a request is bought, and it buys exactly one. */
+  const submit = () => {
+    if (action === "ask") {
+      askShelf();
+      return;
+    }
+    if (action === "menu") {
+      composeMenu();
+      return;
+    }
+    writeParams(text, draftMode);
   };
 
   const rephrase = () => {
@@ -345,14 +392,17 @@ export function SearchPage() {
           ref={inputRef}
           value={text}
           onChange={setText}
-          onSubmit={() => writeParams(text, mode)}
+          onSubmit={submit}
+          /* The button says what it will do. With three actions behind one
+             selector, a button permanently labelled "Search" would be wrong
+             two thirds of the time. */
+          submitLabel={ACTION_LABELS[action]}
           controls={
             <ComposerControls
-              mode={mode}
-              onModeSelect={(next) => writeParams(q, next)}
-              onAsk={askShelf}
-              onMenu={composeMenu}
-              disabled={text.trim() === ""}
+              action={action}
+              onActionSelect={setAction}
+              mode={draftMode}
+              onModeSelect={setDraftMode}
               asking={answer.isFetching}
               composing={menu.isFetching}
             />
@@ -408,9 +458,19 @@ export function SearchPage() {
         />
       ) : null}
 
-      {/* Branch order matters; never isPending — a disabled query is pending
+      {/* The live search ladder, and ONLY when the committed action is a plain
+          Search. Under Ask or Compose the /search query is vetoed (see
+          useSearch above), so every arm below would be describing a request
+          that was never made — `results.length === 0` in particular would
+          render SearchEmpty's "nothing on the shelf" under a perfectly good
+          answer. One condition governs both the fetch and the render, so they
+          cannot disagree.
+
+          Branch order matters; never isPending — a disabled query is pending
           forever, which would pin a skeleton on the bare /. */}
-      {showFallbackGrid || q === "" ? null : search.isLoading ? (
+      {committedAction !== "search" ||
+      showFallbackGrid ||
+      q === "" ? null : search.isLoading ? (
         <SearchSkeleton />
       ) : search.error ? (
         <SearchError

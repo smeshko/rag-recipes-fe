@@ -12,14 +12,19 @@ export interface ShellHandle {
   footer?: boolean;
 }
 
-/* The reading measure. 768px is the target's own content column and the width
-   every prose surface here should use; `wide` buys a little more for the two
-   screens that lay cards out in a grid (search results, the shelf). Both are a
-   long way down from the 1020/1120 the previous, header-and-hero layout used —
-   with a 260px rail beside it, a wider column stops being readable. */
+/* The reading measure, widened once after seeing it in use: 768/900 was the
+   target's PROSE column, and this app is not only prose. The recipe surface is
+   two columns of list, the shelf is rows, and the search results are a
+   three-column grid — all of which were being squeezed into a measure sized
+   for paragraphs. The target's own main pane measures 1180px; `wide` now sits
+   just under that, and `narrow` keeps the two-column recipe honest without
+   letting a single ingredient line run to 1100px.
+
+   The composer is unaffected: it caps itself at 768 inside whatever column it
+   is given, which is the one place the prose measure is still the right one. */
 const WIDTH: Record<"wide" | "narrow", string> = {
-  wide: "max-w-[900px]",
-  narrow: "max-w-[768px]",
+  wide: "max-w-[1160px]",
+  narrow: "max-w-[880px]",
 };
 
 export function Shell() {

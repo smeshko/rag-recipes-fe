@@ -32,12 +32,17 @@ describe("recipe title block", () => {
       (await screen.findAllByText("onepantorulethemall")).length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("page 22")).toBeInTheDocument();
-    expect(screen.getByText("Ready")).toBeInTheDocument();
+    /* "Ready" is deliberately NOT rendered: it is the expected state of any
+       recipe you can open, so the chip was a constant. The other statuses
+       still show — see the states ladder. */
+    expect(screen.queryByText("Ready")).toBeNull();
     expect(
       screen.getByText(fullItemFixture.knowledge_item.summary as string),
     ).toBeInTheDocument();
     expect(screen.getByText("4–6 servings")).toBeInTheDocument();
     expect(screen.getByText("30 minutes")).toBeInTheDocument();
+    /* "4–6 servings" does not open with "Serves", so that fact keeps its
+       label; a value like "Serves 2" would drop it (see FactsRow). */
     expect(screen.getByText("Serves")).toBeInTheDocument();
     expect(screen.getByText("Total")).toBeInTheDocument();
   });

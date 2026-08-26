@@ -13,7 +13,7 @@ import {
   shelfKeyedReviewItems,
 } from "../../msw/handlers";
 import { server } from "../../msw/server";
-import { chooseMode, runAiAction } from "../../search/composer";
+import { runAiAction, runWithMode } from "../../search/composer";
 
 function renderAt(path: string) {
   const client = new QueryClient({
@@ -116,7 +116,7 @@ describe("review queue link-out", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=scones&review=included");
 
-    await chooseMode(user, "Keyword only");
+    await runWithMode(user, "Keyword only");
 
     const params = new URLSearchParams(router.state.location.search);
     expect(params.get("mode")).toBe("keyword");
@@ -152,6 +152,7 @@ describe("review=included search request body", () => {
     expect(bodies[0]).toEqual({
       query: "scones",
       mode: "hybrid",
+      limit: 9,
       filters: {
         item_type: "recipe",
         document_ids: [],
@@ -169,7 +170,7 @@ describe("review=included search request body", () => {
 
     await waitFor(() => expect(bodies).toHaveLength(1));
     /* No `filters` key at all — the server default (exclude = true) stands. */
-    expect(bodies[0]).toEqual({ query: "scones", mode: "hybrid" });
+    expect(bodies[0]).toEqual({ query: "scones", mode: "hybrid", limit: 9 });
   });
 
   /* /answers runs its own retrieval under the same SearchFilters default, and
@@ -224,12 +225,13 @@ describe("review=included search request body", () => {
     renderAt("/?q=scones&review=included");
 
     await waitFor(() => expect(bodies).toHaveLength(1));
-    await chooseMode(user, "Vector only");
+    await runWithMode(user, "Vector only");
 
     await waitFor(() => expect(bodies).toHaveLength(2));
     expect(bodies[1]).toMatchObject({
       query: "scones",
       mode: "vector",
+      limit: 9,
       filters: { exclude_needs_review: false },
     });
   });

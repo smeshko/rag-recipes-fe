@@ -129,12 +129,14 @@ export function IconChevronDown({ className }: IconProps) {
   );
 }
 
-/** Arrow-up in the composer's solid send button. */
+/** Arrow-up in the composer's solid send button. Deliberately TIGHT — a short
+    shaft and a narrow head. The first cut spanned the full 24 box, which on a
+    36px circle read as a long thin stroke rather than as a button glyph. */
 export function IconSend({ className }: IconProps) {
   return (
     <Svg className={className}>
-      <path d="M12 19V5" />
-      <path d="M6 11l6-6 6 6" />
+      <path d="M12 17.5V7" />
+      <path d="M8 11l4-4 4 4" />
     </Svg>
   );
 }

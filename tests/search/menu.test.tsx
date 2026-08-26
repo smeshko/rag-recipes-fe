@@ -12,7 +12,7 @@ import {
   menusHandler,
 } from "../msw/menus";
 import { server } from "../msw/server";
-import { aiAnswersTrigger, runAiAction } from "./composer";
+import { actionTrigger, runAiAction } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -50,7 +50,7 @@ const searchBox = () =>
   screen.getByRole("textbox", { name: "What are we cooking?" });
 /* Both actions now share one trigger, so both helpers resolve to it — it is
    what carries the enabled/disabled state either action would have shown. */
-const menuButton = () => aiAnswersTrigger();
+const menuButton = () => actionTrigger();
 const clickMenu = (user: ReturnType<typeof userEvent.setup>) =>
   runAiAction(user, "Compose a menu");
 const clickAsk = (user: ReturnType<typeof userEvent.setup>) =>

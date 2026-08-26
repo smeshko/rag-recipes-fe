@@ -20,7 +20,9 @@ type SearchPayload = Pick<
   components["schemas"]["SearchRequestBody"],
   "query" | "mode"
 > &
-  Partial<Pick<components["schemas"]["SearchRequestBody"], "filters">>;
+  Partial<
+    Pick<components["schemas"]["SearchRequestBody"], "filters" | "limit">
+  >;
 
 /* Cached alongside the response: the mode that actually produced it. The two
    can disagree — D7's placeholder deliberately keeps the previous mode's
@@ -39,10 +41,15 @@ interface SearchQueryData {
   response: SearchResponse;
 }
 
+/** How many results the grid asks for. Three columns, so a multiple of three
+    — ten (the backend default) left one orphan card on a row of its own. */
+const RESULT_LIMIT = 9;
+
 function searchQueryOptions(
   q: string,
   mode: SearchMode,
   reviewIncluded: boolean,
+  enabled: boolean,
 ) {
   return queryOptions({
     /* reviewIncluded is part of the key: the same q+mode returns a different
@@ -50,7 +57,7 @@ function searchQueryOptions(
        entry. It sits AFTER mode so the placeholderData probe on index 1
        (the query string) is unaffected. */
     queryKey: ["search", q, mode, reviewIncluded],
-    enabled: q !== "",
+    enabled: enabled && q !== "",
     /* Returning to a search within five minutes (the Cook pill's restore)
        re-shows the cached results request-free; older results refetch —
        five-minute-old rankings deserve a refresh (plan 4.1, TASK-003). */
@@ -62,7 +69,11 @@ function searchQueryOptions(
       prevQuery: { queryKey: readonly unknown[] } | undefined,
     ) => (prevQuery?.queryKey[1] === q ? prev : undefined),
     queryFn: async (): Promise<SearchQueryData> => {
-      const payload: SearchPayload = { query: q, mode };
+      /* Nine, not the backend's default ten: the grid is three columns, so
+         ten leaves a single orphan card on a fourth row. Asked for rather
+         than sliced client-side, so the count in the heading is the truth
+         about what was returned. */
+      const payload: SearchPayload = { query: q, mode, limit: RESULT_LIMIT };
       if (reviewIncluded) {
         payload.filters = REVIEW_INCLUDED_FILTERS;
       }
@@ -81,8 +92,19 @@ function searchQueryOptions(
  * from the search landing's review URL param (`isReviewIncluded` in the
  * library's presentation module).
  */
-export function useSearch(q: string, mode: SearchMode, reviewIncluded = false) {
-  const options = searchQueryOptions(q, mode, reviewIncluded);
+/** `enabled` is the caller's veto, ANDed with the "there is a query" rule.
+    The search screen turns it off when the committed action is Ask or Compose:
+    those spend their own retrieval inside /answers and /menus, and firing
+    /search alongside them would buy a result set nobody asked to see (and
+    render a grid under an answer, which is exactly what the composer's action
+    selector exists to prevent). */
+export function useSearch(
+  q: string,
+  mode: SearchMode,
+  reviewIncluded = false,
+  enabled = true,
+) {
+  const options = searchQueryOptions(q, mode, reviewIncluded, enabled);
   /* Unwrap with `select`, at the OBSERVER — not by overriding `data` on the
      returned object. `select` is what makes EVERY data-bearing member of the
      result a `SearchResponse`: `data`, `await refetch()`, and `promise`.

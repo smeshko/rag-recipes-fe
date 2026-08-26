@@ -49,7 +49,7 @@ describe("useSearch", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(capturedType).toContain("application/json");
-    expect(capturedBody).toEqual({ query: "frittata", mode: "hybrid" });
+    expect(capturedBody).toEqual({ query: "frittata", mode: "hybrid", limit: 9 });
     expect(result.current.data?.results).toHaveLength(2);
     expect(result.current.data?.results[0]?.item.title).toBe(
       "Spinach & Cheddar Frittata",

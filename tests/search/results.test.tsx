@@ -12,7 +12,7 @@ import {
   searchFixture,
 } from "../msw/handlers";
 import { server } from "../msw/server";
-import { chooseMode } from "./composer";
+import { runWithMode } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -49,9 +49,12 @@ describe("results grid", () => {
         first.structured_preview?.top_ingredients.join(" · ") as string,
       ),
     ).toBeInTheDocument();
-    for (const badge of first.display.badges) {
-      expect(scope.getByText(badge)).toBeInTheDocument();
-    }
+    /* One line, dot-joined — badges stopped being individual pills: they
+       carry free-form extraction text ("2 hours, 45 minutes (mostly roasting
+       time)"), which a pill turned into a multi-line lozenge. */
+    expect(
+      scope.getByText(first.display.badges.join(" · ")),
+    ).toBeInTheDocument();
     expect(screen.getByText("2 matches")).toBeInTheDocument();
     expect(
       screen.getByText(/ranked by hybrid score · needs-review excluded/),
@@ -75,15 +78,22 @@ describe("results grid", () => {
         first.structured_preview?.top_ingredients.join(" · ") as string,
       ),
     ).toBeInTheDocument();
-    for (const badge of first.display.badges) {
-      expect(within(rich).getByText(badge)).toBeInTheDocument();
-    }
+    expect(
+      within(rich).getByText(first.display.badges.join(" · ")),
+    ).toBeInTheDocument();
 
-    /* The minimal fixture supplies neither, so neither row may appear. */
-    expect(within(minimal).queryAllByText(/·/)).toHaveLength(0);
-    for (const badge of first.display.badges) {
-      expect(within(minimal).queryByText(badge)).toBeNull();
-    }
+    /* The minimal fixture supplies neither, so neither row may appear.
+       Named explicitly rather than by "contains a dot": the card header now
+       separates the book title from the page label with one, so a dot is no
+       longer proof that an ingredients or badges row rendered. */
+    expect(
+      within(minimal).queryByText(
+        first.structured_preview?.top_ingredients.join(" · ") as string,
+      ),
+    ).toBeNull();
+    expect(
+      within(minimal).queryByText(first.display.badges.join(" · ")),
+    ).toBeNull();
   });
 
   it("links each card to /recipes/:id carrying ?from= the search URL", async () => {
@@ -124,7 +134,7 @@ describe("results grid", () => {
     const user = userEvent.setup();
     const router = renderAt("/?q=frittata");
     await screen.findByText(first.item.title);
-    await chooseMode(user, "Vector only");
+    await runWithMode(user, "Vector only");
 
     /* Vector is selected in the URL, but the grid still holds hybrid results:
        the subline must say so. */

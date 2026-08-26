@@ -15,7 +15,7 @@ import {
   groundedRepeatedCiteFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
-import { aiAnswersTrigger, runAiAction } from "./composer";
+import { actionTrigger, runAiAction } from "./composer";
 
 function renderAsked(fixture = groundedAnswerFixture) {
   server.use(answersHandler(fixture));
@@ -35,7 +35,7 @@ function renderAsked(fixture = groundedAnswerFixture) {
 
 async function ask() {
   const user = userEvent.setup();
-  await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
+  await waitFor(() => expect(actionTrigger()).toBeEnabled());
   await runAiAction(user, "Ask the shelf");
 }
 

@@ -14,7 +14,7 @@ import {
   NO_RESULTS_WARNING,
 } from "../msw/answers";
 import { server } from "../msw/server";
-import { aiAnswersTrigger, chooseMode, runAiAction } from "./composer";
+import { actionTrigger, chooseAction, chooseMode, runAiAction, submitButton } from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -49,7 +49,7 @@ afterEach(() => {
 
 async function ask() {
   const user = userEvent.setup();
-  await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
+  await waitFor(() => expect(actionTrigger()).toBeEnabled());
   await runAiAction(user, "Ask the shelf");
   return user;
 }
@@ -98,14 +98,21 @@ describe("fallback", () => {
     await ask();
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent(NO_RESULTS_WARNING);
-    /* 2.1's grid, with its own heading — not the fallback heading. */
-    expect(await screen.findByText("2 matches")).toBeInTheDocument();
-    expect(screen.getByText("Spinach & Cheddar Frittata")).toBeInTheDocument();
+    /* CHANGED with the action selector. This used to assert that /search's
+       own grid still owned the page behind the notice — the two retrievals
+       genuinely diverge, so a zero-result fallback could sit above results
+       /search had found. Selecting "Ask the shelf" now vetoes /search
+       entirely, which is the whole point of "only fire what was selected", so
+       there is no second grid to fall back to and the notice stands alone.
+       The trade is deliberate: fewer surprise round-trips, at the cost of a
+       fallback no longer rescuing itself with a different retrieval. */
+    expect(screen.queryByText("2 matches")).toBeNull();
+    expect(screen.queryByText("Spinach & Cheddar Frittata")).toBeNull();
     expect(screen.queryByText("The shelf has nothing for that.")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("zero-result fallback does not swallow a live search error", async () => {
+  it("does not run a live search behind a fallback at all", async () => {
     server.use(
       answersHandler(fallbackNoResultsFixture),
       http.post("/api/v1/search", () =>
@@ -121,32 +128,39 @@ describe("fallback", () => {
         ),
       ),
     );
+    /* The /search handler above is rigged to fail. It is never called: with
+       Ask committed the query is vetoed, so its error cannot surface. This
+       replaces "a zero-result fallback does not swallow a live search error",
+       which pinned the opposite — that the search error DID surface — back
+       when both retrievals ran together. */
     renderAt("/?q=wine+pairing");
-    await waitFor(() => expect(aiAnswersTrigger()).toBeEnabled());
     await runAiAction(userEvent.setup(), "Ask the shelf");
     await screen.findByRole("status");
-    /* The search failure still surfaces; it is not an answer-layer concern. */
-    expect(
-      await screen.findByText("The pantry is unreachable."),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("The pantry is unreachable.")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("mode toggle after a fallback brings the live grid back and retires the notice", async () => {
+  it("switching back to Search brings the live grid back and retires the notice", async () => {
+    /* Was "a mode toggle brings the grid back", which worked because a chip
+       committed a new URL on click. Nothing commits on selection now, so the
+       thing that retires a fallback is choosing Search and submitting. */
     server.use(answersHandler(fallbackWithResultsFixture));
     renderAt("/?q=wine+pairing");
     const user = await ask();
     await screen.findByRole("status");
     await chooseMode(user, "Vector only");
+    await chooseAction(user, "Search");
+    await user.click(submitButton());
     /* Live search grid returns (search-grid heading, not the fallback one). */
     await waitFor(() =>
       expect(screen.getByText("2 matches")).toBeInTheDocument(),
     );
-    /* The chip changes the ask — {q, mode, corpus} is the cache key — so the
+    /* The submit changes the ask — {q, mode, corpus} is the cache key — so the
        observer lands on an entry nobody has asked for. The notice goes with
-       the answer it belonged to, and the CTA offers the new question. Not a
-       second round-trip: the fallback stays in the cache, one Back away. */
+       the answer it belonged to. Not a second round-trip: the fallback stays
+       in the cache, one Back away. */
     expect(screen.queryByRole("status")).toBeNull();
-    expect(aiAnswersTrigger()).toBeInTheDocument();
+    expect(actionTrigger()).toBeInTheDocument();
     expect(answersCalls).toBe(1);
   });
 

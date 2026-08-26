@@ -3,26 +3,41 @@ import type userEvent from "@testing-library/user-event";
 
 /* Helpers for the composer's two footer menus.
  *
- * The two LLM actions and the three search modes used to be five always-
- * visible buttons under the search bar; they now live in dropdowns inside the
- * field (see src/features/search/ComposerControls.tsx). What each control DOES
- * is unchanged — choosing "Ask the shelf" still fires the ask, choosing a mode
- * still re-runs the search — so every test that asserted those behaviours kept
- * its assertions and only had to learn to open the menu first. That opening is
- * what these helpers encapsulate, in one place, so the next chrome change is a
- * three-line edit rather than a forty-site sweep.
+ * THE INTERACTION MODEL CHANGED, and these helpers exist to keep that change
+ * in one file rather than in forty call sites. It used to be one step: the two
+ * LLM actions were buttons, and clicking one ran it. It is now two:
  *
- * Names are matched by prefix regex, not exactly: a menu item renders its
- * label AND a description line, and the accessible name is the concatenation
- * of both. */
+ *     choose  — pick Search / Ask the shelf / Compose a menu from the Action
+ *               menu. Nothing is fetched. Same for the retrieval mode.
+ *     submit  — press the send button (or Enter). Exactly one thing runs, and
+ *               it is whatever was chosen.
+ *
+ * So `runAiAction` is choose-then-submit, and `chooseAction` / `chooseMode`
+ * are the halves for tests that need to assert nothing fired.
+ *
+ * The submit button's accessible name IS the selected action, which is why
+ * `submitButton` matches an anchored alternation: "Action: Search" (the menu
+ * trigger) and "Search Matching recipes from your shelf" (the open menu item)
+ * both contain the word and neither is the button. */
 
 type User = ReturnType<typeof userEvent.setup>;
 
-export const aiAnswersTrigger = () =>
-  screen.getByRole("button", { name: /^AI answers:/ });
+export const actionTrigger = () =>
+  screen.getByRole("button", { name: /^Action:/ });
 
 export const modeTrigger = () =>
   screen.getByRole("button", { name: /^Search mode:/ });
+
+export const submitButton = () =>
+  screen.getByRole("button", {
+    name: /^(Search|Ask the shelf|Compose a menu)$/,
+  });
+
+/** The action the composer currently reports, e.g. "Ask the shelf". */
+export function currentAction(): string {
+  const label = actionTrigger().getAttribute("aria-label") ?? "";
+  return label.replace(/^Action: /, "");
+}
 
 /** The mode the composer currently reports, e.g. "Hybrid". */
 export function currentMode(): string {
@@ -30,18 +45,33 @@ export function currentMode(): string {
   return label.replace(/^Search mode: /, "");
 }
 
-/** Open the AI answers menu and run one of its actions. */
-export async function runAiAction(user: User, name: string): Promise<void> {
-  await user.click(aiAnswersTrigger());
+/* Names are matched by prefix regex, not exactly: a menu item renders its
+   label AND a description line, and the accessible name is both concatenated. */
+
+/** Pick an action. Fetches nothing — submit is what runs it. */
+export async function chooseAction(user: User, name: string): Promise<void> {
+  await user.click(actionTrigger());
   await user.click(
-    await screen.findByRole("menuitem", { name: new RegExp(`^${name}`) }),
+    await screen.findByRole("menuitemradio", { name: new RegExp(`^${name}`) }),
   );
 }
 
-/** Open the search-mode menu and pick a mode. */
+/** Pick a retrieval mode. Fetches nothing. */
 export async function chooseMode(user: User, name: string): Promise<void> {
   await user.click(modeTrigger());
   await user.click(
     await screen.findByRole("menuitemradio", { name: new RegExp(`^${name}`) }),
   );
+}
+
+/** Choose an action and run it — the old one-click behaviour, in two steps. */
+export async function runAiAction(user: User, name: string): Promise<void> {
+  await chooseAction(user, name);
+  await user.click(submitButton());
+}
+
+/** Choose a mode and run the currently-selected action with it. */
+export async function runWithMode(user: User, name: string): Promise<void> {
+  await chooseMode(user, name);
+  await user.click(submitButton());
 }
