@@ -255,7 +255,8 @@ export function RecipeEditForm({
             className="mt-4 rounded-reco border border-border bg-surface-inset px-5 py-3 text-[13px] text-fg-muted"
           >
             This recipe is on the shelf. Saving re-indexes it, so it will drop
-            out of search for a moment before coming back.
+            out of search until that finishes — usually a moment, but the whole
+            run if a cookbook is being ingested, since one worker does both.
           </p>
         )}
         <TitleFields form={form} isValid={isValid} setField={setField} />

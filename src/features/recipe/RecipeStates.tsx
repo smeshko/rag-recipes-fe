@@ -77,3 +77,28 @@ export function RecipeNotARecipe({ title }: { title: string }) {
     </div>
   );
 }
+
+/**
+ * The calm state report for an `indexing` recipe — the status a shelved edit
+ * or a handwritten recipe returns with. Not an error and not a review flag:
+ * the row is saved, the worker just has not chunked and embedded it yet. The
+ * honest duration is "until the worker gets to it": a single arq slot runs
+ * this queue AND cookbook ingestion, so during an ingestion that is the whole
+ * run. Renders nothing for every other status.
+ */
+export function IndexingNotice({ status }: { status: string }) {
+  if (status !== "indexing") {
+    return null;
+  }
+  return (
+    <p
+      role="status"
+      data-testid="recipe-indexing-notice"
+      className="mt-5 rounded-reco border border-border bg-surface-inset px-5 py-3 text-[13px] text-fg-muted"
+    >
+      Saved, and being re-indexed. This recipe is out of search until that
+      finishes — usually a moment, but the whole run if a cookbook is being
+      ingested right now. Nothing to do; it comes back on its own.
+    </p>
+  );
+}

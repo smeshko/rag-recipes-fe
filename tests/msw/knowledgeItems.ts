@@ -329,6 +329,16 @@ export const supersededItemFixture = {
   },
 };
 
+/** Where a shelved edit lands: saved, chunks dropped, worker not yet through. */
+export const indexingItemFixture = {
+  ...fullItemFixture,
+  knowledge_item: {
+    ...fullItemFixture.knowledge_item,
+    id: "item_indexing",
+    status: "indexing",
+  },
+};
+
 export const extractingItemFixture = {
   ...fullItemFixture,
   knowledge_item: {
@@ -405,6 +415,7 @@ const byId: Record<string, unknown> = {
   item_review_dupes: duplicateLinesReviewItemFixture,
   item_review_empty: emptyIngredientsReviewItemFixture,
   item_superseded: supersededItemFixture,
+  item_indexing: indexingItemFixture,
   item_extracting: extractingItemFixture,
   item_extracting_empty: extractingEmptyItemFixture,
   item_nocite: zeroCitationItemFixture,

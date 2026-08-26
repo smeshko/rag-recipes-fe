@@ -80,7 +80,7 @@ describe("edit page ladder", () => {
     expect(await screen.findByTestId("recipe-edit-page")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
     expect(screen.getByTestId("edit-reindex-notice")).toHaveTextContent(
-      /drop out of search for a moment/i,
+      /drop out of search until that finishes/i,
     );
     /* No conflict banner: `ready` is an ordinary thing to be editing now, so
        the status gate and the conflict surface must agree it is fine. */

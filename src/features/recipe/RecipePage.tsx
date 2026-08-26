@@ -6,7 +6,12 @@ import { IngredientsPanel } from "./IngredientsPanel";
 import { MethodPanel } from "./MethodPanel";
 import { Provenance } from "./Provenance";
 import { RecipeActions } from "./RecipeActions";
-import { RecipeError, RecipeNotARecipe, RecipeNotFound } from "./RecipeStates";
+import {
+  IndexingNotice,
+  RecipeError,
+  RecipeNotARecipe,
+  RecipeNotFound,
+} from "./RecipeStates";
 import { ReviewCallout } from "./ReviewCallout";
 import { lowFields } from "./reviewMarks";
 import { TitleBlock } from "./TitleBlock";
@@ -76,6 +81,11 @@ export function RecipePage() {
             what is still flagged is the first thing a reviewer needs after the
             title, and it renders nothing at all for a decided item. */}
         <div>
+          {/* Where a saved shelved recipe (or one just written by hand) lands:
+              the row exists, search does not know it yet. `ReviewCallout`
+              stays silent for anything but needs_review, so this is the only
+              surface that says so. */}
+          <IndexingNotice status={data.knowledge_item.status} />
           <ReviewCallout item={data} />
         </div>
         <div className="mt-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-[26px] max-[880px]:grid-cols-1">

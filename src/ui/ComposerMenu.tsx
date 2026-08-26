@@ -5,24 +5,16 @@ import { IconChevronDown } from "./icons";
  *
  * This is the target's `Medium ⌄` control, and the same shape Grok, Gemini and
  * Cursor all use: a quiet trigger inside the input box, opening a menu of
- * options with descriptions. It exists so the expensive controls — the two LLM
- * actions — stop occupying a bordered strip of their own under the field. A
- * search bar should look like a search bar; the things that spend a round-trip
- * live one click inside it.
+ * options with descriptions. It exists so the expensive controls — the LLM
+ * actions and the retrieval mode — stop occupying a bordered strip of their
+ * own under the field. A search bar should look like a search bar; the things
+ * that change what a round-trip does live one click inside it.
  *
- * TWO KINDS OF MENU, and the distinction is load-bearing rather than cosmetic:
- *
- *   items with `checked` defined  -> role="menuitemradio", a SETTING. Picking
- *                                    one changes what the next search does.
- *   items without                 -> role="menuitem", an ACTION. Picking one
- *                                    RUNS it there and then.
- *
- * The action flavour is why this replaced two always-visible buttons without
- * changing a single behaviour: "click Ask the shelf, get an answer" still
- * describes exactly what happens, and every test that asserted it only had to
- * learn to open the menu first. Had this been a mode selector that merely
- * armed the send button, the semantics of a dozen tests would have shifted
- * underneath them — a much worse trade for the same pixels.
+ * A SETTINGS MENU, ONLY. Every item is a `menuitemradio` with exactly one
+ * checked: picking one changes what the next submit will do, and nothing here
+ * ever fires a request itself. The first cut also had an "action" flavour
+ * (`menuitem`s that ran on selection); `ComposerControls` records why that
+ * was reversed — the menus decide WHAT, the send button decides WHEN.
  *
  * Opens DOWNWARD, and right-aligned to its trigger. Both choices are about
  * where this composer actually sits, which is not where the target's does:
@@ -40,8 +32,8 @@ export interface ComposerMenuItem {
   /** The second line, as the target's own model menu has. */
   description?: string;
   icon?: ReactNode;
-  /** Present => this menu is a setting; absent => it is a list of actions. */
-  checked?: boolean;
+  /** Exactly one item in the list should be checked. */
+  checked: boolean;
   disabled?: boolean;
 }
 
@@ -198,34 +190,28 @@ export function ComposerMenu({
           className="absolute top-full right-0 z-40 mt-2 w-[300px] max-w-[calc(100vw-2rem)] rounded-[14px] border border-border bg-surface-raised p-1.5 shadow-menu"
         >
           {items.map((item, index) => {
-            /* The two flavours are rendered as two separate elements with
-               LITERAL roles rather than one element with a computed
-               `role={isRadio ? … : …}`. Same DOM either way, but a static
-               analyser can only check that aria-checked belongs on the role
-               it sits next to if it can see the role — with the ternary,
-               biome flags `aria-checked` as unsupported on every item,
-               including the radios where it is exactly right. Shared props
-               and shared content keep the duplication to the tag line. */
-            const shared = {
-              ref: (node: HTMLButtonElement | null) => {
-                itemRefs.current[index] = node;
-              },
-              type: "button" as const,
-              disabled: item.disabled,
-              onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) =>
-                onItemKeyDown(event, index),
-              onClick: () => {
-                /* Close BEFORE the handler runs: an action item may move
-                   focus (rephrase focuses the field) and reopening the
-                   trigger afterwards would steal it back. */
-                close(false);
-                onSelect(item.key);
-              },
-              className:
-                "flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent pointer-coarse:min-h-11",
-            };
-            const content = (
-              <>
+            return (
+              <button
+                key={item.key}
+                ref={(node: HTMLButtonElement | null) => {
+                  itemRefs.current[index] = node;
+                }}
+                type="button"
+                role="menuitemradio"
+                aria-checked={item.checked}
+                disabled={item.disabled}
+                onKeyDown={(event: React.KeyboardEvent<HTMLButtonElement>) =>
+                  onItemKeyDown(event, index)
+                }
+                onClick={() => {
+                  /* Close BEFORE the handler runs: a selection may move focus
+                     (the field refocuses) and reopening the trigger afterwards
+                     would steal it back. */
+                  close(false);
+                  onSelect(item.key);
+                }}
+                className="flex w-full items-start gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent pointer-coarse:min-h-11"
+              >
                 {item.icon ? (
                   <span className="mt-0.5 flex-none text-fg-muted">
                     {item.icon}
@@ -241,27 +227,13 @@ export function ComposerMenu({
                     </span>
                   ) : null}
                 </span>
-                {/* The tick, for the setting flavour only. aria-checked already
-                    carries this for assistive tech, so it is decorative. */}
+                {/* The tick. aria-checked already carries this for assistive
+                    tech, so it is decorative. */}
                 {item.checked ? (
                   <span aria-hidden="true" className="mt-0.5 flex-none text-fg">
                     ✓
                   </span>
                 ) : null}
-              </>
-            );
-            return item.checked === undefined ? (
-              <button key={item.key} role="menuitem" {...shared}>
-                {content}
-              </button>
-            ) : (
-              <button
-                key={item.key}
-                role="menuitemradio"
-                aria-checked={item.checked}
-                {...shared}
-              >
-                {content}
               </button>
             );
           })}

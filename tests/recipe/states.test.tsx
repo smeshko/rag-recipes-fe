@@ -117,3 +117,23 @@ describe("provenance", () => {
     expect(screen.queryByText(/^confidence$/)).toBeNull();
   });
 });
+
+describe("indexing state", () => {
+  it("says a re-indexing recipe is out of search, and why it may take a while", async () => {
+    renderAt("/recipes/item_indexing");
+    const notice = await screen.findByTestId("recipe-indexing-notice");
+    expect(notice).toHaveAttribute("role", "status");
+    expect(notice).toHaveTextContent(/out of search/);
+    expect(notice).toHaveTextContent(/cookbook is being ingested/);
+    expect(document.querySelector(".bg-danger-fill")).toBeNull();
+  });
+
+  it("renders no indexing notice for a settled recipe", async () => {
+    renderAt("/recipes/item_full");
+    await screen.findByTestId("recipe-page");
+    await waitFor(() =>
+      expect(screen.queryByTestId("recipe-skeleton")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId("recipe-indexing-notice")).toBeNull();
+  });
+});
