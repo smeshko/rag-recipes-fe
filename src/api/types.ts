@@ -354,14 +354,16 @@ export type ReviewItem = components["schemas"]["ReviewItem"];
 export type ReviewListResponse =
   components["schemas"]["ReviewItemListResponse"];
 
-/* The per-book listing row. Structurally the SAME model as `ReviewItem` — the
-   backend reuses it under the alias `KnowledgeItemSummary` — because a recipe
-   card needs the same fields wherever it is rendered. Aliased separately here
-   so feature code reads honestly: `/library/:id` is not a review queue.
+/* The per-book and favourites listing row. Structurally the SAME shape as
+   `ReviewItem` — the backend emits it as its own OpenAPI component (a
+   field-less subclass) precisely so this can alias a schema named for what it
+   is rather than for the queue. If the two ever diverge, the generated types
+   diverge with them instead of silently compiling against the wrong one.
 
    The one field the queue does not exercise is `status`: it is always
-   `needs_review` there, and carries real information only in this listing. */
-export type KnowledgeItemSummary = components["schemas"]["ReviewItem"];
+   `needs_review` there, and carries real information only in these listings. */
+export type KnowledgeItemSummary =
+  components["schemas"]["KnowledgeItemSummary"];
 
 export type KnowledgeItemListResponse =
   components["schemas"]["KnowledgeItemListResponse"];

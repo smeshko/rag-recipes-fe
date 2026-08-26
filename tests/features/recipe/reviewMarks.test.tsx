@@ -32,7 +32,12 @@ function renderAt(path: string) {
   return router;
 }
 
-const THRESHOLDS = { overall: 0.5, boundary: 0.5, normalization: 0.5 };
+const THRESHOLDS = {
+  overall: 0.5,
+  boundary: 0.5,
+  normalization: 0.5,
+  source: "recorded" as const,
+};
 
 const ingredient = (
   position: number,

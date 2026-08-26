@@ -976,7 +976,7 @@ export interface components {
          */
         KnowledgeItemListResponse: {
             /** Knowledge Items */
-            knowledge_items: components["schemas"]["ReviewItem"][];
+            knowledge_items: components["schemas"]["KnowledgeItemSummary"][];
         };
         /** KnowledgeItemResponse */
         KnowledgeItemResponse: {
@@ -1012,6 +1012,37 @@ export interface components {
             locator: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * KnowledgeItemSummary
+         * @description The same row as ``ReviewItem``, named for the surfaces that are not a
+         *     review queue (per-book listing, favourites).
+         *
+         *     A subclass rather than an alias so OpenAPI emits its own component: the
+         *     generated frontend types then name the row for what it is instead of
+         *     aliasing a schema named for the queue. No fields are added — one row shape,
+         *     so a card rendered from any listing cannot drift.
+         */
+        KnowledgeItemSummary: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Item Type */
+            item_type: string;
+            /** Status */
+            status: string;
+            document: components["schemas"]["ReviewItemDocument"];
+            source_pages: components["schemas"]["ReviewItemSourcePages"];
+            extraction: components["schemas"]["ReviewItemExtraction"];
+            /** Flags */
+            flags: components["schemas"]["ReviewReason"][];
+            /** Edited At */
+            edited_at?: string | null;
+            /** Favourited At */
+            favourited_at?: string | null;
         };
         /**
          * KnowledgeItemUpdateRequest
@@ -1389,9 +1420,13 @@ export interface components {
         };
         /**
          * ReviewThresholds
-         * @description The current soft-validation bounds, so the UI can mark per-line scores
-         *     (steps, fields) the item-level reasons do not individually name. Shipped
-         *     only on ``needs_review`` items.
+         * @description The soft-validation bounds this item's reasons were judged against, so
+         *     the UI can mark per-line scores (steps, fields) the item-level reasons do
+         *     not individually name. Shipped only on ``needs_review`` items.
+         *
+         *     ``source`` is ``recorded`` when the bounds were read back from the snapshot
+         *     persisted with the item, ``current`` when the row predates that snapshot
+         *     and the live Settings stand in.
          */
         ReviewThresholds: {
             /** Overall */
@@ -1400,6 +1435,12 @@ export interface components {
             boundary: number;
             /** Normalization */
             normalization: number;
+            /**
+             * Source
+             * @default current
+             * @enum {string}
+             */
+            source: "recorded" | "current";
         };
         /** ReviewedKnowledgeItem */
         ReviewedKnowledgeItem: {

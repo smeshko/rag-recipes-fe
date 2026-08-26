@@ -149,6 +149,9 @@ export const MOCK_REVIEW_THRESHOLDS: ReviewThresholds = {
   overall: 0.5,
   boundary: 0.5,
   normalization: 0.5,
+  /* The backend snapshots the bounds an item was judged against; `current`
+     is its fallback for rows that predate the snapshot. */
+  source: "recorded",
 };
 
 /** What the backend's `build_review_reasons` needs beyond the codes to attach
