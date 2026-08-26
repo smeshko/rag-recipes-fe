@@ -129,14 +129,18 @@ export function IconChevronDown({ className }: IconProps) {
   );
 }
 
-/** Arrow-up in the composer's solid send button. Deliberately TIGHT — a short
-    shaft and a narrow head. The first cut spanned the full 24 box, which on a
-    36px circle read as a long thin stroke rather than as a button glyph. */
+/** Arrow-right in the composer's solid send button. Deliberately TIGHT — a
+    short shaft and a narrow head. The first cut spanned the full 24 box, which
+    on a 36px circle read as a long thin stroke rather than as a button glyph.
+
+    Right, not up: up is the "send into the thread above" gesture of a chat
+    log, and this composer sits ON TOP of everything it produces. The result
+    lands below the button, so the arrow points the way the reader travels. */
 export function IconSend({ className }: IconProps) {
   return (
     <Svg className={className}>
-      <path d="M12 17.5V7" />
-      <path d="M8 11l4-4 4 4" />
+      <path d="M6.5 12H17" />
+      <path d="M13 8l4 4-4 4" />
     </Svg>
   );
 }
