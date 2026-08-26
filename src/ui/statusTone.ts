@@ -1,4 +1,4 @@
-import type { PillTone } from "../../ui";
+import type { PillTone } from "./Pill";
 
 export interface StatusPresentation {
   tone: PillTone;

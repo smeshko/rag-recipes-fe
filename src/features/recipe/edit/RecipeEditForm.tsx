@@ -13,7 +13,7 @@ import {
   readReturnTo,
   withReturnTo,
 } from "../../../ui";
-import { statusTone } from "../statusTone";
+import { statusTone } from "../../../ui/statusTone";
 import { SaveConflict } from "./EditStates";
 import { isShelved } from "./editableStatus";
 import { FactsFields } from "./FactsFields";

@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import { statusTone } from "../../src/features/recipe/statusTone";
 import { routes } from "../../src/routes";
+import { statusTone } from "../../src/ui/statusTone";
 import { fullItemFixture, sparseItemFixture } from "../msw/knowledgeItems";
 
 function renderAt(path: string) {

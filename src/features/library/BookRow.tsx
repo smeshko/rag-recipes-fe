@@ -11,11 +11,11 @@ import {
   useReprocess,
 } from "../../api";
 import { Bloom, Pill, withReturnTo } from "../../ui";
+import { relativeTime } from "../../ui/relativeTime";
 import { reviewQueueUrl } from "../review/reviewQueueUrl";
 import { CalmNotice } from "./CalmNotice";
 import { IngestionProgress } from "./IngestionProgress";
 import { isReadyIsh, spineAccent, statusPill } from "./presentation";
-import { relativeTime } from "./relativeTime";
 
 /* The detail query's three states each have a defined render — an errored
    query counts as settled (a 4xx is terminal under the retry policy). */

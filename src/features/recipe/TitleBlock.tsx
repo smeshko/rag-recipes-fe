@@ -1,9 +1,9 @@
 import type { KnowledgeItemResponse } from "../../api";
 import { useDocument } from "../../api/documents";
 import { Pill } from "../../ui";
+import { statusTone } from "../../ui/statusTone";
 import { LowScoreMark } from "./LowScoreMark";
 import { lowFields } from "./reviewMarks";
-import { statusTone } from "./statusTone";
 
 export function TitleBlock({ item }: { item: KnowledgeItemResponse }) {
   const doc = useDocument(item.knowledge_item.document_id);

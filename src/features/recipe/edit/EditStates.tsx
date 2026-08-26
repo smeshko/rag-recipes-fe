@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ApiError } from "../../../api";
 import { Panel } from "../../../ui";
-import { statusTone } from "../statusTone";
+import { statusTone } from "../../../ui/statusTone";
 
 /**
  * The one pre-form state the read page has no equivalent for: the item loaded

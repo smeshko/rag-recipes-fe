@@ -3,7 +3,7 @@ import {
   spineAccent,
   statusPill,
 } from "../../../src/features/library/presentation";
-import { relativeTime } from "../../../src/features/library/relativeTime";
+import { relativeTime } from "../../../src/ui/relativeTime";
 
 describe("statusPill", () => {
   it("maps ready to an ok 'Ready'", () => {

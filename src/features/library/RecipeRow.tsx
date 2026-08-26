@@ -7,8 +7,9 @@ import {
   useDeleteKnowledgeItem,
 } from "../../api";
 import { Pill, withReturnTo } from "../../ui";
+import { statusTone } from "../../ui/statusTone";
 import { FavouriteButton } from "../favourites/FavouriteButton";
-import { statusTone } from "../recipe/statusTone";
+import { isEditableStatus } from "../recipe/edit/editableStatus";
 
 /* One recipe in a book's contents (/library/:documentId).
 
@@ -64,10 +65,10 @@ export function RecipeRow({
      half-opened confirm has no meaning once the card is gone. */
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  /* Only these two are worth an edit. `indexing` is mid-flight (the backend
-     409s), and `superseded` / `rejected` are dead generations — the edit page
-     would refuse them anyway, so offering the link would be a lie. */
-  const editable = item.status === "ready" || item.status === "needs_review";
+  /* The edit page's own gate, so the row never offers a link the page would
+     refuse: `indexing` is mid-flight (the backend 409s) and `superseded` /
+     `rejected` are dead generations. */
+  const editable = isEditableStatus(item.status);
 
   const remove = useDeleteKnowledgeItem<ListSnapshot>(
     item.id,

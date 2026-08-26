@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router";
 import type { KnowledgeItemSummary } from "../../api";
 import { Pill, withReturnTo } from "../../ui";
-import { relativeTime } from "../library/relativeTime";
-import { statusTone } from "../recipe/statusTone";
+import { relativeTime } from "../../ui/relativeTime";
+import { statusTone } from "../../ui/statusTone";
 import { FavouriteButton } from "./FavouriteButton";
 
 /* One saved recipe on /favourites.
