@@ -56,9 +56,10 @@ describe("results grid", () => {
       scope.getByText(first.display.badges.join(" · ")),
     ).toBeInTheDocument();
     expect(screen.getByText("2 matches")).toBeInTheDocument();
-    expect(
-      screen.getByText(/ranked by hybrid score · needs-review excluded/),
-    ).toBeInTheDocument();
+    /* No ranking/filter subline any more — retrieval mode and the
+       needs-review filter are the composer's knobs, not grid chrome. */
+    expect(screen.queryByText(/ranked by/)).toBeNull();
+    expect(screen.queryByText(/needs-review/)).toBeNull();
   });
 
   it("omits ingredients and badges rows for the minimal fixture card", async () => {
@@ -136,16 +137,12 @@ describe("results grid", () => {
     await screen.findByText(first.item.title);
     await runWithMode(user, "Vector only");
 
-    /* Vector is selected in the URL, but the grid still holds hybrid results:
-       the subline must say so. */
     await waitFor(() =>
       expect(router.state.location.search).toBe("?q=frittata&mode=vector"),
     );
-    expect(
-      screen.getByText(/ranked by hybrid score · needs-review excluded/),
-    ).toBeInTheDocument();
 
-    /* And the return target names the mode that produced them, not the one
+    /* Vector is selected in the URL, but the grid still holds hybrid results.
+       The return target names the mode that produced them, not the one
        the URL has already moved on to (review #2.2): a card carrying
        ?mode=vector would send the reader back to a result set the card they
        clicked need not even be in. */

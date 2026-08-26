@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { useFavouriteIds } from "../../api";
-import type { SearchMode } from "../../api/search";
 import type { KnowledgeItemResult } from "../../api/types";
 import { Bloom } from "../../ui";
 import { ResultCard } from "./ResultCard";
@@ -9,21 +8,21 @@ export interface ResultsGridProps {
   /* Results arrive as a prop — no hooks in here. 2.3 renders this same grid
      from a mutation; an internal useSearch would fire a rogue query there. */
   results: KnowledgeItemResult[];
-  /** Labels the default subline only — provenance rides on `from`. */
-  mode: SearchMode;
   /** The search that produced these results, as each card's return target. */
   from: { pathname: string; search: string };
   /** Dim while a mode re-query is in flight (isPlaceholderData). */
   dimmed?: boolean;
   /** 2.3 fallback extension — defaults preserve 2.1's exact rendering. */
   heading?: ReactNode;
+  /** Optional right-hand note. Nothing renders when it is absent: retrieval
+      mode and the needs-review filter used to live here, and neither is the
+      reader's business — they are knobs the composer already owns. */
   subline?: ReactNode;
   bloomBase?: number;
 }
 
 export function ResultsGrid({
   results,
-  mode,
   from,
   dimmed = false,
   heading,
@@ -52,9 +51,9 @@ export function ResultsGrid({
               </>
             )}
           </h2>
-          <span className="text-[13px] text-fg-subtle">
-            {subline ?? <>ranked by {mode} score · needs-review excluded</>}
-          </span>
+          {subline ? (
+            <span className="text-[13px] text-fg-subtle">{subline}</span>
+          ) : null}
         </div>
       </Bloom>
       {/* Three tiers now that the page is 1160 wide: three cards, then two,

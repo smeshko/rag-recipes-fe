@@ -441,18 +441,17 @@ export function SearchPage() {
       {showFallbackGrid && fallbackData ? (
         <ResultsGrid
           results={fallbackData.results}
-          /* The ask is read from this URL, so its mode and the URL's are the
-             same one here — and nothing is held over, so the URL the reader is
-             standing on IS the search that produced these. */
-          mode={mode}
+          /* The ask is read from this URL, so nothing is held over: the URL
+             the reader is standing on IS the search that produced these. */
           from={location}
           bloomBase={0.24}
           heading={<>What the shelf does know</>}
+          /* The count moves down here because the heading has taken the
+             grid's own "N matches" slot. */
           subline={
             <>
               {fallbackData.results.length} match
-              {fallbackData.results.length === 1 ? "" : "es"} · ranked by {mode}{" "}
-              score
+              {fallbackData.results.length === 1 ? "" : "es"}
             </>
           }
         />
@@ -484,19 +483,8 @@ export function SearchPage() {
       ) : (
         <ResultsGrid
           results={results}
-          mode={resultsMode}
           from={resultsFrom}
           dimmed={search.isPlaceholderData}
-          /* The default subline hard-codes "needs-review excluded", which is
-             a lie once the library's link-out has armed the filter. */
-          subline={
-            <>
-              ranked by {resultsMode} score ·{" "}
-              {reviewIncluded
-                ? "needs-review included"
-                : "needs-review excluded"}
-            </>
-          }
         />
       )}
     </div>

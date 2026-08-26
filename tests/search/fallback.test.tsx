@@ -71,9 +71,7 @@ describe("fallback", () => {
     /* The fallback grid replaces the search grid with its own heading. */
     expect(await screen.findByText(/does/)).toBeInTheDocument();
     expect(screen.getByText("Spinach & Cheddar Frittata")).toBeInTheDocument();
-    expect(
-      screen.getByText(/2 matches · ranked by hybrid score/),
-    ).toBeInTheDocument();
+    expect(screen.getByText("2 matches")).toBeInTheDocument();
   });
 
   it("zero-result fallback renders the notice alone — one empty surface", async () => {
