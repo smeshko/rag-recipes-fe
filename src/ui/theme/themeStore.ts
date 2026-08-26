@@ -6,8 +6,9 @@ import { useSyncExternalStore } from "react";
  * `prefers-color-scheme` and retracks live — an OS flip re-themes the open app
  * with no reload and nothing mounted.
  *
- * `localStorage`, not `sessionStorage`: `lastSearch.ts` is per-tab on purpose,
- * a theme must outlive the tab. The two keys share the `sk:` prefix.
+ * `localStorage`, not `sessionStorage`: a theme is a standing preference and
+ * must outlive the tab, the same reasoning `sidebarPreference.ts` follows. The
+ * keys share the `sk:` prefix.
  *
  * The DOM stamp lives here rather than in a component so it happens on every
  * real change from one place, and `ThemeToggle` stays a pure renderer of the

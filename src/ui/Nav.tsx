@@ -86,7 +86,12 @@ interface Destination {
 const DESTINATIONS: readonly Destination[] = [
   /* The Cook row restores the last committed search (sessionStorage). Nav
      re-renders on every location change (useLocation below), so the read stays
-     fresh without a subscription. */
+     fresh without a subscription.
+
+     Cook resumes, the wordmark above it starts fresh. That pairing is what
+     replaced the old "New search" row: two rail entries both spelled as places
+     said nothing about which one cleared the box, where a brand that goes home
+     is a convention the reader already has. */
   { key: "cook", label: "Cook", Icon: IconSearch, to: lastSearchUrl },
   /* Between Cook and Library because that is the reading order of the app:
      find something, keep it, then curate the shelf it came from. */

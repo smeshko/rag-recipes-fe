@@ -5,7 +5,10 @@ import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { reviewItemsFixture, reviewScenario } from "../src/mocks/review";
 import { routes } from "../src/routes";
+import { SIDEBAR_KEY } from "../src/ui/sidebarPreference";
 import { resetThemeStoreForTests, THEME_KEY } from "../src/ui/theme/themeStore";
+import { resetCompactViewportForTests } from "../src/ui/useCompactViewport";
+import { installMatchMedia, type MatchMediaHandle } from "./matchMedia";
 import { libraryShelfHandlers } from "./msw/handlers";
 import { server } from "./msw/server";
 
@@ -106,36 +109,129 @@ describe("shell nav active state", () => {
     expect(currentPill()).toBe("Library");
   });
 
-  /* "New search" is a Link to bare "/" while the Cook row goes to
-     lastSearchUrl(); they only look redundant. It sits OUTSIDE the nav
-     landmark on purpose — it is an action, not a destination, and keeping the
-     landmark to exactly three items is what the assertion above pins. */
-  it("keeps New search out of the nav landmark", () => {
-    renderAt("/");
-    const nav = screen.getByRole("navigation");
-    expect(within(nav).queryByRole("link", { name: "New search" })).toBeNull();
-    expect(screen.getAllByRole("link", { name: "New search" }).length).toBe(2);
+  /* The rail used to carry a "New search" action above the destinations,
+     pointing at bare "/" while the Cook row pointed at the last committed
+     search. Two rows, both spelled as places, and nothing on screen saying
+     which one cleared the box. The wordmark carries "fresh" now — a brand that
+     goes home is a convention rather than a thing to be read — which leaves
+     the Cook row free to mean exactly one thing: resume.
+
+     tests/search/lastSearch.tsx pins the resume target itself; what this pins
+     is that there is no THIRD way to reach the composer. */
+  it("splits fresh and resumed between the wordmark and the Cook row", () => {
+    sessionStorage.setItem("sk:last-search", "/?q=frittata");
+    renderAt("/library");
+
+    expect(screen.queryByRole("link", { name: "New search" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Stove" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+    expect(screen.getByRole("link", { name: "Cook" })).toHaveAttribute(
+      "href",
+      "/?q=frittata",
+    );
+    sessionStorage.clear();
   });
 });
 
-/* The rail is one element serving both tiers: a static column at >=880px and a
-   fixed off-canvas drawer below it. jsdom applies no CSS, so what is
-   observable here is the state the styling keys off — the `max-[880px]:`
-   visibility classes and aria-expanded — not the painted result. That is the
-   right level anyway: the breakpoint behaviour belongs to the stylesheet, and
-   these cases pin the toggle logic that drives it. */
-describe("sidebar drawer", () => {
-  /* The shelf fetches on mount on both / and /library — feed it, or the
-     navigation case races an unhandled request. */
+/* The rail is one element serving both tiers, and it is collapsible on both.
+   Which tier it is on is a JS read now (useCompactViewport) rather than a
+   `max-[880px]:` class alone, because the two collapses behave differently —
+   so these blocks install the matchMedia the hook reads and assert the state
+   the styling keys off. jsdom applies no CSS: what is observable here is the
+   class string and the aria, not the painted result. */
+const rail = () => screen.getByRole("complementary", { name: "Sidebar" });
+const opener = () => screen.getByRole("button", { name: "Open sidebar" });
+const collapser = () => screen.getByRole("button", { name: "Close sidebar" });
+
+describe("sidebar column (wide viewport)", () => {
   beforeEach(() => server.use(...libraryShelfHandlers()));
+  /* The preference outlives a render — scrub it so no case inherits another's
+     collapsed rail. */
+  afterEach(() => localStorage.removeItem(SIDEBAR_KEY));
 
-  const rail = () => screen.getByRole("complementary", { name: "Sidebar" });
-  const opener = () => screen.getByRole("button", { name: "Open sidebar" });
-
-  it("starts closed", () => {
+  it("starts expanded, with no top bar to reopen from", () => {
     renderAt("/");
-    expect(rail().className).toContain("max-[880px]:invisible");
+    expect(rail().className).toContain("w-[260px]");
+    expect(collapser()).toHaveAttribute("aria-expanded", "true");
+    /* The bar exists only to carry the way back in. */
+    expect(screen.queryByRole("button", { name: "Open sidebar" })).toBeNull();
+  });
+
+  it("collapses to zero width and reopens from the bar that appears", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+
+    await user.click(collapser());
+    expect(rail().className).toContain("w-0");
+    /* invisible, not merely clipped: a zero-width rail is still tabbable. */
+    expect(rail().className).toContain("invisible");
     expect(opener()).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(opener());
+    expect(rail().className).toContain("w-[260px]");
+    expect(screen.queryByRole("button", { name: "Open sidebar" })).toBeNull();
+  });
+
+  /* It is a column, not an overlay: nothing is dimmed, nothing is trapped, and
+     the page behind it keeps its scroll. That is the whole difference between
+     this block and the drawer one below. */
+  it("dims nothing and locks nothing", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+    await user.click(collapser());
+    await user.click(opener());
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  /* A drawer has to dismiss itself on navigation because it covers the page it
+     just left. A column does not, and collapsing on every click would be a
+     rail that fights the reader. */
+  it("stays open when a destination is followed", async () => {
+    const user = userEvent.setup();
+    renderAt("/");
+    await user.click(screen.getByRole("link", { name: "Library" }));
+    expect(
+      screen.getByRole("heading", { name: "On the shelf" }),
+    ).toBeInTheDocument();
+    expect(rail().className).toContain("w-[260px]");
+  });
+
+  it("remembers a collapsed rail across a reload", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderAt("/");
+    await user.click(collapser());
+    unmount();
+
+    renderAt("/");
+    expect(rail().className).toContain("w-0");
+    expect(opener()).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("sidebar drawer (narrow viewport)", () => {
+  let media: MatchMediaHandle;
+
+  beforeEach(() => {
+    /* The suite-wide fake answers every query with one flag, so this reports a
+       narrow viewport AND a dark OS. Only the first matters here. */
+    media = installMatchMedia(true);
+    resetCompactViewportForTests();
+    server.use(...libraryShelfHandlers());
+  });
+  afterEach(() => {
+    media.restore();
+    resetCompactViewportForTests();
+    resetThemeStoreForTests();
+  });
+
+  it("starts closed however the column preference was left", () => {
+    localStorage.setItem(SIDEBAR_KEY, "expanded");
+    renderAt("/");
+    expect(rail().className).toContain("invisible");
+    expect(opener()).toHaveAttribute("aria-expanded", "false");
+    localStorage.removeItem(SIDEBAR_KEY);
   });
 
   it("opens from the header button and closes on Escape", async () => {
@@ -143,23 +239,23 @@ describe("sidebar drawer", () => {
     renderAt("/");
 
     await user.click(opener());
-    expect(rail().className).toContain("max-[880px]:visible");
+    expect(rail().className).toContain("translate-x-0");
     expect(opener()).toHaveAttribute("aria-expanded", "true");
 
     /* Bound on document, so it fires wherever focus sits — including the
        backdrop, which is deliberately not focusable. */
     await user.keyboard("{Escape}");
-    expect(rail().className).toContain("max-[880px]:invisible");
+    expect(rail().className).toContain("-translate-x-full");
   });
 
-  it("closes when the rail's own close button is pressed", async () => {
+  it("closes when the rail's own toggle is pressed", async () => {
     const user = userEvent.setup();
     renderAt("/");
     await user.click(opener());
 
-    await user.click(screen.getByRole("button", { name: "Close sidebar" }));
+    await user.click(collapser());
 
-    expect(rail().className).toContain("max-[880px]:invisible");
+    expect(rail().className).toContain("-translate-x-full");
   });
 
   /* Following a destination has to dismiss the drawer, or on a phone the new
@@ -171,7 +267,7 @@ describe("sidebar drawer", () => {
 
     await user.click(screen.getByRole("link", { name: "Library" }));
 
-    expect(rail().className).toContain("max-[880px]:invisible");
+    expect(rail().className).toContain("-translate-x-full");
     expect(
       screen.getByRole("heading", { name: "On the shelf" }),
     ).toBeInTheDocument();

@@ -8,8 +8,6 @@ export { ComposerMenu } from "./ComposerMenu";
 export { Eyebrow } from "./Eyebrow";
 export {
   IconChevronDown,
-  IconClose,
-  IconCompose,
   IconLibrary,
   IconMenuList,
   IconSearch,
@@ -39,4 +37,13 @@ export type { ShellHandle } from "./Shell";
 export { Shell } from "./Shell";
 export type { SidebarProps } from "./Sidebar";
 export { Sidebar } from "./Sidebar";
+export {
+  readSidebarPreference,
+  SIDEBAR_KEY,
+  writeSidebarPreference,
+} from "./sidebarPreference";
 export { ThemeToggle } from "./theme/ThemeToggle";
+export {
+  resetCompactViewportForTests,
+  useCompactViewport,
+} from "./useCompactViewport";

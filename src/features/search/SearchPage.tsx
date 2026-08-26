@@ -224,10 +224,10 @@ export function SearchPage() {
        stays pure and React may invoke it more than once. This one site covers
        Enter, Ask and the mode chips alike. Emptying a committed query
        deliberately forgets the remembered search: an emptied box must not
-       resurrect through the Cook pill. Guarded on the previous q: on the bare
-       / (Back to the initial entry, the BackLink's "Back to Cook") a mode-chip
-       click also commits an empty q, and that must not wipe a search the user
-       never had on screen (review #1.1). */
+       resurrect through the Cook row. Guarded on the previous q: on the bare
+       / (the wordmark, Back to the initial entry, the BackLink's "Back to
+       Cook") a mode-chip click also commits an empty q, and that must not wipe
+       a search the user never had on screen (review #1.1). */
     if (nextQ) {
       saveLastSearch(searchUrl(committed));
     } else if (q !== "") {

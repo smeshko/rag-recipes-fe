@@ -41,16 +41,6 @@ function Svg({
   );
 }
 
-/** Pencil-on-page — the "start something new" action, top of the rail. */
-export function IconCompose({ className }: IconProps) {
-  return (
-    <Svg className={className}>
-      <path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
-      <path d="M18.4 3.6a1.98 1.98 0 0 1 2.8 2.8L12.8 14.8l-3.5.7.7-3.5z" />
-    </Svg>
-  );
-}
-
 /** Magnifier — search, and the Cook destination. */
 export function IconSearch({ className }: IconProps) {
   return (
@@ -81,21 +71,13 @@ export function IconLibrary({ className }: IconProps) {
   );
 }
 
-/** The sidebar/panel glyph — opens the rail on mobile, the target's own icon. */
+/** The sidebar/panel glyph — collapses the rail and reopens it, the target's
+    own icon and, deliberately, the same one for both directions. */
 export function IconSidebar({ className }: IconProps) {
   return (
     <Svg className={className}>
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9.5 4v16" />
-    </Svg>
-  );
-}
-
-/** X — dismisses the mobile drawer. */
-export function IconClose({ className }: IconProps) {
-  return (
-    <Svg className={className}>
-      <path d="M6 6l12 12M18 6L6 18" />
     </Svg>
   );
 }
