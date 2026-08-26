@@ -5,9 +5,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 /* No webfont imports. The type stack is the system sans (see --font-body in
    theme.css) — the same fallback the target ships behind its own custom face,
-   which renders natively on every platform and costs nothing to load. The
-   @fontsource/petrona and @fontsource/figtree packages are now unreferenced
-   and can be uninstalled. */
+   which renders natively on every platform and costs nothing to load. */
 import "./theme.css";
 import { createQueryClient } from "./api";
 import { routes } from "./routes";
@@ -15,7 +13,12 @@ import { routes } from "./routes";
 const queryClient = createQueryClient();
 const router = createBrowserRouter(routes);
 
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error('index.html has no element with id="root" to mount into');
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

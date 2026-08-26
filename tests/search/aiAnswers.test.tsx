@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
@@ -84,9 +84,9 @@ describe("composer action selector", () => {
       expect.stringContaining("Ask the shelf"),
       expect.stringContaining("Compose a menu"),
     ]);
-    expect(items.filter((i) => i.getAttribute("aria-checked") === "true")).toHaveLength(
-      1,
-    );
+    expect(
+      items.filter((i) => i.getAttribute("aria-checked") === "true"),
+    ).toHaveLength(1);
   });
 
   /* The whole point of the redesign: selecting is free. */

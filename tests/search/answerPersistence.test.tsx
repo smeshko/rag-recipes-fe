@@ -6,7 +6,14 @@ import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
 import { answersHandler, groundedAnswerFixture } from "../msw/answers";
 import { server } from "../msw/server";
-import { actionTrigger, chooseAction, chooseMode, currentAction, runAiAction, submitButton } from "./composer";
+import {
+  actionTrigger,
+  chooseAction,
+  chooseMode,
+  currentAction,
+  runAiAction,
+  submitButton,
+} from "./composer";
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({

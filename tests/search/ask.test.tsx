@@ -13,7 +13,14 @@ import {
   groundedAnswerFixture,
 } from "../msw/answers";
 import { server } from "../msw/server";
-import { actionTrigger, chooseAction, chooseMode, currentMode, runAiAction, submitButton } from "./composer";
+import {
+  actionTrigger,
+  chooseAction,
+  chooseMode,
+  currentMode,
+  runAiAction,
+  submitButton,
+} from "./composer";
 
 /* An answer that takes long enough to observe mid-flight. The default
    handler resolves within a tick, so anything asserted after an awaited
