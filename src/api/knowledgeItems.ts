@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useRef } from "react";
 import { request } from "./client";
 import { PaginationCapError } from "./documents";
 import { route } from "./routes";
@@ -161,6 +162,9 @@ export interface UseUpdateKnowledgeItemOptions<TContext = unknown> {
  *    ['knowledge-items'] listings are all stale the moment it returns. `exact`
  *    on the document entry so ['document', id, 'status'] polling is never
  *    refired — `invalidateOnTerminal`'s documented trap in documents.ts.
+ *    ['favourites'] settles whenever a patch committed, on every path: a
+ *    starred recipe's title and summary are read straight off the favourites
+ *    listing row, so an edit leaves that card stale until it is refetched.
  * 3. The write happens BEFORE the caller's `onSettled`, the invalidation
  *    after it (PLAN D12). `useReviewDecision` does all of its own work in the
  *    `finally`; copying that literally would show every caller-supplied
@@ -225,6 +229,9 @@ export function useUpdateKnowledgeItem<TContext = unknown>(
       } finally {
         void queryClient.invalidateQueries({ queryKey: ["review-items"] });
         /* `data` is absent on failure — nothing committed, nothing to sync. */
+        if (data) {
+          void queryClient.invalidateQueries({ queryKey: ["favourites"] });
+        }
         if (data && data.knowledge_item.status !== "needs_review") {
           void queryClient.invalidateQueries({ queryKey: ["knowledge-items"] });
           void queryClient.invalidateQueries({ queryKey: ["documents"] });
@@ -332,9 +339,16 @@ export interface UseDeleteKnowledgeItemOptions<TContext = unknown> {
  * Everything a delete can touch is invalidated on settle, success AND failure —
  * a 404 means the row was already gone, and refreshing is exactly the fix:
  * ['knowledge-items'] (bare prefix, every filter variant), ['review-items']
- * (the item may have been flagged), ['documents'] (shelf counts) and the EXACT
- * ['document', documentId] — exact so the ['document', id, 'status'] polling
- * entry is never refired.
+ * (the item may have been flagged), ['documents'] (shelf counts), ['favourites']
+ * and the EXACT ['document', documentId] — exact so the
+ * ['document', id, 'status'] polling entry is never refired.
+ *
+ * ['favourites'] is also edited OPTIMISTICALLY, the way `useToggleFavourite`'s
+ * unstar path does: a starred recipe that is deleted must leave a mounted
+ * /favourites at once rather than sit there as a dead row until the refetch
+ * lands. The row is real, so removing it invents nothing; a failure restores
+ * the snapshot and the settle-time refetch says what the server thinks. This
+ * bookkeeping is the hook's own and never reaches the caller's `TContext`.
  */
 export function useDeleteKnowledgeItem<TContext = unknown>(
   itemId: string,
@@ -342,6 +356,12 @@ export function useDeleteKnowledgeItem<TContext = unknown>(
   options: UseDeleteKnowledgeItemOptions<TContext> = {},
 ) {
   const queryClient = useQueryClient();
+  /* The favourites snapshot rides on a ref rather than on the mutation
+     context: `TContext` belongs to the caller's optimistic removal, and
+     wrapping it would leak this hook's bookkeeping into every consumer. */
+  const favouritesSnapshot = useRef<KnowledgeItemListResponse | undefined>(
+    undefined,
+  );
 
   return useMutation<void, Error, void, TContext>({
     mutationFn: async () => {
@@ -351,15 +371,40 @@ export function useDeleteKnowledgeItem<TContext = unknown>(
         }),
       );
     },
-    onMutate: options.onMutate,
-    onError: (error, _variables, context) => options.onError?.(error, context),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["favourites"] });
+      favouritesSnapshot.current =
+        queryClient.getQueryData<KnowledgeItemListResponse>(["favourites"]);
+      queryClient.setQueryData<KnowledgeItemListResponse>(
+        ["favourites"],
+        (current) =>
+          current && {
+            knowledge_items: current.knowledge_items.filter(
+              (candidate) => candidate.id !== itemId,
+            ),
+          },
+      );
+      /* The caller's context is passed through untouched; `undefined` when
+         the caller supplies no onMutate is what TanStack would have handed
+         its callbacks anyway, hence the cast. */
+      return (await options.onMutate?.()) as TContext;
+    },
+    onError: (error, _variables, context) => {
+      if (favouritesSnapshot.current !== undefined) {
+        queryClient.setQueryData(["favourites"], favouritesSnapshot.current);
+        favouritesSnapshot.current = undefined;
+      }
+      return options.onError?.(error, context);
+    },
     onSettled: async (_data, error, _variables, context) => {
       try {
         await options.onSettled?.(error, context);
       } finally {
+        favouritesSnapshot.current = undefined;
         void queryClient.invalidateQueries({ queryKey: ["knowledge-items"] });
         void queryClient.invalidateQueries({ queryKey: ["review-items"] });
         void queryClient.invalidateQueries({ queryKey: ["documents"] });
+        void queryClient.invalidateQueries({ queryKey: ["favourites"] });
         void queryClient.invalidateQueries({
           queryKey: ["document", documentId],
           exact: true,

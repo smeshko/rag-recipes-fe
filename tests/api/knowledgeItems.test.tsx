@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import type {
   KnowledgeItemCreateRequest,
+  KnowledgeItemListResponse,
   KnowledgeItemResponse,
   KnowledgeItemUpdateRequest,
 } from "../../src/api";
@@ -16,6 +17,7 @@ import {
 import { useDocument } from "../../src/api/documents";
 import {
   useCreateKnowledgeItem,
+  useDeleteKnowledgeItem,
   useKnowledgeItem,
   useUpdateKnowledgeItem,
 } from "../../src/api/knowledgeItems";
@@ -38,6 +40,11 @@ import {
   unauthorizedPatchHandler,
   validationFailedEnvelope,
 } from "../../src/mocks/knowledgeItems";
+import {
+  knowledgeItemDeleteErrorHandler,
+  knowledgeItemDeleteHandler,
+} from "../msw/documentKnowledgeItems";
+import { favouritesFixture } from "../msw/favourites";
 import { fullItemFixture, sparseItemFixture } from "../msw/knowledgeItems";
 import { server } from "../msw/server";
 
@@ -960,9 +967,10 @@ describe("useUpdateKnowledgeItem", () => {
     );
   });
 
-  it("invalidates ['review-items'] on settle and nothing else", async () => {
+  it("invalidates ['review-items'] and ['favourites'] on settle and nothing else", async () => {
     const { queryClient, wrapper } = makeWrapper();
     queryClient.setQueryData(["review-items", null], { review_items: [] });
+    queryClient.setQueryData(["favourites"], { knowledge_items: [] });
     queryClient.setQueryData(["documents"], { documents: [] });
     queryClient.setQueryData(["document", "doc_edit"], { document: {} });
 
@@ -975,6 +983,8 @@ describe("useUpdateKnowledgeItem", () => {
     expect(
       queryClient.getQueryState(["review-items", null])?.isInvalidated,
     ).toBe(true);
+    /* A starred recipe's title is read off the favourites row. */
+    expect(queryClient.getQueryState(["favourites"])?.isInvalidated).toBe(true);
     /* D6 — an edit leaves the item needs_review, so no shelf count moves. */
     expect(queryClient.getQueryState(["documents"])?.isInvalidated).toBe(false);
     expect(
@@ -1041,11 +1051,14 @@ describe("useUpdateKnowledgeItem", () => {
     );
     await result.current.mutateAsync({ title: CORRECTED });
 
+    /* Two invalidations after the callback: ['review-items'] and
+       ['favourites'] — the needs_review path moves nothing else. */
     expect(log).toEqual([
       "onMutate",
       "request",
       "setQueryData",
       "onSettled",
+      "invalidate",
       "invalidate",
     ]);
   });
@@ -1461,5 +1474,97 @@ describe("useCreateKnowledgeItem", () => {
         true,
       );
     });
+  });
+});
+
+describe("useDeleteKnowledgeItem", () => {
+  const starred = () => ({
+    knowledge_items: favouritesFixture.map((row) => ({ ...row })),
+  });
+
+  it("drops a starred recipe from ['favourites'] before the request settles, then invalidates it", async () => {
+    let released: () => void = () => {};
+    server.use(
+      http.delete("/api/v1/knowledge-items/:itemId", async () => {
+        await new Promise<void>((resolve) => {
+          released = resolve;
+        });
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["favourites"], starred());
+
+    const { result } = renderHook(
+      () => useDeleteKnowledgeItem("ki_maple_cutouts", "doc_edit"),
+      { wrapper },
+    );
+    let settled: Promise<void> | undefined;
+    act(() => {
+      settled = result.current.mutateAsync();
+    });
+    await waitFor(() =>
+      expect(
+        queryClient
+          .getQueryData<KnowledgeItemListResponse>(["favourites"])
+          ?.knowledge_items.map((row) => row.id),
+      ).toEqual(["ki_bean_stew"]),
+    );
+    expect(queryClient.getQueryState(["favourites"])?.isInvalidated).toBe(
+      false,
+    );
+
+    released();
+    await act(async () => {
+      await settled;
+    });
+    expect(queryClient.getQueryState(["favourites"])?.isInvalidated).toBe(true);
+  });
+
+  it("puts the favourites row back when the delete fails", async () => {
+    server.use(
+      knowledgeItemDeleteErrorHandler(409, {
+        error: {
+          code: "ingestion_already_running",
+          message: "Ingestion is running.",
+          details: {},
+        },
+      }),
+    );
+    const { queryClient, wrapper } = makeWrapper();
+    queryClient.setQueryData(["favourites"], starred());
+
+    const { result } = renderHook(
+      () => useDeleteKnowledgeItem("ki_maple_cutouts", "doc_edit"),
+      { wrapper },
+    );
+    await expect(result.current.mutateAsync()).rejects.toBeInstanceOf(ApiError);
+
+    expect(
+      queryClient
+        .getQueryData<KnowledgeItemListResponse>(["favourites"])
+        ?.knowledge_items.map((row) => row.id),
+    ).toEqual(["ki_maple_cutouts", "ki_bean_stew"]);
+    expect(queryClient.getQueryState(["favourites"])?.isInvalidated).toBe(true);
+  });
+
+  it("still hands the caller its own onMutate context", async () => {
+    server.use(knowledgeItemDeleteHandler([{ id: "ki_maple_cutouts" }]));
+    const { wrapper } = makeWrapper();
+    const seen: unknown[] = [];
+
+    const { result } = renderHook(
+      () =>
+        useDeleteKnowledgeItem("ki_maple_cutouts", "doc_edit", {
+          onMutate: () => "caller-context",
+          onSettled: (_error, context) => {
+            seen.push(context);
+          },
+        }),
+      { wrapper },
+    );
+    await result.current.mutateAsync();
+
+    expect(seen).toEqual(["caller-context"]);
   });
 });
