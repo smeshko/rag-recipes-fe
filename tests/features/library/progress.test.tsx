@@ -77,12 +77,7 @@ function renderRow(
   return {
     client,
     ...render(
-      <BookRow
-        doc={doc}
-        detail={detailFor(doc)}
-        index={0}
-        pollOptions={pollOptions}
-      />,
+      <BookRow doc={doc} detail={detailFor(doc)} pollOptions={pollOptions} />,
       { wrapper },
     ),
   };
@@ -291,7 +286,7 @@ describe("failed rows", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <BookRow doc={failedDoc} detail={detailFor(failedDoc)} index={0} />
+          <BookRow doc={failedDoc} detail={detailFor(failedDoc)} />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -322,7 +317,7 @@ describe("failed rows", () => {
     render(
       <QueryClientProvider client={client}>
         <MemoryRouter>
-          <BookRow doc={failedDoc} detail={detailFor(failedDoc)} index={0} />
+          <BookRow doc={failedDoc} detail={detailFor(failedDoc)} />
         </MemoryRouter>
       </QueryClientProvider>,
     );

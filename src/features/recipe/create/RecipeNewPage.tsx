@@ -1,13 +1,7 @@
 import { useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { useCreateKnowledgeItem } from "../../../api";
-import {
-  BackLink,
-  Bloom,
-  Eyebrow,
-  readReturnTo,
-  withReturnTo,
-} from "../../../ui";
+import { BackLink, Eyebrow, readReturnTo, withReturnTo } from "../../../ui";
 import { FactsFields } from "../edit/FactsFields";
 import { IngredientsEditPanel } from "../edit/IngredientsEditPanel";
 import { MethodEditPanel } from "../edit/MethodEditPanel";
@@ -89,10 +83,10 @@ export function RecipeNewPage() {
   return (
     <div data-testid="recipe-new-page">
       <UnsavedGuard isDirty={isDirty} discardingRef={discardingRef} />
-      <Bloom duration={0.7} delay={0.04} className="pt-8">
+      <div className="pt-8">
         <BackLink />
-      </Bloom>
-      <Bloom duration={0.7} delay={0.08} className="pt-2 pb-2">
+      </div>
+      <div className="pt-2 pb-2">
         {/* Names the shelf it will land on, so "where did it go?" is answered
             before it is asked. */}
         <Eyebrow>Handwritten</Eyebrow>
@@ -124,30 +118,26 @@ export function RecipeNewPage() {
         </p>
         <TitleFields form={form} isValid={isValid} setField={setField} />
         <FactsFields form={form} setField={setField} />
-      </Bloom>
+      </div>
       {/* One full-width column, matching the edit form (its D11): a 1fr column
           of textareas is exactly the cramping that layout exists to avoid. */}
       <div className="mt-8 flex flex-col gap-[26px]">
-        <Bloom duration={0.7} delay={0.14}>
+        <div>
           <IngredientsEditPanel
             rows={form.ingredients}
             onChange={(rows) => setRows("ingredients", rows)}
             newRow={() => newRow("ingredients")}
           />
-        </Bloom>
-        <Bloom duration={0.7} delay={0.18}>
+        </div>
+        <div>
           <MethodEditPanel
             rows={form.steps}
             onChange={(rows) => setRows("steps", rows)}
             newRow={() => newRow("steps")}
           />
-        </Bloom>
+        </div>
       </div>
-      <Bloom
-        duration={0.7}
-        delay={0.22}
-        className="mt-8 flex flex-wrap items-center gap-3"
-      >
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={onCancel}
@@ -170,7 +160,7 @@ export function RecipeNewPage() {
         >
           {create.isPending ? "Saving…" : "Save recipe"}
         </button>
-      </Bloom>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import {
 } from "../../../api";
 import {
   BackLink,
-  Bloom,
   Eyebrow,
   Pill,
   readReturnTo,
@@ -221,10 +220,10 @@ export function RecipeEditForm({
   return (
     <div data-testid="recipe-edit-page">
       <UnsavedGuard isDirty={isDirty} discardingRef={discardingRef} />
-      <Bloom duration={0.7} delay={0.04} className="pt-8">
+      <div className="pt-8">
         <BackLink />
-      </Bloom>
-      <Bloom duration={0.7} delay={0.08} className="pt-2 pb-2">
+      </div>
+      <div className="pt-2 pb-2">
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow>Editing</Eyebrow>
           <Pill size="md" tone={status.tone}>
@@ -261,34 +260,28 @@ export function RecipeEditForm({
         )}
         <TitleFields form={form} isValid={isValid} setField={setField} />
         <FactsFields form={form} setField={setField} />
-      </Bloom>
+      </div>
       {/* One full-width column, not the read page's
           `minmax(0,1fr)_minmax(0,1.7fr)` grid and not its sticky ingredients
           panel (D11): a 1fr column of textareas reintroduces exactly the
           cramping this epic moved editing off the queue card to escape. */}
       <div className="mt-8 flex flex-col gap-[26px]">
-        <Bloom duration={0.7} delay={0.14}>
+        <div>
           <IngredientsEditPanel
             rows={form.ingredients}
             onChange={(rows) => setRows("ingredients", rows)}
             newRow={() => newRow("ingredients")}
           />
-        </Bloom>
-        <Bloom duration={0.7} delay={0.18}>
+        </div>
+        <div>
           <MethodEditPanel
             rows={form.steps}
             onChange={(rows) => setRows("steps", rows)}
             newRow={() => newRow("steps")}
           />
-        </Bloom>
+        </div>
       </div>
-      <Bloom
-        duration={0.7}
-        delay={0.22}
-        /* Wraps: TASK-004 adds a third control, and three pill buttons do not
-           fit a 375px row. */
-        className="mt-8 flex flex-wrap items-center gap-3"
-      >
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={onCancel}
@@ -336,7 +329,7 @@ export function RecipeEditForm({
             {decide.isPending ? "Approving…" : "Save & approve"}
           </button>
         )}
-      </Bloom>
+      </div>
     </div>
   );
 }

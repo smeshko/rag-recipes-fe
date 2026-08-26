@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@fontsource/figtree':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/petrona':
-        specifier: ^5.3.0
-        version: 5.3.0
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.0(@types/node@24.13.3)(jiti@2.7.0))
@@ -218,12 +212,6 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
-
-  '@fontsource/figtree@5.3.0':
-    resolution: {integrity: sha512-/iTcTXL1eRBGhvD7NN9dnKzXzWqDLVZVEUFI9xIxAC1G/hXU8tCyYeXCAuPOuvSYPInFUP7H6KLGgygmDfy1SA==}
-
-  '@fontsource/petrona@5.3.0':
-    resolution: {integrity: sha512-Y7yvtt5oKzfAUTmHxIR5WJJTen+6SjUkW/NFWC1n6A0TjlKu6AGFXPcVdWi2Oh+msJj9VmaVkCsB/tRlthoUKA==}
 
   '@inquirer/ansi@2.0.7':
     resolution: {integrity: sha512-3eTuUO1vH2cZm2ZKHeQxnOqlTi9EfZDGgIe3BL3I4u+rJHocr9Fz86M4fjYABPvFnQG/gGK551HqDiIcETwU6Q==}
@@ -1505,10 +1493,6 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.15.1': {}
-
-  '@fontsource/figtree@5.3.0': {}
-
-  '@fontsource/petrona@5.3.0': {}
 
   '@inquirer/ansi@2.0.7': {}
 

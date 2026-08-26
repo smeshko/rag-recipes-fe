@@ -346,29 +346,9 @@ html[data-theme="dark"] {
   }
 }
 
-/* --bloom-delay must not inherit. Kept only because <Bloom> still sets it as
-   an inline style (see below); when Bloom goes, this goes. */
-@property --bloom-delay {
-  syntax: "<time>";
-  inherits: false;
-  initial-value: 0s;
-}
-
 @layer components {
-  /* THE ENTRANCE ANIMATION IS GONE, AND `.bloom` / `.bloom-card` ARE NOW
-     NO-OPS. Nothing in this language fades or translates in on load — content
-     is simply there. The <Bloom> wrapper survives at ~106 call sites because
-     deleting it is a 20-file edit with no visual payoff (it renders a plain
-     div once these rules are empty), and one test asserts its delay maths.
-     Do not reintroduce the keyframes; do remove the wrapper opportunistically.
-
-     The classes are declared rather than deleted so that a call site reading
-     `className="bloom"` still resolves to something, and so this note has
-     somewhere to live. */
-  .bloom,
-  .bloom-card {
-    animation: none;
-  }
+  /* No entrance animation in this language: nothing fades or translates in
+     on load, content is simply there. Do not reintroduce keyframes for it. */
 
   /* Progress bar fill and current-stage dot. */
   .progress-fill {

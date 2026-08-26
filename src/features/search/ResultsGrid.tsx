@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useFavouriteIds } from "../../api";
 import type { KnowledgeItemResult } from "../../api/types";
-import { Bloom } from "../../ui";
 import { ResultCard } from "./ResultCard";
 
 export interface ResultsGridProps {
@@ -18,7 +17,6 @@ export interface ResultsGridProps {
       mode and the needs-review filter used to live here, and neither is the
       reader's business — they are knobs the composer already owns. */
   subline?: ReactNode;
-  bloomBase?: number;
 }
 
 export function ResultsGrid({
@@ -27,7 +25,6 @@ export function ResultsGrid({
   dimmed = false,
   heading,
   subline,
-  bloomBase = 0.3,
 }: ResultsGridProps) {
   /* ONE read for the whole grid, not one per card: every card would otherwise
      mount its own hook against the same ['favourites'] entry. The prop-only
@@ -42,7 +39,7 @@ export function ResultsGrid({
 
   return (
     <section className={dimmed ? "opacity-60 transition-opacity" : undefined}>
-      <Bloom duration={0.7} delay={0.26}>
+      <div>
         <div className="mt-14 mb-[22px] flex items-baseline justify-between">
           <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
             {heading ?? (
@@ -55,24 +52,19 @@ export function ResultsGrid({
             <span className="text-[13px] text-fg-subtle">{subline}</span>
           ) : null}
         </div>
-      </Bloom>
+      </div>
       {/* Three tiers now that the page is 1160 wide: three cards, then two,
           then one. Without the middle step a 1000px window jumped straight
           from three columns to a single full-width card. */}
       <div className="grid grid-cols-3 gap-5 max-[1100px]:grid-cols-2 max-[720px]:grid-cols-1">
-        {results.map((result, index) => (
-          <Bloom
-            key={result.item.id}
-            index={index}
-            base={bloomBase}
-            className="flex"
-          >
+        {results.map((result) => (
+          <div key={result.item.id} className="flex">
             <ResultCard
               result={result}
               from={from}
               favourited={favourites.data?.has(result.item.id) ?? false}
             />
-          </Bloom>
+          </div>
         ))}
       </div>
     </section>

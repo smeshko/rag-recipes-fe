@@ -1,6 +1,6 @@
 import { useParams } from "react-router";
 import { ApiError, useKnowledgeItem } from "../../api";
-import { BackLink, Bloom } from "../../ui";
+import { BackLink } from "../../ui";
 import { FactsRow } from "./FactsRow";
 import { IngredientsPanel } from "./IngredientsPanel";
 import { MethodPanel } from "./MethodPanel";
@@ -54,7 +54,7 @@ export function RecipePage() {
       <RecipeNotARecipe title={data.display.title} />
     ) : (
       <>
-        <Bloom duration={0.7} delay={0.08} className="pt-8">
+        <div className="pt-8">
           <TitleBlock item={data} />
           <FactsRow
             sd={data.knowledge_item.structured_data}
@@ -71,43 +71,43 @@ export function RecipePage() {
               The callout below stays the *contextual* surface — what is
               flagged — now that the Edit button has moved up here. */}
           <RecipeActions item={data} />
-        </Bloom>
+        </div>
         {/* Between the head and the panels, on its own step of the cadence:
             what is still flagged is the first thing a reviewer needs after the
             title, and it renders nothing at all for a decided item. */}
-        <Bloom duration={0.7} delay={0.11}>
+        <div>
           <ReviewCallout item={data} />
-        </Bloom>
+        </div>
         <div className="mt-8 grid grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-[26px] max-[880px]:grid-cols-1">
-          <Bloom duration={0.7} delay={0.14}>
+          <div>
             <IngredientsPanel
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
               flags={data.knowledge_item.review_reasons}
               thresholds={data.knowledge_item.review_thresholds}
             />
-          </Bloom>
-          <Bloom duration={0.7} delay={0.18}>
+          </div>
+          <div>
             <MethodPanel
               sd={data.knowledge_item.structured_data}
               status={data.knowledge_item.status}
               confidence={data.knowledge_item.confidence}
               thresholds={data.knowledge_item.review_thresholds}
             />
-          </Bloom>
+          </div>
         </div>
-        <Bloom duration={0.7} delay={0.22}>
+        <div>
           <Provenance item={data} />
-        </Bloom>
+        </div>
       </>
     );
   }
 
   return (
     <div data-testid="recipe-page">
-      <Bloom duration={0.7} delay={0.04} className="pt-8">
+      <div className="pt-8">
         <BackLink />
-      </Bloom>
+      </div>
       {body}
     </div>
   );

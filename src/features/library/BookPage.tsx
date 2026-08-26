@@ -5,7 +5,7 @@ import {
   useDocument,
   useDocumentKnowledgeItems,
 } from "../../api";
-import { BackLink, Bloom, Pill, readReturnTo } from "../../ui";
+import { BackLink, Pill, readReturnTo } from "../../ui";
 import {
   BookEmptyAll,
   BookEmptyFiltered,
@@ -19,10 +19,6 @@ import { RecipeRow } from "./RecipeRow";
    edit and a delete per row. The screen the shelf never had — /library shows
    only counts, and /review shows only what is still flagged, so an approved
    book was previously reachable one recipe at a time through search.
-
-   The <Bloom> wrappers are inert — `.bloom` is a no-op class and nothing here
-   animates in. They remain as the layout divs their className props make them,
-   and go when Bloom itself is retired.
 
    ?status=<status> narrows the list. The URL is the single source of truth
    (SearchPage's pattern, restated on ReviewPage): the value is derived every
@@ -110,27 +106,23 @@ export function BookPage() {
   return (
     <div>
       {returnTarget !== null && (
-        <Bloom duration={0.7} delay={0.04} className="pt-8">
+        <div className="pt-8">
           <BackLink />
-        </Bloom>
+        </div>
       )}
       {/* The back link takes the head's top padding over, so total top
           spacing stays 40px either way — padding moved between two stacked
           elements, not a restyle. ReviewPage does the same. */}
-      <Bloom
-        duration={0.7}
-        delay={0.06}
-        className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
-      >
+      <div className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}>
         {/* LibraryPage's page-title size, fixed rather than clamped: the book
             title is chrome, and chrome does not scale with the viewport. */}
         <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
           {title}
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{countLine}</div>
-      </Bloom>
+      </div>
 
-      <Bloom duration={0.7} delay={0.1} className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {/* ModeChips' shape: ghost chips with one near-black solid marking the
             selection. Selection used to be an accent tint, which on this screen
             put a blue-on-blue chip directly above a row of tinted status pills
@@ -170,7 +162,7 @@ export function BookPage() {
               {status}
             </Pill>
           )}
-      </Bloom>
+      </div>
 
       <div className="mt-9">
         {items.isPending && <BookSkeleton />}
@@ -193,20 +185,14 @@ export function BookPage() {
             <BookEmptyAll />
           ))}
 
-        {recipes.map((item, index) => (
-          <Bloom
-            key={item.id}
-            index={index}
-            base={0.18}
-            step={0.04}
-            className="mb-4"
-          >
+        {recipes.map((item) => (
+          <div key={item.id} className="mb-4">
             <RecipeRow
               item={item}
               deleteError={deleteErrors[item.id]}
               onDeleteError={recordDeleteError}
             />
-          </Bloom>
+          </div>
         ))}
       </div>
     </div>

@@ -1,5 +1,3 @@
-import { Bloom } from "../../ui";
-
 /* The warning-toned fallback: content, not an alert — role="status", never
    error styling. The body is the API's own warning verbatim (answer.text is
    the same string; render it once).
@@ -15,7 +13,7 @@ export function FallbackNotice({
   onRephrase: () => void;
 }) {
   return (
-    <Bloom duration={0.7} delay={0.14} className="mt-14">
+    <div className="mt-14">
       <div
         role="status"
         className="flex flex-wrap items-start gap-4 rounded-panel border border-warning-border bg-warning-fill px-6 py-5"
@@ -61,6 +59,6 @@ export function FallbackNotice({
           </div>
         </div>
       </div>
-    </Bloom>
+    </div>
   );
 }

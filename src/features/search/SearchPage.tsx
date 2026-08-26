@@ -445,7 +445,6 @@ export function SearchPage() {
           /* The ask is read from this URL, so nothing is held over: the URL
              the reader is standing on IS the search that produced these. */
           from={location}
-          bloomBase={0.24}
           heading={<>What the shelf does know</>}
           /* The count moves down here because the heading has taken the
              grid's own "N matches" slot. */

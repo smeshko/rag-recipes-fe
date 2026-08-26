@@ -3,15 +3,10 @@ import {
   useDocumentDetails,
   useDocuments,
 } from "../../api";
-import { Bloom, Panel } from "../../ui";
+import { Panel } from "../../ui";
 import { WriteByHandCta } from "../recipe/create/WriteByHandCta";
 import { BookRow, type DetailState } from "./BookRow";
 import { Dropzone } from "./Dropzone";
-
-/* The <Bloom> wrappers below are inert — `.bloom` is a no-op class now and
-   nothing on this page fades or staggers in. They survive only as the layout
-   divs their className props make them, and go when Bloom itself is retired;
-   the delay/index props are dead numbers, not a cadence to preserve. */
 
 const plural = (n: number, word: string) => (n === 1 ? word : `${word}s`);
 
@@ -69,7 +64,7 @@ export function LibraryPage() {
 
   return (
     <div>
-      <Bloom duration={0.7} delay={0.06} className="pt-10 pb-2">
+      <div className="pt-10 pb-2">
         {/* One fixed size, not a clamp: the page title is chrome, and chrome
             in this language does not grow with the viewport. The accent-italic
             second clause went with it — emphasis is weight and whitespace. */}
@@ -82,30 +77,25 @@ export function LibraryPage() {
             counts unavailable for {unavailable} {plural(unavailable, "book")}
           </div>
         )}
-      </Bloom>
+      </div>
 
-      <Bloom duration={0.7} delay={0.1} className="mt-7">
+      <div className="mt-7">
         <Dropzone />
-        {/* Inside the dropzone's own bloom slot, not a new one: the two are one
-            "how a recipe gets here" block, and staggering them apart would read
-            as two unrelated sections. */}
+        {/* Inside the dropzone's own block, not a new section: the two are one
+            "how a recipe gets here" unit. */}
         <div className="mt-4">
           <WriteByHandCta />
         </div>
-      </Bloom>
+      </div>
 
-      <Bloom
-        duration={0.7}
-        delay={0.14}
-        className="mt-11 mb-[18px] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
-      >
+      <div className="mt-11 mb-[18px] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
           On the shelf
         </h2>
         <span className="text-[13px] text-fg-subtle">
           sorted by most recently added
         </span>
-      </Bloom>
+      </div>
 
       {documents.isPending && (
         <div data-testid="shelf-loading" aria-hidden="true">
@@ -140,7 +130,6 @@ export function LibraryPage() {
           key={doc.id}
           doc={doc}
           detail={detailStateOf(details[index])}
-          index={index}
         />
       ))}
     </div>

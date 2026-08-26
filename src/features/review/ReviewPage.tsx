@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { type ApiError, useReviewItems } from "../../api";
-import { BackLink, Bloom, readReturnTo } from "../../ui";
+import { BackLink, readReturnTo } from "../../ui";
 import { FilterChip } from "./FilterChip";
 import { ReviewItemCard } from "./ReviewItemCard";
 import {
@@ -11,8 +11,7 @@ import {
   ReviewSkeleton,
 } from "./ReviewStates";
 
-/* The global review queue (phase 4.3), running on 4.2's hooks. Bloom cadence
-   copies the library page: head 0.06, chip 0.10, list items base .18 step .04.
+/* The global review queue (phase 4.3), running on 4.2's hooks.
 
    ?document=<id> narrows the queue to one book. The URL is the single source
    of truth (SearchPage's pattern): the id is derived every render, never
@@ -75,28 +74,24 @@ export function ReviewPage() {
   return (
     <div>
       {returnTarget !== null && (
-        <Bloom duration={0.7} delay={0.04} className="pt-8">
+        <div className="pt-8">
           <BackLink />
-        </Bloom>
+        </div>
       )}
       {/* The back link takes the head's top padding over, so the queue's
           total top spacing stays 40px either way — padding moved between two
           stacked elements, not a restyle. */}
-      <Bloom
-        duration={0.7}
-        delay={0.06}
-        className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}
-      >
+      <div className={`${returnTarget === null ? "pt-10" : "pt-2"} pb-2`}>
         <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
           Needs a second look.
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{countLine}</div>
-      </Bloom>
+      </div>
 
       {documentId && (
-        <Bloom duration={0.7} delay={0.1} className="mt-4">
+        <div className="mt-4">
           <FilterChip documentId={documentId} onClear={clearFilter} />
-        </Bloom>
+        </div>
       )}
 
       <div className="mt-9">
@@ -117,20 +112,14 @@ export function ReviewPage() {
             <ReviewEmptyAll />
           ))}
 
-        {flagged.map((item, index) => (
-          <Bloom
-            key={item.id}
-            index={index}
-            base={0.18}
-            step={0.04}
-            className="mb-4"
-          >
+        {flagged.map((item) => (
+          <div key={item.id} className="mb-4">
             <ReviewItemCard
               item={item}
               decisionError={decisionErrors[item.id]}
               onDecisionError={recordDecisionError}
             />
-          </Bloom>
+          </div>
         ))}
       </div>
     </div>

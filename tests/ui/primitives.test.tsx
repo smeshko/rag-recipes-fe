@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { Bloom, Card, Eyebrow, Panel, Pill, SearchInput } from "../../src/ui";
+import { Card, Eyebrow, Panel, Pill, SearchInput } from "../../src/ui";
 
 describe("Pill", () => {
   it("renders both sizes and all tones", () => {
@@ -132,29 +132,5 @@ describe("SearchInput", () => {
     await user.clear(input);
     await user.type(input, "frittata{Enter}");
     expect(onSubmit).toHaveBeenCalledWith("frittata");
-  });
-});
-
-describe("Bloom", () => {
-  it("computes delay from base + index * step", () => {
-    const { container } = render(
-      <Bloom index={2} base={0.18} step={0.04}>
-        item
-      </Bloom>,
-    );
-    expect(container.firstElementChild).toHaveStyle({
-      "--bloom-delay": "0.26s",
-    });
-  });
-
-  it("prefers an explicit delay over the formula", () => {
-    const { container } = render(
-      <Bloom index={5} delay={0.06} duration={0.7}>
-        chrome
-      </Bloom>,
-    );
-    expect(container.firstElementChild).toHaveStyle({
-      "--bloom-delay": "0.06s",
-    });
   });
 });

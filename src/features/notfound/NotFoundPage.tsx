@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 export function NotFoundPage() {
   return (
-    <section data-testid="notfound-page" className="bloom pt-16 text-center">
+    <section data-testid="notfound-page" className="pt-16 text-center">
       <h1 className="text-[26px] font-semibold tracking-[-0.02em]">
         Nothing simmering here.
       </h1>

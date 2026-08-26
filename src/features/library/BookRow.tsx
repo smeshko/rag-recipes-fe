@@ -10,7 +10,7 @@ import {
   useIngestionStatus,
   useReprocess,
 } from "../../api";
-import { Bloom, Pill, withReturnTo } from "../../ui";
+import { Pill, withReturnTo } from "../../ui";
 import { relativeTime } from "../../ui/relativeTime";
 import { reviewQueueUrl } from "../review/reviewQueueUrl";
 import { CalmNotice } from "./CalmNotice";
@@ -27,7 +27,6 @@ export type DetailState =
 export interface BookRowProps {
   doc: DocumentListItem;
   detail: DetailState;
-  index: number;
   /** Test-only polling knobs (intervalMs/stallLimit); production omits it. */
   pollOptions?: { intervalMs?: number; stallLimit?: number };
 }
@@ -131,7 +130,7 @@ function CountsRow({
   );
 }
 
-export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
+export function BookRow({ doc, detail, pollOptions }: BookRowProps) {
   const counts = detail.status === "success" ? detail.detail.counts : undefined;
   const pill = statusPill(doc.status, counts?.needs_review_items);
   /* Per-row, deliberately: lifting this into LibraryPage and threading it
@@ -165,7 +164,7 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
     alreadyRunning || reprocessError?.code === "document_not_found";
 
   return (
-    <Bloom index={index} base={0.18} step={0.04} className="mb-4">
+    <div className="mb-4">
       {/* `relative isolate` is the positioning context for the title link's
           stretched hit area below — `isolate` so the z-10 the sibling controls
           carry is scoped to this card and cannot outrank anything outside it. */}
@@ -277,6 +276,6 @@ export function BookRow({ doc, detail, index, pollOptions }: BookRowProps) {
           )}
         </div>
       </article>
-    </Bloom>
+    </div>
   );
 }
