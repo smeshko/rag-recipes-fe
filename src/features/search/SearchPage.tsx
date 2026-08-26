@@ -23,6 +23,7 @@ import {
   ComposerControls,
 } from "./ComposerControls";
 import { FallbackNotice } from "./FallbackNotice";
+import { greetingFor } from "./greeting";
 import { clearLastSearch, saveLastSearch } from "./lastSearch";
 import { MenuCard } from "./MenuCard";
 import { MenuSkeleton } from "./MenuSkeleton";
@@ -377,7 +378,7 @@ export function SearchPage() {
           pushes the search field itself below the first screen. */}
       <div className="pt-12 pb-5 text-center max-[560px]:pt-6">
         <h1 className="text-[24px] leading-[1.3] max-[560px]:text-[21px]">
-          Good morning. What are we cooking?
+          {greetingFor()}. What are we cooking?
         </h1>
         <p className="mt-2 text-[13px] text-fg-subtle">
           <ShelfStatsLine />
