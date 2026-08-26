@@ -69,6 +69,9 @@ function Segments({
         if (segment.kind === "bold") {
           return <strong key={key}>{segment.value}</strong>;
         }
+        if (segment.kind === "italic") {
+          return <em key={key}>{segment.value}</em>;
+        }
         const citation = map.get(segment.id);
         /* Unresolvable ids degrade silently. */
         return citation ? <Chip key={key} citation={citation} /> : null;
@@ -83,29 +86,45 @@ export function AnswerText({ text, map }: { text: string; map: CitationMap }) {
   const rendered: React.ReactNode[] = [];
   let listBuffer: AnswerBlock[] = [];
 
+  /* One run of consecutive items becomes one list. The parser reports
+     whether each item was numbered or bulleted in the source, so a run flushes
+     when that flips too — otherwise a bulleted item swept into an <ol> would
+     be silently renumbered, which is a list that lies about its own source. */
   const flushList = () => {
-    if (listBuffer.length > 0) {
-      rendered.push(
-        <ol
-          key={`ol-${rendered.length}`}
-          className="mt-[0.8em] list-decimal space-y-[0.8em] pl-6 first:mt-0"
-        >
-          {listBuffer.map((item, i) => (
-            <li
-              // biome-ignore lint/suspicious/noArrayIndexKey: static parse result
-              key={i}
-            >
-              <Segments segments={item.segments} map={map} />
-            </li>
-          ))}
-        </ol>,
-      );
-      listBuffer = [];
+    if (listBuffer.length === 0) {
+      return;
     }
+    const ordered = listBuffer[0]?.ordered === true;
+    const items = listBuffer.map((item, i) => (
+      <li
+        // biome-ignore lint/suspicious/noArrayIndexKey: static parse result
+        key={i}
+      >
+        <Segments segments={item.segments} map={map} />
+      </li>
+    ));
+    const className = `mt-[0.8em] space-y-[0.5em] pl-6 first:mt-0 ${
+      ordered ? "list-decimal" : "list-disc"
+    }`;
+    rendered.push(
+      ordered ? (
+        <ol key={`ol-${rendered.length}`} className={className}>
+          {items}
+        </ol>
+      ) : (
+        <ul key={`ul-${rendered.length}`} className={className}>
+          {items}
+        </ul>
+      ),
+    );
+    listBuffer = [];
   };
 
   for (const block of blocks) {
     if (block.kind === "li") {
+      if (listBuffer[0] && listBuffer[0].ordered !== block.ordered) {
+        flushList();
+      }
       listBuffer.push(block);
     } else {
       flushList();
@@ -149,7 +168,9 @@ export function TrailingChips({
     return null;
   }
   return (
-    <p className="mt-5 text-[11px] font-semibold tracking-[0.08em] text-fg-subtle uppercase">
+    /* Sentence case. "CITED PAGES" was the last small-caps label left in the
+       answer surface, and there is no small caps anywhere in the target. */
+    <p className="mt-5 text-[13px] text-fg-subtle">
       Cited pages{" "}
       {remaining.map((citation) => (
         <Chip key={citation.citation_id} citation={citation} />
