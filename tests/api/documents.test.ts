@@ -1,9 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import { HttpResponse, http } from "msw";
+import { delay, HttpResponse, http } from "msw";
 import { createElement, type ReactNode } from "react";
 import { useDocuments, useShelfStats } from "../../src/api/documents";
-import { documentNotFoundEnvelope, fixtureReadyRecipes } from "../msw/handlers";
+import {
+  documentDetailFixture,
+  documentNotFoundEnvelope,
+  documentsFixture,
+  fixtureRecipeCount,
+  libraryBooks,
+} from "../msw/handlers";
 import { server } from "../msw/server";
 
 function wrapper() {
@@ -28,6 +34,7 @@ describe("useDocuments", () => {
       source_type: "pdf",
       status: "ready",
       active_source_version: 1,
+      knowledge_items: 0,
     }));
     const requestedOffsets: string[] = [];
     server.use(
@@ -62,6 +69,7 @@ describe("useDocuments", () => {
         source_type: "pdf",
         status: "ready",
         active_source_version: 1,
+        knowledge_items: 0,
       })),
     });
     const pages = [
@@ -82,17 +90,37 @@ describe("useDocuments", () => {
 });
 
 describe("useShelfStats", () => {
-  it("counts cookbooks and sums ready recipes across the shelf", async () => {
+  it("sums each book's knowledge_items off the list", async () => {
     const { result } = renderHook(() => useShelfStats(), {
       wrapper: wrapper(),
     });
     await waitFor(() => expect(result.current.cookbookCount).toBe(3));
     await waitFor(() =>
-      expect(result.current.readyRecipes).toBe(fixtureReadyRecipes),
+      expect(result.current.recipeCount).toBe(fixtureRecipeCount),
     );
+    expect(result.current.unavailable).toBe(false);
   });
 
-  it("resolves a flagged floor rather than a false total when a book fails", async () => {
+  it("fetches no per-book detail to build the total", async () => {
+    let detailRequests = 0;
+    server.use(
+      http.get("/api/v1/documents/:documentId", () => {
+        detailRequests += 1;
+        return HttpResponse.json(documentNotFoundEnvelope("unexpected"), {
+          status: 404,
+        });
+      }),
+    );
+    const { result } = renderHook(() => useShelfStats(), {
+      wrapper: wrapper(),
+    });
+    await waitFor(() =>
+      expect(result.current.recipeCount).toBe(fixtureRecipeCount),
+    );
+    expect(detailRequests).toBe(0);
+  });
+
+  it("is not moved by a failing detail, because it never reads one", async () => {
     server.use(
       http.get("/api/v1/documents/doc_baking", () =>
         HttpResponse.json(documentNotFoundEnvelope("doc_baking"), {
@@ -103,22 +131,43 @@ describe("useShelfStats", () => {
     const { result } = renderHook(() => useShelfStats(), {
       wrapper: wrapper(),
     });
-    await waitFor(() => expect(result.current.cookbookCount).toBe(3));
-    /* 107 + 105 from the two healthy books; the 404 must not hang the sum
-       (TASK-001), but 212 is a floor, not the shelf's total — `partial` is
-       what stops the hero stating it as exact. */
-    await waitFor(() => expect(result.current.readyRecipes).toBe(212));
-    expect(result.current.partial).toBe(true);
+    await waitFor(() =>
+      expect(result.current.recipeCount).toBe(fixtureRecipeCount),
+    );
+    expect(result.current.unavailable).toBe(false);
   });
 
-  it("does not flag a complete shelf as partial", async () => {
+  it("is undefined until the list resolves, then the list's sum", async () => {
+    server.use(
+      http.get("/api/v1/documents", async () => {
+        await delay(20);
+        return HttpResponse.json(documentsFixture);
+      }),
+    );
     const { result } = renderHook(() => useShelfStats(), {
       wrapper: wrapper(),
     });
+    expect(result.current.recipeCount).toBeUndefined();
     await waitFor(() =>
-      expect(result.current.readyRecipes).toBe(fixtureReadyRecipes),
+      expect(result.current.recipeCount).toBe(fixtureRecipeCount),
     );
-    expect(result.current.partial).toBe(false);
+  });
+
+  it("reports unavailable, with no total, when the list itself fails", async () => {
+    server.use(
+      http.get("/api/v1/documents", () =>
+        HttpResponse.json(
+          { error: { code: "unauthorized", message: "nope", details: {} } },
+          { status: 401 },
+        ),
+      ),
+    );
+    const { result } = renderHook(() => useShelfStats(), {
+      wrapper: wrapper(),
+    });
+    await waitFor(() => expect(result.current.unavailable).toBe(true));
+    expect(result.current.recipeCount).toBeUndefined();
+    expect(result.current.cookbookCount).toBeUndefined();
   });
 
   it("reports zero — not unknown — for an empty shelf", async () => {
@@ -129,6 +178,20 @@ describe("useShelfStats", () => {
       wrapper: wrapper(),
     });
     await waitFor(() => expect(result.current.cookbookCount).toBe(0));
-    await waitFor(() => expect(result.current.readyRecipes).toBe(0));
+    await waitFor(() => expect(result.current.recipeCount).toBe(0));
+  });
+});
+
+describe("list knowledge_items vs detail counts", () => {
+  it("agrees with each book's detail counts.knowledge_items in the fixtures", () => {
+    for (const doc of documentsFixture.documents) {
+      const detail = documentDetailFixture(doc.id);
+      expect(detail?.counts.knowledge_items).toBe(doc.knowledge_items);
+    }
+    for (const book of libraryBooks) {
+      expect(book.list.knowledge_items).toBe(
+        book.detail.counts.knowledge_items,
+      );
+    }
   });
 });

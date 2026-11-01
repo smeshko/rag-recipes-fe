@@ -111,6 +111,10 @@ export interface DocumentListItem {
   source_type: string;
   status: DocumentStatus;
   active_source_version: number | null;
+  /** The book's recipe count: its knowledge items that are not `rejected`,
+      superseded and in-flight rows included. The same number as the detail's
+      `counts.knowledge_items` (backend DECISIONS.md #21). */
+  knowledge_items: number;
 }
 
 export interface DocumentListResponse {

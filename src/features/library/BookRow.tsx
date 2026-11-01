@@ -94,11 +94,15 @@ function CountCell({
 const COUNTS_LAYOUT =
   "flex flex-wrap gap-[26px] py-5 max-[880px]:col-start-2 max-[880px]:pt-0 max-[880px]:pr-6 max-[880px]:pb-5 max-[560px]:gap-x-5";
 
+/* The recipe count comes off the list row; review and chunks come off the
+   detail, which is why an errored detail still shows the recipe figure. */
 function CountsRow({
   state,
+  recipes,
   counts,
 }: {
   state: "pending" | "error" | "success";
+  recipes: number;
   counts: DocumentCounts | undefined;
 }) {
   if (state === "pending") {
@@ -119,7 +123,7 @@ function CountsRow({
   }
   return (
     <div className={COUNTS_LAYOUT}>
-      <CountCell value={counts?.ready_items} label="recipes" />
+      <CountCell value={recipes} label="recipes" />
       <CountCell
         value={counts?.needs_review_items}
         label="to review"
@@ -208,7 +212,11 @@ export function BookRow({ doc, detail, pollOptions }: BookRowProps) {
           </small>
         </div>
         {isReadyIsh(doc.status) ? (
-          <CountsRow state={detail.status} counts={counts} />
+          <CountsRow
+            state={detail.status}
+            recipes={doc.knowledge_items}
+            counts={counts}
+          />
         ) : doc.status === "failed" ? (
           /* Honest failure copy: names NO cause — status is only "failed"
              and progress.message is null today; prefer it if it ever lands. */

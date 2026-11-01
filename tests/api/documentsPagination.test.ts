@@ -27,6 +27,7 @@ const makeBooks = (n: number): DocumentListItem[] =>
     source_type: "pdf",
     status: "ready",
     active_source_version: 1,
+    knowledge_items: 0,
   }));
 
 /* Per the phase-1.2 contract: hook tests build their own client with

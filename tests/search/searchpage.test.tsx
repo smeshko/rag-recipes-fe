@@ -5,7 +5,7 @@ import { HttpResponse, http } from "msw";
 import { createMemoryRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { routes } from "../../src/routes";
-import { fixtureReadyRecipes, searchFixture } from "../msw/handlers";
+import { fixtureRecipeCount, searchFixture } from "../msw/handlers";
 import { server } from "../msw/server";
 import { currentMode, runAiAction, runWithMode } from "./composer";
 
@@ -128,7 +128,7 @@ describe("SearchPage URL ↔ state", () => {
       expect(
         screen.getByText(
           new RegExp(
-            `3 cookbooks on the shelf · ${fixtureReadyRecipes} recipes ready`,
+            `3 cookbooks on the shelf · ${fixtureRecipeCount} recipes`,
           ),
         ),
       ).toBeInTheDocument(),
@@ -152,7 +152,9 @@ describe("SearchPage URL ↔ state", () => {
     expect(screen.queryByText(/warming up the shelf/)).toBeNull();
   });
 
-  it("marks the hero total as a floor when a book's counts fail", async () => {
+  it("keeps the hero total exact when one book's detail fails", async () => {
+    /* The total is the list's own sum, so a book whose detail 404s does not
+       change it, and no "+" is needed: the figure is still the whole shelf. */
     server.use(
       http.get("/api/v1/documents/doc_baking", () =>
         HttpResponse.json(
@@ -164,11 +166,11 @@ describe("SearchPage URL ↔ state", () => {
       ),
     );
     renderAt("/");
-    /* "212+", never a bare "212" — the third book never reported, so the
-       exact figure is unknown and the hero must not claim it. */
     await waitFor(() =>
       expect(
-        screen.getByText(/3 cookbooks on the shelf · 212\+ recipes ready/),
+        screen.getByText(
+          `3 cookbooks on the shelf · ${fixtureRecipeCount} recipes`,
+        ),
       ).toBeInTheDocument(),
     );
   });

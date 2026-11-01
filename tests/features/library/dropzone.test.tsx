@@ -52,6 +52,8 @@ const listItemOf = (doc: DocumentResponse): DocumentListItem => ({
   source_type: doc.source_type,
   status: doc.status,
   active_source_version: doc.active_source_version,
+  /* A book just uploaded has no recipes yet. */
+  knowledge_items: 0,
 });
 
 const detailOf = (doc: DocumentResponse) => ({

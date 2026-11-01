@@ -44,7 +44,12 @@ export const unauthorizedHandler = (path: string) =>
 
 /* ---------- documents ---------- */
 
-const documentListItem = (id: string, title: string, status = "ready") => ({
+const documentListItem = (
+  id: string,
+  title: string,
+  knowledgeItems: number,
+  status = "ready",
+) => ({
   id,
   category: "recipes",
   subcategory: null,
@@ -53,13 +58,16 @@ const documentListItem = (id: string, title: string, status = "ready") => ({
   source_type: "pdf",
   status,
   active_source_version: 1,
+  knowledge_items: knowledgeItems,
 });
 
+/* `knowledge_items` mirrors each book's detail `counts.knowledge_items` below;
+   documents.test.ts asserts the two agree. */
 export const documentsFixture = {
   documents: [
-    documentListItem("doc_onepan", "onepantorulethemall"),
-    documentListItem("doc_paleo", "eatdrinkpaleo"),
-    documentListItem("doc_baking", "bakingwithlesssugar"),
+    documentListItem("doc_onepan", "onepantorulethemall", 108),
+    documentListItem("doc_paleo", "eatdrinkpaleo", 106),
+    documentListItem("doc_baking", "bakingwithlesssugar", 60),
   ],
 };
 
@@ -98,10 +106,12 @@ const detailCounts: Record<
 
 export const documentDetailFixture = (id: string) => {
   const counts = detailCounts[id];
-  if (!counts) {
+  const found = documentsFixture.documents.find((d) => d.id === id);
+  if (!counts || !found) {
     return undefined;
   }
-  const listItem = documentsFixture.documents.find((d) => d.id === id);
+  /* `knowledge_items` is list-only; DocumentResponse does not carry it. */
+  const { knowledge_items: _listOnly, ...listItem } = found;
   return {
     document: {
       ...listItem,
@@ -114,8 +124,8 @@ export const documentDetailFixture = (id: string) => {
   };
 };
 
-/** Sum of ready_items across the three-book fixture: 107 + 105 + 57. */
-export const fixtureReadyRecipes = 269;
+/** Sum of knowledge_items across the three-book list fixture: 108 + 106 + 60. */
+export const fixtureRecipeCount = 274;
 
 /* ---------- search ---------- */
 
@@ -279,12 +289,23 @@ const book = (
     status,
     active_source_version:
       status === "queued" || status === "failed" ? null : 1,
+    knowledge_items: counts.knowledge_items,
   };
   return {
     list,
     detail: {
+      /* Spelled out rather than spread from `list`: `knowledge_items` is a
+         list-only field, and the detail document must keep DocumentResponse's
+         shape. */
       document: {
-        ...list,
+        id,
+        category: list.category,
+        subcategory: list.subcategory,
+        title,
+        author: list.author,
+        source_type: list.source_type,
+        status,
+        active_source_version: list.active_source_version,
         asset_id: `asset-${id}`,
         language: "en",
         created_at: options.created_at ?? "2026-07-30T10:00:00Z",
