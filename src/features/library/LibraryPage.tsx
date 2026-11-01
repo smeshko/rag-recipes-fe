@@ -32,34 +32,31 @@ export function LibraryPage() {
   const booksReady = docs.filter(
     (d) => d.status === "ready" || d.status === "needs_review",
   ).length;
-  /* Settled includes errored DETAIL queries — a 4xx is terminal under the
-     retry policy, so waiting on success alone would freeze the stats forever.
+  /* The LIST query must be `isSuccess`, not merely "not pending": when it
+     errors there are no docs and no details, so an all-settled check over
+     `details` is vacuously true and the line would resolve to an exact
+     "0 books ready · 0 recipes · 0 waiting for review" — a confident zero
+     inventory printed directly above the "shelf could not be reached" panel.
+     An outage is not an empty shelf.
 
-     The LIST query is different, and must be `isSuccess`, not merely
-     "not pending": when it errors there are no docs and no details, so
-     `details.every(...)` is vacuously true and the line would resolve to an
-     exact "0 books ready · 0 recipes · 0 waiting for review" — a confident
-     zero inventory printed directly above the "shelf could not be reached"
-     panel. An outage is not an empty shelf. */
-  const settled =
-    documents.isSuccess && details.every((query) => !query.isPending);
+     The recipe total is the list's own sum (`knowledge_items`), so it needs
+     nothing but the list. Only "waiting for review" comes from the details,
+     and those settle as a set: settled includes errored DETAIL queries, since
+     a 4xx is terminal under the retry policy and waiting on success alone
+     would freeze the figure forever. */
+  const detailsSettled = details.every((query) => !query.isPending);
   const unavailable = details.filter((query) => query.isError).length;
-  const sumOf = (
-    pick: (counts: {
-      ready_items: number;
-      needs_review_items: number;
-    }) => number,
-  ) =>
-    details.reduce(
-      (total, query) => total + (query.data ? pick(query.data.counts) : 0),
-      0,
-    );
-
-  /* Never a silently-low bare number: with an errored book the sums cannot
-     include it, so they degrade visibly to "N+" plus a note. */
+  const recipes = docs.reduce((total, doc) => total + doc.knowledge_items, 0);
+  const waiting = details.reduce(
+    (total, query) => total + (query.data?.counts.needs_review_items ?? 0),
+    0,
+  );
+  /* Never a silently-low bare number: with an errored book the waiting sum
+     cannot include it, so it degrades visibly to "N+" plus a note. */
   const marker = unavailable > 0 ? "+" : "";
-  const statsLine = settled
-    ? `${booksReady} ${plural(booksReady, "book")} ready · ${sumOf((c) => c.ready_items)}${marker} recipes · ${sumOf((c) => c.needs_review_items)}${marker} waiting for review`
+  const waitingLabel = detailsSettled ? `${waiting}${marker}` : "—";
+  const statsLine = documents.isSuccess
+    ? `${booksReady} ${plural(booksReady, "book")} ready · ${recipes} recipes · ${waitingLabel} waiting for review`
     : "— books ready · — recipes · — waiting for review";
 
   return (
@@ -72,7 +69,7 @@ export function LibraryPage() {
           The shelf, as it stands.
         </h1>
         <div className="mt-2 text-[15px] text-fg-muted">{statsLine}</div>
-        {settled && unavailable > 0 && (
+        {documents.isSuccess && detailsSettled && unavailable > 0 && (
           <div className="mt-1 text-[13px] text-fg-subtle">
             counts unavailable for {unavailable} {plural(unavailable, "book")}
           </div>

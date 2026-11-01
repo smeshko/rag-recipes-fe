@@ -40,6 +40,7 @@ const processingDoc = (
   source_type: "pdf",
   status,
   active_source_version: null,
+  knowledge_items: 0,
 });
 
 const detailFor = (doc: DocumentListItem): DetailState => ({
@@ -378,7 +379,12 @@ describe("terminal handoff", () => {
     );
 
     expect(await screen.findByText("Embedding chunks")).toBeInTheDocument();
-    bookNow = { ...bookNow, status: "ready", active_source_version: 1 };
+    bookNow = {
+      ...bookNow,
+      status: "ready",
+      active_source_version: 1,
+      knowledge_items: 100,
+    };
 
     /* The next poll lands at the production cadence (2.5s), flips
          terminal, and the invalidation re-renders the terminal row. */
@@ -387,5 +393,7 @@ describe("terminal handoff", () => {
     });
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     expect(screen.getByText("recipes")).toBeInTheDocument();
+    /* The recipe figure is the list row's, which the handoff refreshed. */
+    expect(screen.getByText("100")).toBeInTheDocument();
   }, 12000);
 });

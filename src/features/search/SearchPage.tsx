@@ -33,7 +33,7 @@ import { SearchEmpty, SearchError, SearchSkeleton } from "./SearchStates";
 import { nextSearchParams, searchUrl } from "./searchUrl";
 
 function ShelfStatsLine() {
-  const { cookbookCount, readyRecipes, partial, unavailable } = useShelfStats();
+  const { cookbookCount, recipeCount, unavailable } = useShelfStats();
   /* Checked before the loading branch: a terminal list failure also leaves
      cookbookCount undefined, and "warming up the shelf…" would then sit there
      forever describing a request that is never coming back. */
@@ -43,16 +43,14 @@ function ShelfStatsLine() {
   if (cookbookCount === undefined) {
     return <span className="text-fg-subtle">warming up the shelf…</span>;
   }
-  /* A book whose counts failed to load makes the sum a floor, not a total —
-     say so with a "+" rather than presenting a short number as exact. */
-  const readyLabel =
-    readyRecipes === undefined
-      ? ""
-      : ` · ${readyRecipes}${partial ? "+" : ""} recipes ready`;
+  /* Every book's count comes off the list, so the sum is exact as soon as the
+     list is in: no "+" and no per-book failure to report. */
+  const recipeLabel =
+    recipeCount === undefined ? "" : ` · ${recipeCount} recipes`;
   return (
     <>
       {cookbookCount} cookbook{cookbookCount === 1 ? "" : "s"} on the shelf
-      {readyLabel}
+      {recipeLabel}
     </>
   );
 }

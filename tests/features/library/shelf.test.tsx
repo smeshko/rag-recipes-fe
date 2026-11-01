@@ -79,7 +79,9 @@ describe("library shelf", () => {
     renderLibrary();
 
     const onePan = await bookRow("One Pan to Rule Them All");
-    expect(await onePan.findByText("107")).toBeInTheDocument();
+    /* The recipe cell is the list's knowledge_items (108), not the detail's
+       ready_items (107). */
+    expect(await onePan.findByText("108")).toBeInTheDocument();
     expect(onePan.getByText("1")).toBeInTheDocument();
     expect(onePan.getByText("535")).toBeInTheDocument();
     expect(onePan.getByText("recipes")).toBeInTheDocument();
@@ -112,15 +114,16 @@ describe("library shelf", () => {
 
     expect(
       await screen.findByText(
-        "3 books ready · 269 recipes · 15 waiting for review",
+        "3 books ready · 284 recipes · 15 waiting for review",
       ),
     ).toBeInTheDocument();
   });
 
   it("degrades visibly when one detail query 404s", async () => {
     /* Every book except Baking with Less Sugar gets a detail handler; the
-       base catch-all 404s it. Sums exclude it: 107+105 = 212 recipes, 1
-       waiting. */
+       base catch-all 404s it. The recipe total is the list's sum, so it stays
+       whole (284); only the waiting-for-review sum comes from the details and
+       drops the errored book, so it is a floor (1+). */
     server.use(
       documentsListHandler(libraryBookList),
       ...libraryBooks
@@ -131,18 +134,20 @@ describe("library shelf", () => {
 
     expect(
       await screen.findByText(
-        "3 books ready · 212+ recipes · 1+ waiting for review",
+        "3 books ready · 284 recipes · 1+ waiting for review",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText("counts unavailable for 1 book"),
     ).toBeInTheDocument();
 
-    /* The errored row: em-dash counts, numberless pill. */
+    /* The errored row keeps its list-sourced recipe figure, and only the
+       detail-sourced cells go em-dash: to review and chunks. */
     const baking = await bookRow("Baking with Less Sugar");
     expect(baking.getByText("Needs review")).toBeInTheDocument();
-    expect(baking.getAllByText("—").length).toBeGreaterThanOrEqual(3);
+    expect(baking.getByText("71")).toBeInTheDocument();
     expect(baking.getByText("recipes")).toBeInTheDocument();
+    expect(baking.getAllByText("—").length).toBeGreaterThanOrEqual(2);
   });
 
   it("never reports a confident zero when the list query fails", async () => {
